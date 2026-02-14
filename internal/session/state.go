@@ -8,6 +8,13 @@ import (
 	"github.com/abhisek/mathiz/internal/skillgraph"
 )
 
+// SpacedRepScheduler is the interface for session-level spaced rep operations.
+type SpacedRepScheduler interface {
+	RecordReview(skillID string, correct bool, now time.Time)
+	InitSkill(skillID string, masteredAt time.Time)
+	ReInitSkill(skillID string, now time.Time)
+}
+
 // SessionPhase represents the current phase of the session.
 type SessionPhase int
 
@@ -92,6 +99,9 @@ type SessionState struct {
 
 	// CompletedSlots tracks slot indices that have been completed (tier advanced).
 	CompletedSlots map[int]bool
+
+	// SpacedRepSched is the spaced repetition scheduler for answer recording (nil if not enabled).
+	SpacedRepSched SpacedRepScheduler
 }
 
 // SkillResult tracks per-skill performance within a single session.

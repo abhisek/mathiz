@@ -72,6 +72,14 @@ func handleAnswerWithMastery(state *SessionState, q *problemgen.Question, correc
 	tierCfg := skill.Tiers[q.Tier]
 	transition := state.MasteryService.RecordAnswer(q.SkillID, correct, responseTimeMs, tierCfg)
 
+	// Update spaced rep schedule for review answers.
+	if state.SpacedRepSched != nil {
+		slot := CurrentSlot(state)
+		if slot != nil && slot.Category == CategoryReview {
+			state.SpacedRepSched.RecordReview(q.SkillID, correct, time.Now())
+		}
+	}
+
 	// Sync mastered set from service.
 	state.Mastered = state.MasteryService.MasteredSkills()
 
@@ -87,6 +95,17 @@ func handleAnswerWithMastery(state *SessionState, q *problemgen.Question, correc
 
 	// Store the mastery transition for UI feedback.
 	state.MasteryTransition = transition
+
+	// Initialize spaced rep for newly mastered skills.
+	if state.SpacedRepSched != nil && transition != nil {
+		now := time.Now()
+		switch {
+		case transition.From == mastery.StateLearning && transition.To == mastery.StateMastered:
+			state.SpacedRepSched.InitSkill(q.SkillID, now)
+		case transition.From == mastery.StateRusty && transition.To == mastery.StateMastered:
+			state.SpacedRepSched.ReInitSkill(q.SkillID, now)
+		}
+	}
 
 	// Convert to TierAdvancement for backward compatibility.
 	if transition != nil {

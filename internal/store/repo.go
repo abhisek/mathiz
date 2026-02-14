@@ -17,12 +17,28 @@ type QueryOpts struct {
 // SnapshotData captures the full learner state at a point in time.
 // Domain modules register their state types here as they are implemented.
 type SnapshotData struct {
-	Version int                  `json:"version"`
-	Mastery *MasterySnapshotData `json:"mastery,omitempty"`
+	Version   int                    `json:"version"`
+	Mastery   *MasterySnapshotData   `json:"mastery,omitempty"`
+	SpacedRep *SpacedRepSnapshotData `json:"spaced_rep,omitempty"`
 
 	// Deprecated: kept for migration only. New snapshots use Mastery field.
 	TierProgress map[string]*TierProgressData `json:"tier_progress,omitempty"`
 	MasteredSet  []string                     `json:"mastered_set,omitempty"`
+}
+
+// SpacedRepSnapshotData holds all spaced repetition state for persistence.
+type SpacedRepSnapshotData struct {
+	Reviews map[string]*ReviewStateData `json:"reviews,omitempty"`
+}
+
+// ReviewStateData is the serialized form of ReviewState.
+type ReviewStateData struct {
+	SkillID         string `json:"skill_id"`
+	Stage           int    `json:"stage"`
+	NextReviewDate  string `json:"next_review_date"`
+	ConsecutiveHits int    `json:"consecutive_hits"`
+	Graduated       bool   `json:"graduated"`
+	LastReviewDate  string `json:"last_review_date"`
 }
 
 // MasterySnapshotData holds mastery state for all skills in a snapshot.

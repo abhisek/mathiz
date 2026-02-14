@@ -12,6 +12,7 @@ import (
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
 	sess "github.com/abhisek/mathiz/internal/session"
+	"github.com/abhisek/mathiz/internal/spacedrep"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/abhisek/mathiz/internal/ui/components"
 	"github.com/abhisek/mathiz/internal/ui/layout"
@@ -26,6 +27,7 @@ type SessionScreen struct {
 	eventRepo store.EventRepo
 	snapRepo  store.SnapshotRepo
 	planner   sess.Planner
+	scheduler *spacedrep.Scheduler
 	input     components.TextInput
 	mcActive  bool // true when showing multiple choice
 	mcSelected int
@@ -146,6 +148,15 @@ func (s *SessionScreen) initSession() tea.Cmd {
 		// Create mastery service from snapshot.
 		masterySvc := mastery.NewService(snapData, s.eventRepo)
 
+		// Create spaced rep scheduler and run decay check.
+		scheduler := spacedrep.NewScheduler(snapData, masterySvc, s.eventRepo)
+		scheduler.RunDecayCheck(ctx, time.Now())
+
+		// Wire scheduler into planner if it supports it.
+		if dp, ok := s.planner.(*sess.DefaultPlanner); ok {
+			dp.SetScheduler(scheduler)
+		}
+
 		// Derive mastered set and tier progress from mastery service.
 		mastered := masterySvc.MasteredSkills()
 		tierProgress := make(map[string]*sess.TierProgress)
@@ -175,6 +186,7 @@ func (s *SessionScreen) initSession() tea.Cmd {
 		sessionID := uuid.New().String()
 		state := sess.NewSessionState(plan, sessionID, mastered, tierProgress)
 		state.MasteryService = masterySvc
+		state.SpacedRepSched = scheduler
 
 		// Persist session start event.
 		var planSummary []store.PlanSlotSummaryData
@@ -190,6 +202,9 @@ func (s *SessionScreen) initSession() tea.Cmd {
 			Action:      "start",
 			PlanSummary: planSummary,
 		})
+
+		// Keep scheduler reference for snapshot saving.
+		s.scheduler = scheduler
 
 		return sessionInitMsg{State: state}
 	}
@@ -531,12 +546,18 @@ func (s *SessionScreen) generateNextQuestion() tea.Cmd {
 // saveSnapshot persists the current mastery state.
 func (s *SessionScreen) saveSnapshot(ctx context.Context) {
 	snapData := store.SnapshotData{
-		Version: 2,
+		Version: 3,
 	}
 
 	if s.state.MasteryService != nil {
 		snapData.Mastery = s.state.MasteryService.SnapshotData()
-	} else {
+	}
+
+	if s.scheduler != nil {
+		snapData.SpacedRep = s.scheduler.SnapshotData()
+	}
+
+	if s.state.MasteryService == nil {
 		// Legacy fallback.
 		tierProgressData := make(map[string]*store.TierProgressData)
 		for id, tp := range s.state.TierProgress {

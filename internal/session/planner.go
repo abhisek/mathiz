@@ -9,6 +9,12 @@ import (
 	"github.com/abhisek/mathiz/internal/store"
 )
 
+// SchedulerDueSkills is the interface used by the planner to query due skills.
+// This avoids a direct import cycle with the spacedrep package.
+type SchedulerDueSkills interface {
+	DueSkills(now time.Time) []string
+}
+
 // Planner builds a session plan from the current learner state.
 type Planner interface {
 	// BuildPlan creates a session plan.
@@ -19,6 +25,12 @@ type Planner interface {
 type DefaultPlanner struct {
 	EventRepo store.EventRepo
 	Ctx       context.Context
+	scheduler SchedulerDueSkills
+}
+
+// SetScheduler sets the spaced repetition scheduler for review selection.
+func (p *DefaultPlanner) SetScheduler(s SchedulerDueSkills) {
+	p.scheduler = s
 }
 
 // NewPlanner creates a new DefaultPlanner.
@@ -176,8 +188,31 @@ func selectFrontierSkills(mastered map[string]bool, count int) []skillgraph.Skil
 	return available
 }
 
-// selectReviewSkills picks mastered skills that were least recently practiced.
+// selectReviewSkills picks mastered skills for review slots.
+// Uses the spaced repetition scheduler when available, otherwise falls back
+// to least-recently-practiced heuristic.
 func (p *DefaultPlanner) selectReviewSkills(masteredIDs []string, count int) []skillgraph.Skill {
+	if p.scheduler != nil {
+		due := p.scheduler.DueSkills(time.Now())
+		if len(due) > count {
+			due = due[:count]
+		}
+		var result []skillgraph.Skill
+		for _, id := range due {
+			skill, err := skillgraph.GetSkill(id)
+			if err != nil {
+				continue
+			}
+			result = append(result, skill)
+		}
+		return result
+	}
+
+	return p.selectReviewSkillsFallback(masteredIDs, count)
+}
+
+// selectReviewSkillsFallback picks mastered skills that were least recently practiced.
+func (p *DefaultPlanner) selectReviewSkillsFallback(masteredIDs []string, count int) []skillgraph.Skill {
 	type skillTime struct {
 		skill skillgraph.Skill
 		t     time.Time
