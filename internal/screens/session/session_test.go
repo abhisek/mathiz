@@ -53,6 +53,12 @@ func (m *mockEventRepo) LatestAnswerTime(_ context.Context, _ string) (time.Time
 func (m *mockEventRepo) SkillAccuracy(_ context.Context, _ string) (float64, error) {
 	return 0, nil
 }
+func (m *mockEventRepo) AppendMasteryEvent(_ context.Context, _ store.MasteryEventData) error {
+	return nil
+}
+func (m *mockEventRepo) RecentReviewAccuracy(_ context.Context, _ string, _ int) (float64, int, error) {
+	return 0, 0, nil
+}
 
 // mockSnapshotRepo implements store.SnapshotRepo for testing.
 type mockSnapshotRepo struct {

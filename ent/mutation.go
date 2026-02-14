@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
+	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/predicate"
 	"github.com/abhisek/mathiz/ent/schema"
 	"github.com/abhisek/mathiz/ent/sessionevent"
@@ -30,6 +31,7 @@ const (
 	// Node types.
 	TypeAnswerEvent     = "AnswerEvent"
 	TypeLLMRequestEvent = "LLMRequestEvent"
+	TypeMasteryEvent    = "MasteryEvent"
 	TypeSessionEvent    = "SessionEvent"
 	TypeSnapshot        = "Snapshot"
 )
@@ -1968,6 +1970,801 @@ func (m *LLMRequestEventMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *LLMRequestEventMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown LLMRequestEvent edge %s", name)
+}
+
+// MasteryEventMutation represents an operation that mutates the MasteryEvent nodes in the graph.
+type MasteryEventMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	sequence         *int64
+	addsequence      *int64
+	timestamp        *time.Time
+	skill_id         *string
+	from_state       *string
+	to_state         *string
+	trigger          *string
+	fluency_score    *float64
+	addfluency_score *float64
+	session_id       *string
+	clearedFields    map[string]struct{}
+	done             bool
+	oldValue         func(context.Context) (*MasteryEvent, error)
+	predicates       []predicate.MasteryEvent
+}
+
+var _ ent.Mutation = (*MasteryEventMutation)(nil)
+
+// masteryeventOption allows management of the mutation configuration using functional options.
+type masteryeventOption func(*MasteryEventMutation)
+
+// newMasteryEventMutation creates new mutation for the MasteryEvent entity.
+func newMasteryEventMutation(c config, op Op, opts ...masteryeventOption) *MasteryEventMutation {
+	m := &MasteryEventMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeMasteryEvent,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withMasteryEventID sets the ID field of the mutation.
+func withMasteryEventID(id int) masteryeventOption {
+	return func(m *MasteryEventMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *MasteryEvent
+		)
+		m.oldValue = func(ctx context.Context) (*MasteryEvent, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().MasteryEvent.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withMasteryEvent sets the old MasteryEvent of the mutation.
+func withMasteryEvent(node *MasteryEvent) masteryeventOption {
+	return func(m *MasteryEventMutation) {
+		m.oldValue = func(context.Context) (*MasteryEvent, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m MasteryEventMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m MasteryEventMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *MasteryEventMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *MasteryEventMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().MasteryEvent.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSequence sets the "sequence" field.
+func (m *MasteryEventMutation) SetSequence(i int64) {
+	m.sequence = &i
+	m.addsequence = nil
+}
+
+// Sequence returns the value of the "sequence" field in the mutation.
+func (m *MasteryEventMutation) Sequence() (r int64, exists bool) {
+	v := m.sequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSequence returns the old "sequence" field's value of the MasteryEvent entity.
+// If the MasteryEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MasteryEventMutation) OldSequence(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSequence is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSequence requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSequence: %w", err)
+	}
+	return oldValue.Sequence, nil
+}
+
+// AddSequence adds i to the "sequence" field.
+func (m *MasteryEventMutation) AddSequence(i int64) {
+	if m.addsequence != nil {
+		*m.addsequence += i
+	} else {
+		m.addsequence = &i
+	}
+}
+
+// AddedSequence returns the value that was added to the "sequence" field in this mutation.
+func (m *MasteryEventMutation) AddedSequence() (r int64, exists bool) {
+	v := m.addsequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSequence resets all changes to the "sequence" field.
+func (m *MasteryEventMutation) ResetSequence() {
+	m.sequence = nil
+	m.addsequence = nil
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (m *MasteryEventMutation) SetTimestamp(t time.Time) {
+	m.timestamp = &t
+}
+
+// Timestamp returns the value of the "timestamp" field in the mutation.
+func (m *MasteryEventMutation) Timestamp() (r time.Time, exists bool) {
+	v := m.timestamp
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimestamp returns the old "timestamp" field's value of the MasteryEvent entity.
+// If the MasteryEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MasteryEventMutation) OldTimestamp(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimestamp is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimestamp requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimestamp: %w", err)
+	}
+	return oldValue.Timestamp, nil
+}
+
+// ResetTimestamp resets all changes to the "timestamp" field.
+func (m *MasteryEventMutation) ResetTimestamp() {
+	m.timestamp = nil
+}
+
+// SetSkillID sets the "skill_id" field.
+func (m *MasteryEventMutation) SetSkillID(s string) {
+	m.skill_id = &s
+}
+
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *MasteryEventMutation) SkillID() (r string, exists bool) {
+	v := m.skill_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillID returns the old "skill_id" field's value of the MasteryEvent entity.
+// If the MasteryEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MasteryEventMutation) OldSkillID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
+	}
+	return oldValue.SkillID, nil
+}
+
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *MasteryEventMutation) ResetSkillID() {
+	m.skill_id = nil
+}
+
+// SetFromState sets the "from_state" field.
+func (m *MasteryEventMutation) SetFromState(s string) {
+	m.from_state = &s
+}
+
+// FromState returns the value of the "from_state" field in the mutation.
+func (m *MasteryEventMutation) FromState() (r string, exists bool) {
+	v := m.from_state
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFromState returns the old "from_state" field's value of the MasteryEvent entity.
+// If the MasteryEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MasteryEventMutation) OldFromState(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFromState is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFromState requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFromState: %w", err)
+	}
+	return oldValue.FromState, nil
+}
+
+// ResetFromState resets all changes to the "from_state" field.
+func (m *MasteryEventMutation) ResetFromState() {
+	m.from_state = nil
+}
+
+// SetToState sets the "to_state" field.
+func (m *MasteryEventMutation) SetToState(s string) {
+	m.to_state = &s
+}
+
+// ToState returns the value of the "to_state" field in the mutation.
+func (m *MasteryEventMutation) ToState() (r string, exists bool) {
+	v := m.to_state
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldToState returns the old "to_state" field's value of the MasteryEvent entity.
+// If the MasteryEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MasteryEventMutation) OldToState(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldToState is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldToState requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldToState: %w", err)
+	}
+	return oldValue.ToState, nil
+}
+
+// ResetToState resets all changes to the "to_state" field.
+func (m *MasteryEventMutation) ResetToState() {
+	m.to_state = nil
+}
+
+// SetTrigger sets the "trigger" field.
+func (m *MasteryEventMutation) SetTrigger(s string) {
+	m.trigger = &s
+}
+
+// Trigger returns the value of the "trigger" field in the mutation.
+func (m *MasteryEventMutation) Trigger() (r string, exists bool) {
+	v := m.trigger
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTrigger returns the old "trigger" field's value of the MasteryEvent entity.
+// If the MasteryEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MasteryEventMutation) OldTrigger(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTrigger is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTrigger requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTrigger: %w", err)
+	}
+	return oldValue.Trigger, nil
+}
+
+// ResetTrigger resets all changes to the "trigger" field.
+func (m *MasteryEventMutation) ResetTrigger() {
+	m.trigger = nil
+}
+
+// SetFluencyScore sets the "fluency_score" field.
+func (m *MasteryEventMutation) SetFluencyScore(f float64) {
+	m.fluency_score = &f
+	m.addfluency_score = nil
+}
+
+// FluencyScore returns the value of the "fluency_score" field in the mutation.
+func (m *MasteryEventMutation) FluencyScore() (r float64, exists bool) {
+	v := m.fluency_score
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFluencyScore returns the old "fluency_score" field's value of the MasteryEvent entity.
+// If the MasteryEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MasteryEventMutation) OldFluencyScore(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFluencyScore is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFluencyScore requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFluencyScore: %w", err)
+	}
+	return oldValue.FluencyScore, nil
+}
+
+// AddFluencyScore adds f to the "fluency_score" field.
+func (m *MasteryEventMutation) AddFluencyScore(f float64) {
+	if m.addfluency_score != nil {
+		*m.addfluency_score += f
+	} else {
+		m.addfluency_score = &f
+	}
+}
+
+// AddedFluencyScore returns the value that was added to the "fluency_score" field in this mutation.
+func (m *MasteryEventMutation) AddedFluencyScore() (r float64, exists bool) {
+	v := m.addfluency_score
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFluencyScore resets all changes to the "fluency_score" field.
+func (m *MasteryEventMutation) ResetFluencyScore() {
+	m.fluency_score = nil
+	m.addfluency_score = nil
+}
+
+// SetSessionID sets the "session_id" field.
+func (m *MasteryEventMutation) SetSessionID(s string) {
+	m.session_id = &s
+}
+
+// SessionID returns the value of the "session_id" field in the mutation.
+func (m *MasteryEventMutation) SessionID() (r string, exists bool) {
+	v := m.session_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSessionID returns the old "session_id" field's value of the MasteryEvent entity.
+// If the MasteryEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MasteryEventMutation) OldSessionID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSessionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSessionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSessionID: %w", err)
+	}
+	return oldValue.SessionID, nil
+}
+
+// ClearSessionID clears the value of the "session_id" field.
+func (m *MasteryEventMutation) ClearSessionID() {
+	m.session_id = nil
+	m.clearedFields[masteryevent.FieldSessionID] = struct{}{}
+}
+
+// SessionIDCleared returns if the "session_id" field was cleared in this mutation.
+func (m *MasteryEventMutation) SessionIDCleared() bool {
+	_, ok := m.clearedFields[masteryevent.FieldSessionID]
+	return ok
+}
+
+// ResetSessionID resets all changes to the "session_id" field.
+func (m *MasteryEventMutation) ResetSessionID() {
+	m.session_id = nil
+	delete(m.clearedFields, masteryevent.FieldSessionID)
+}
+
+// Where appends a list predicates to the MasteryEventMutation builder.
+func (m *MasteryEventMutation) Where(ps ...predicate.MasteryEvent) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the MasteryEventMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MasteryEventMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.MasteryEvent, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *MasteryEventMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MasteryEventMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (MasteryEvent).
+func (m *MasteryEventMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *MasteryEventMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.sequence != nil {
+		fields = append(fields, masteryevent.FieldSequence)
+	}
+	if m.timestamp != nil {
+		fields = append(fields, masteryevent.FieldTimestamp)
+	}
+	if m.skill_id != nil {
+		fields = append(fields, masteryevent.FieldSkillID)
+	}
+	if m.from_state != nil {
+		fields = append(fields, masteryevent.FieldFromState)
+	}
+	if m.to_state != nil {
+		fields = append(fields, masteryevent.FieldToState)
+	}
+	if m.trigger != nil {
+		fields = append(fields, masteryevent.FieldTrigger)
+	}
+	if m.fluency_score != nil {
+		fields = append(fields, masteryevent.FieldFluencyScore)
+	}
+	if m.session_id != nil {
+		fields = append(fields, masteryevent.FieldSessionID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *MasteryEventMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case masteryevent.FieldSequence:
+		return m.Sequence()
+	case masteryevent.FieldTimestamp:
+		return m.Timestamp()
+	case masteryevent.FieldSkillID:
+		return m.SkillID()
+	case masteryevent.FieldFromState:
+		return m.FromState()
+	case masteryevent.FieldToState:
+		return m.ToState()
+	case masteryevent.FieldTrigger:
+		return m.Trigger()
+	case masteryevent.FieldFluencyScore:
+		return m.FluencyScore()
+	case masteryevent.FieldSessionID:
+		return m.SessionID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *MasteryEventMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case masteryevent.FieldSequence:
+		return m.OldSequence(ctx)
+	case masteryevent.FieldTimestamp:
+		return m.OldTimestamp(ctx)
+	case masteryevent.FieldSkillID:
+		return m.OldSkillID(ctx)
+	case masteryevent.FieldFromState:
+		return m.OldFromState(ctx)
+	case masteryevent.FieldToState:
+		return m.OldToState(ctx)
+	case masteryevent.FieldTrigger:
+		return m.OldTrigger(ctx)
+	case masteryevent.FieldFluencyScore:
+		return m.OldFluencyScore(ctx)
+	case masteryevent.FieldSessionID:
+		return m.OldSessionID(ctx)
+	}
+	return nil, fmt.Errorf("unknown MasteryEvent field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MasteryEventMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case masteryevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSequence(v)
+		return nil
+	case masteryevent.FieldTimestamp:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimestamp(v)
+		return nil
+	case masteryevent.FieldSkillID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillID(v)
+		return nil
+	case masteryevent.FieldFromState:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFromState(v)
+		return nil
+	case masteryevent.FieldToState:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetToState(v)
+		return nil
+	case masteryevent.FieldTrigger:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTrigger(v)
+		return nil
+	case masteryevent.FieldFluencyScore:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFluencyScore(v)
+		return nil
+	case masteryevent.FieldSessionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSessionID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MasteryEvent field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *MasteryEventMutation) AddedFields() []string {
+	var fields []string
+	if m.addsequence != nil {
+		fields = append(fields, masteryevent.FieldSequence)
+	}
+	if m.addfluency_score != nil {
+		fields = append(fields, masteryevent.FieldFluencyScore)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *MasteryEventMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case masteryevent.FieldSequence:
+		return m.AddedSequence()
+	case masteryevent.FieldFluencyScore:
+		return m.AddedFluencyScore()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MasteryEventMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case masteryevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSequence(v)
+		return nil
+	case masteryevent.FieldFluencyScore:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFluencyScore(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MasteryEvent numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *MasteryEventMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(masteryevent.FieldSessionID) {
+		fields = append(fields, masteryevent.FieldSessionID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *MasteryEventMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *MasteryEventMutation) ClearField(name string) error {
+	switch name {
+	case masteryevent.FieldSessionID:
+		m.ClearSessionID()
+		return nil
+	}
+	return fmt.Errorf("unknown MasteryEvent nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *MasteryEventMutation) ResetField(name string) error {
+	switch name {
+	case masteryevent.FieldSequence:
+		m.ResetSequence()
+		return nil
+	case masteryevent.FieldTimestamp:
+		m.ResetTimestamp()
+		return nil
+	case masteryevent.FieldSkillID:
+		m.ResetSkillID()
+		return nil
+	case masteryevent.FieldFromState:
+		m.ResetFromState()
+		return nil
+	case masteryevent.FieldToState:
+		m.ResetToState()
+		return nil
+	case masteryevent.FieldTrigger:
+		m.ResetTrigger()
+		return nil
+	case masteryevent.FieldFluencyScore:
+		m.ResetFluencyScore()
+		return nil
+	case masteryevent.FieldSessionID:
+		m.ResetSessionID()
+		return nil
+	}
+	return fmt.Errorf("unknown MasteryEvent field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *MasteryEventMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *MasteryEventMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *MasteryEventMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *MasteryEventMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *MasteryEventMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *MasteryEventMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *MasteryEventMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown MasteryEvent unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *MasteryEventMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown MasteryEvent edge %s", name)
 }
 
 // SessionEventMutation represents an operation that mutates the SessionEvent nodes in the graph.

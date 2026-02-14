@@ -3,6 +3,7 @@ package session
 import (
 	"time"
 
+	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
 )
@@ -74,6 +75,12 @@ type SessionState struct {
 	// TierAdvanced is set when a tier advancement happens, for feedback display.
 	TierAdvanced *TierAdvancement
 
+	// MasteryTransition is set when a mastery state transition happens, for feedback display.
+	MasteryTransition *mastery.StateTransition
+
+	// MasteryService manages per-skill mastery state and fluency scoring.
+	MasteryService *mastery.Service
+
 	// SessionID is the UUID for this session.
 	SessionID string
 
@@ -89,13 +96,14 @@ type SessionState struct {
 
 // SkillResult tracks per-skill performance within a single session.
 type SkillResult struct {
-	SkillID   string
-	SkillName string
-	Category  PlanCategory
-	Attempted int
-	Correct   int
-	TierBefore skillgraph.Tier
-	TierAfter  skillgraph.Tier
+	SkillID      string
+	SkillName    string
+	Category     PlanCategory
+	Attempted    int
+	Correct      int
+	TierBefore   skillgraph.Tier
+	TierAfter    skillgraph.Tier
+	FluencyScore float64 // Fluency score at end of session (0.0-1.0, -1 if unavailable)
 }
 
 // TierAdvancement records a tier transition for display purposes.

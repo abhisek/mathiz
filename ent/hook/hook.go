@@ -33,6 +33,18 @@ func (f LLMRequestEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LLMRequestEventMutation", m)
 }
 
+// The MasteryEventFunc type is an adapter to allow the use of ordinary
+// function as MasteryEvent mutator.
+type MasteryEventFunc func(context.Context, *ent.MasteryEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MasteryEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MasteryEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MasteryEventMutation", m)
+}
+
 // The SessionEventFunc type is an adapter to allow the use of ordinary
 // function as SessionEvent mutator.
 type SessionEventFunc func(context.Context, *ent.SessionEventMutation) (ent.Value, error)

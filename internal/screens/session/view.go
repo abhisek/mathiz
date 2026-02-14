@@ -167,8 +167,60 @@ func (s *SessionScreen) renderFeedback(width, height int) string {
 		b.WriteString("\n\n")
 	}
 
-	// Tier advancement notification.
-	if state.TierAdvanced != nil {
+	// Mastery transition / tier advancement notification.
+	if state.MasteryTransition != nil {
+		t := state.MasteryTransition
+		switch t.Trigger {
+		case "prove-complete":
+			fluencyStr := ""
+			if state.MasteryService != nil {
+				sm := state.MasteryService.GetMastery(t.SkillID)
+				fluencyStr = fmt.Sprintf(" Fluency: %.2f", sm.FluencyScore())
+			}
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.Accent).
+				Bold(true).
+				Render("Skill mastered!"))
+			b.WriteString("\n")
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.Text).
+				Render(fmt.Sprintf("\"%s\" — mastered!%s", t.SkillName, fluencyStr)))
+			b.WriteString("\n\n")
+		case "recovery-complete":
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.Success).
+				Bold(true).
+				Render("Skill recovered!"))
+			b.WriteString("\n")
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.Text).
+				Render(fmt.Sprintf("\"%s\" — back to mastered!", t.SkillName)))
+			b.WriteString("\n\n")
+		case "tier-complete":
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.Accent).
+				Bold(true).
+				Render("Level up!"))
+			b.WriteString("\n")
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.Text).
+				Render(fmt.Sprintf("\"%s\" — Prove tier unlocked!", t.SkillName)))
+			b.WriteString("\n\n")
+		}
+	} else if state.TierAdvanced != nil {
+		// Legacy tier advancement notification.
 		adv := state.TierAdvanced
 		if adv.Mastered {
 			b.WriteString(lipgloss.NewStyle().

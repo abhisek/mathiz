@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
@@ -133,30 +134,31 @@ func (s *SessionScreen) initSession() tea.Cmd {
 		ctx := context.Background()
 
 		// Load learner state from latest snapshot.
-		var mastered map[string]bool
-		var tierProgress map[string]*sess.TierProgress
-
+		var snapData *store.SnapshotData
 		snap, err := s.snapRepo.Latest(ctx)
 		if err != nil {
 			return sessionInitMsg{Err: err}
 		}
-
 		if snap != nil {
-			mastered = make(map[string]bool)
-			for _, id := range snap.Data.MasteredSet {
-				mastered[id] = true
+			snapData = &snap.Data
+		}
+
+		// Create mastery service from snapshot.
+		masterySvc := mastery.NewService(snapData, s.eventRepo)
+
+		// Derive mastered set and tier progress from mastery service.
+		mastered := masterySvc.MasteredSkills()
+		tierProgress := make(map[string]*sess.TierProgress)
+		for id, sm := range masterySvc.AllSkillMasteries() {
+			if sm.State == mastery.StateNew {
+				continue
 			}
-			tierProgress = make(map[string]*sess.TierProgress)
-			for id, tp := range snap.Data.TierProgress {
-				tierProgress[id] = &sess.TierProgress{
-					SkillID:       tp.SkillID,
-					CurrentTier:   sess.TierFromString(tp.CurrentTier),
-					TotalAttempts: tp.TotalAttempts,
-					CorrectCount:  tp.CorrectCount,
-				}
-				if tierProgress[id].TotalAttempts > 0 {
-					tierProgress[id].Accuracy = float64(tierProgress[id].CorrectCount) / float64(tierProgress[id].TotalAttempts)
-				}
+			tierProgress[id] = &sess.TierProgress{
+				SkillID:       id,
+				CurrentTier:   sm.CurrentTier,
+				TotalAttempts: sm.TotalAttempts,
+				CorrectCount:  sm.CorrectCount,
+				Accuracy:      sm.Accuracy(),
 			}
 		}
 
@@ -172,6 +174,7 @@ func (s *SessionScreen) initSession() tea.Cmd {
 
 		sessionID := uuid.New().String()
 		state := sess.NewSessionState(plan, sessionID, mastered, tierProgress)
+		state.MasteryService = masterySvc
 
 		// Persist session start event.
 		var planSummary []store.PlanSlotSummaryData
@@ -270,6 +273,7 @@ func (s *SessionScreen) handleFeedbackDone() (screen.Screen, tea.Cmd) {
 
 	s.state.ShowingFeedback = false
 	s.state.TierAdvanced = nil
+	s.state.MasteryTransition = nil
 
 	// If time expired, end the session.
 	if s.state.TimeExpired {
@@ -441,6 +445,22 @@ func (s *SessionScreen) submitAnswer() (screen.Screen, tea.Cmd) {
 	adv := sess.HandleAnswer(s.state, learnerAnswer)
 	s.state.TierAdvanced = adv
 
+	ctx := context.Background()
+
+	// Persist mastery transition event if applicable.
+	if s.state.MasteryTransition != nil && s.state.MasteryService != nil {
+		t := s.state.MasteryTransition
+		sm := s.state.MasteryService.GetMastery(s.state.CurrentQuestion.SkillID)
+		_ = s.eventRepo.AppendMasteryEvent(ctx, store.MasteryEventData{
+			SkillID:      t.SkillID,
+			FromState:    string(t.From),
+			ToState:      string(t.To),
+			Trigger:      t.Trigger,
+			FluencyScore: sm.FluencyScore(),
+			SessionID:    s.state.SessionID,
+		})
+	}
+
 	// Persist answer event.
 	slot := sess.CurrentSlot(s.state)
 	var category, tier string
@@ -448,8 +468,6 @@ func (s *SessionScreen) submitAnswer() (screen.Screen, tea.Cmd) {
 		category = string(slot.Category)
 		tier = sess.TierString(slot.Tier)
 	}
-
-	ctx := context.Background()
 	_ = s.eventRepo.AppendAnswerEvent(ctx, store.AnswerEventData{
 		SessionID:     s.state.SessionID,
 		SkillID:       s.state.CurrentQuestion.SkillID,
@@ -510,30 +528,36 @@ func (s *SessionScreen) generateNextQuestion() tea.Cmd {
 	}
 }
 
-// saveSnapshot persists the current tier progress and mastered set.
+// saveSnapshot persists the current mastery state.
 func (s *SessionScreen) saveSnapshot(ctx context.Context) {
-	tierProgressData := make(map[string]*store.TierProgressData)
-	for id, tp := range s.state.TierProgress {
-		tierProgressData[id] = &store.TierProgressData{
-			SkillID:       tp.SkillID,
-			CurrentTier:   sess.TierString(tp.CurrentTier),
-			TotalAttempts: tp.TotalAttempts,
-			CorrectCount:  tp.CorrectCount,
-		}
+	snapData := store.SnapshotData{
+		Version: 2,
 	}
 
-	var masteredSet []string
-	for id := range s.state.Mastered {
-		masteredSet = append(masteredSet, id)
+	if s.state.MasteryService != nil {
+		snapData.Mastery = s.state.MasteryService.SnapshotData()
+	} else {
+		// Legacy fallback.
+		tierProgressData := make(map[string]*store.TierProgressData)
+		for id, tp := range s.state.TierProgress {
+			tierProgressData[id] = &store.TierProgressData{
+				SkillID:       tp.SkillID,
+				CurrentTier:   sess.TierString(tp.CurrentTier),
+				TotalAttempts: tp.TotalAttempts,
+				CorrectCount:  tp.CorrectCount,
+			}
+		}
+		var masteredSet []string
+		for id := range s.state.Mastered {
+			masteredSet = append(masteredSet, id)
+		}
+		snapData.TierProgress = tierProgressData
+		snapData.MasteredSet = masteredSet
 	}
 
 	snap := &store.Snapshot{
 		Timestamp: time.Now(),
-		Data: store.SnapshotData{
-			Version:      1,
-			TierProgress: tierProgressData,
-			MasteredSet:  masteredSet,
-		},
+		Data:      snapData,
 	}
 	_ = s.snapRepo.Save(ctx, snap)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
+	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/schema"
 	"github.com/abhisek/mathiz/ent/sessionevent"
 	"github.com/abhisek/mathiz/ent/snapshot"
@@ -82,6 +83,31 @@ func init() {
 	llmrequesteventDescErrorMessage := llmrequesteventFields[7].Descriptor()
 	// llmrequestevent.DefaultErrorMessage holds the default value on creation for the error_message field.
 	llmrequestevent.DefaultErrorMessage = llmrequesteventDescErrorMessage.Default.(string)
+	masteryeventMixin := schema.MasteryEvent{}.Mixin()
+	masteryeventMixinFields0 := masteryeventMixin[0].Fields()
+	_ = masteryeventMixinFields0
+	masteryeventFields := schema.MasteryEvent{}.Fields()
+	_ = masteryeventFields
+	// masteryeventDescTimestamp is the schema descriptor for timestamp field.
+	masteryeventDescTimestamp := masteryeventMixinFields0[1].Descriptor()
+	// masteryevent.DefaultTimestamp holds the default value on creation for the timestamp field.
+	masteryevent.DefaultTimestamp = masteryeventDescTimestamp.Default.(func() time.Time)
+	// masteryeventDescSkillID is the schema descriptor for skill_id field.
+	masteryeventDescSkillID := masteryeventFields[0].Descriptor()
+	// masteryevent.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
+	masteryevent.SkillIDValidator = masteryeventDescSkillID.Validators[0].(func(string) error)
+	// masteryeventDescFromState is the schema descriptor for from_state field.
+	masteryeventDescFromState := masteryeventFields[1].Descriptor()
+	// masteryevent.FromStateValidator is a validator for the "from_state" field. It is called by the builders before save.
+	masteryevent.FromStateValidator = masteryeventDescFromState.Validators[0].(func(string) error)
+	// masteryeventDescToState is the schema descriptor for to_state field.
+	masteryeventDescToState := masteryeventFields[2].Descriptor()
+	// masteryevent.ToStateValidator is a validator for the "to_state" field. It is called by the builders before save.
+	masteryevent.ToStateValidator = masteryeventDescToState.Validators[0].(func(string) error)
+	// masteryeventDescTrigger is the schema descriptor for trigger field.
+	masteryeventDescTrigger := masteryeventFields[3].Descriptor()
+	// masteryevent.TriggerValidator is a validator for the "trigger" field. It is called by the builders before save.
+	masteryevent.TriggerValidator = masteryeventDescTrigger.Validators[0].(func(string) error)
 	sessioneventMixin := schema.SessionEvent{}.Mixin()
 	sessioneventMixinFields0 := sessioneventMixin[0].Fields()
 	_ = sessioneventMixinFields0

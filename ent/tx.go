@@ -16,6 +16,8 @@ type Tx struct {
 	AnswerEvent *AnswerEventClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
 	LLMRequestEvent *LLMRequestEventClient
+	// MasteryEvent is the client for interacting with the MasteryEvent builders.
+	MasteryEvent *MasteryEventClient
 	// SessionEvent is the client for interacting with the SessionEvent builders.
 	SessionEvent *SessionEventClient
 	// Snapshot is the client for interacting with the Snapshot builders.
@@ -153,6 +155,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.AnswerEvent = NewAnswerEventClient(tx.config)
 	tx.LLMRequestEvent = NewLLMRequestEventClient(tx.config)
+	tx.MasteryEvent = NewMasteryEventClient(tx.config)
 	tx.SessionEvent = NewSessionEventClient(tx.config)
 	tx.Snapshot = NewSnapshotClient(tx.config)
 }

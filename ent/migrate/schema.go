@@ -104,6 +104,41 @@ var (
 			},
 		},
 	}
+	// MasteryEventsColumns holds the columns for the "mastery_events" table.
+	MasteryEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "skill_id", Type: field.TypeString},
+		{Name: "from_state", Type: field.TypeString},
+		{Name: "to_state", Type: field.TypeString},
+		{Name: "trigger", Type: field.TypeString},
+		{Name: "fluency_score", Type: field.TypeFloat64},
+		{Name: "session_id", Type: field.TypeString, Nullable: true},
+	}
+	// MasteryEventsTable holds the schema information for the "mastery_events" table.
+	MasteryEventsTable = &schema.Table{
+		Name:       "mastery_events",
+		Columns:    MasteryEventsColumns,
+		PrimaryKey: []*schema.Column{MasteryEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "masteryevent_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{MasteryEventsColumns[1]},
+			},
+			{
+				Name:    "masteryevent_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{MasteryEventsColumns[2]},
+			},
+			{
+				Name:    "masteryevent_skill_id",
+				Unique:  false,
+				Columns: []*schema.Column{MasteryEventsColumns[3]},
+			},
+		},
+	}
 	// SessionEventsColumns holds the columns for the "session_events" table.
 	SessionEventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -173,6 +208,7 @@ var (
 	Tables = []*schema.Table{
 		AnswerEventsTable,
 		LlmRequestEventsTable,
+		MasteryEventsTable,
 		SessionEventsTable,
 		SnapshotsTable,
 	}

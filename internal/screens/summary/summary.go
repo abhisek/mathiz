@@ -116,8 +116,13 @@ func (s *SummaryScreen) View(width, height int) string {
 				session.TierString(sr.TierAfter))
 		}
 
-		line := fmt.Sprintf("  %s (%s)    %s    %s",
-			sr.SkillName, catStr, scoreStr, tierStr)
+		fluencyStr := ""
+		if sr.FluencyScore >= 0 {
+			fluencyStr = fmt.Sprintf("   %.2f", sr.FluencyScore)
+		}
+
+		line := fmt.Sprintf("  %s (%s)    %s    %s%s",
+			sr.SkillName, catStr, scoreStr, tierStr, fluencyStr)
 
 		style := lipgloss.NewStyle().Foreground(theme.Text)
 		if sr.TierBefore != sr.TierAfter {

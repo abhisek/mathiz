@@ -16,6 +16,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
+	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/sessionevent"
 	"github.com/abhisek/mathiz/ent/snapshot"
 )
@@ -29,6 +30,8 @@ type Client struct {
 	AnswerEvent *AnswerEventClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
 	LLMRequestEvent *LLMRequestEventClient
+	// MasteryEvent is the client for interacting with the MasteryEvent builders.
+	MasteryEvent *MasteryEventClient
 	// SessionEvent is the client for interacting with the SessionEvent builders.
 	SessionEvent *SessionEventClient
 	// Snapshot is the client for interacting with the Snapshot builders.
@@ -46,6 +49,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.AnswerEvent = NewAnswerEventClient(c.config)
 	c.LLMRequestEvent = NewLLMRequestEventClient(c.config)
+	c.MasteryEvent = NewMasteryEventClient(c.config)
 	c.SessionEvent = NewSessionEventClient(c.config)
 	c.Snapshot = NewSnapshotClient(c.config)
 }
@@ -142,6 +146,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:          cfg,
 		AnswerEvent:     NewAnswerEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
+		MasteryEvent:    NewMasteryEventClient(cfg),
 		SessionEvent:    NewSessionEventClient(cfg),
 		Snapshot:        NewSnapshotClient(cfg),
 	}, nil
@@ -165,6 +170,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:          cfg,
 		AnswerEvent:     NewAnswerEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
+		MasteryEvent:    NewMasteryEventClient(cfg),
 		SessionEvent:    NewSessionEventClient(cfg),
 		Snapshot:        NewSnapshotClient(cfg),
 	}, nil
@@ -197,6 +203,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.AnswerEvent.Use(hooks...)
 	c.LLMRequestEvent.Use(hooks...)
+	c.MasteryEvent.Use(hooks...)
 	c.SessionEvent.Use(hooks...)
 	c.Snapshot.Use(hooks...)
 }
@@ -206,6 +213,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.AnswerEvent.Intercept(interceptors...)
 	c.LLMRequestEvent.Intercept(interceptors...)
+	c.MasteryEvent.Intercept(interceptors...)
 	c.SessionEvent.Intercept(interceptors...)
 	c.Snapshot.Intercept(interceptors...)
 }
@@ -217,6 +225,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.AnswerEvent.mutate(ctx, m)
 	case *LLMRequestEventMutation:
 		return c.LLMRequestEvent.mutate(ctx, m)
+	case *MasteryEventMutation:
+		return c.MasteryEvent.mutate(ctx, m)
 	case *SessionEventMutation:
 		return c.SessionEvent.mutate(ctx, m)
 	case *SnapshotMutation:
@@ -492,6 +502,139 @@ func (c *LLMRequestEventClient) mutate(ctx context.Context, m *LLMRequestEventMu
 	}
 }
 
+// MasteryEventClient is a client for the MasteryEvent schema.
+type MasteryEventClient struct {
+	config
+}
+
+// NewMasteryEventClient returns a client for the MasteryEvent from the given config.
+func NewMasteryEventClient(c config) *MasteryEventClient {
+	return &MasteryEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `masteryevent.Hooks(f(g(h())))`.
+func (c *MasteryEventClient) Use(hooks ...Hook) {
+	c.hooks.MasteryEvent = append(c.hooks.MasteryEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `masteryevent.Intercept(f(g(h())))`.
+func (c *MasteryEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.MasteryEvent = append(c.inters.MasteryEvent, interceptors...)
+}
+
+// Create returns a builder for creating a MasteryEvent entity.
+func (c *MasteryEventClient) Create() *MasteryEventCreate {
+	mutation := newMasteryEventMutation(c.config, OpCreate)
+	return &MasteryEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of MasteryEvent entities.
+func (c *MasteryEventClient) CreateBulk(builders ...*MasteryEventCreate) *MasteryEventCreateBulk {
+	return &MasteryEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MasteryEventClient) MapCreateBulk(slice any, setFunc func(*MasteryEventCreate, int)) *MasteryEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MasteryEventCreateBulk{err: fmt.Errorf("calling to MasteryEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MasteryEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MasteryEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for MasteryEvent.
+func (c *MasteryEventClient) Update() *MasteryEventUpdate {
+	mutation := newMasteryEventMutation(c.config, OpUpdate)
+	return &MasteryEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MasteryEventClient) UpdateOne(_m *MasteryEvent) *MasteryEventUpdateOne {
+	mutation := newMasteryEventMutation(c.config, OpUpdateOne, withMasteryEvent(_m))
+	return &MasteryEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MasteryEventClient) UpdateOneID(id int) *MasteryEventUpdateOne {
+	mutation := newMasteryEventMutation(c.config, OpUpdateOne, withMasteryEventID(id))
+	return &MasteryEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for MasteryEvent.
+func (c *MasteryEventClient) Delete() *MasteryEventDelete {
+	mutation := newMasteryEventMutation(c.config, OpDelete)
+	return &MasteryEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MasteryEventClient) DeleteOne(_m *MasteryEvent) *MasteryEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MasteryEventClient) DeleteOneID(id int) *MasteryEventDeleteOne {
+	builder := c.Delete().Where(masteryevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MasteryEventDeleteOne{builder}
+}
+
+// Query returns a query builder for MasteryEvent.
+func (c *MasteryEventClient) Query() *MasteryEventQuery {
+	return &MasteryEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMasteryEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a MasteryEvent entity by its id.
+func (c *MasteryEventClient) Get(ctx context.Context, id int) (*MasteryEvent, error) {
+	return c.Query().Where(masteryevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MasteryEventClient) GetX(ctx context.Context, id int) *MasteryEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *MasteryEventClient) Hooks() []Hook {
+	return c.hooks.MasteryEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *MasteryEventClient) Interceptors() []Interceptor {
+	return c.inters.MasteryEvent
+}
+
+func (c *MasteryEventClient) mutate(ctx context.Context, m *MasteryEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MasteryEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MasteryEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MasteryEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MasteryEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown MasteryEvent mutation op: %q", m.Op())
+	}
+}
+
 // SessionEventClient is a client for the SessionEvent schema.
 type SessionEventClient struct {
 	config
@@ -761,9 +904,10 @@ func (c *SnapshotClient) mutate(ctx context.Context, m *SnapshotMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		AnswerEvent, LLMRequestEvent, SessionEvent, Snapshot []ent.Hook
+		AnswerEvent, LLMRequestEvent, MasteryEvent, SessionEvent, Snapshot []ent.Hook
 	}
 	inters struct {
-		AnswerEvent, LLMRequestEvent, SessionEvent, Snapshot []ent.Interceptor
+		AnswerEvent, LLMRequestEvent, MasteryEvent, SessionEvent,
+		Snapshot []ent.Interceptor
 	}
 )

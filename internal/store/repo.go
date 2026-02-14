@@ -17,9 +17,32 @@ type QueryOpts struct {
 // SnapshotData captures the full learner state at a point in time.
 // Domain modules register their state types here as they are implemented.
 type SnapshotData struct {
-	Version      int                         `json:"version"`
+	Version int                  `json:"version"`
+	Mastery *MasterySnapshotData `json:"mastery,omitempty"`
+
+	// Deprecated: kept for migration only. New snapshots use Mastery field.
 	TierProgress map[string]*TierProgressData `json:"tier_progress,omitempty"`
 	MasteredSet  []string                     `json:"mastered_set,omitempty"`
+}
+
+// MasterySnapshotData holds mastery state for all skills in a snapshot.
+type MasterySnapshotData struct {
+	Skills map[string]*SkillMasteryData `json:"skills,omitempty"`
+}
+
+// SkillMasteryData is the serialized form of SkillMastery for snapshot storage.
+type SkillMasteryData struct {
+	SkillID       string    `json:"skill_id"`
+	State         string    `json:"state"`
+	CurrentTier   string    `json:"current_tier"`
+	TotalAttempts int       `json:"total_attempts"`
+	CorrectCount  int       `json:"correct_count"`
+	SpeedScores   []float64 `json:"speed_scores,omitempty"`
+	SpeedWindow   int       `json:"speed_window"`
+	Streak        int       `json:"streak"`
+	StreakCap     int       `json:"streak_cap"`
+	MasteredAt    *string   `json:"mastered_at,omitempty"`
+	RustyAt       *string   `json:"rusty_at,omitempty"`
 }
 
 // TierProgressData is the serialized form of tier progress for a skill.
@@ -93,6 +116,16 @@ type AnswerEventData struct {
 	AnswerFormat  string
 }
 
+// MasteryEventData captures the data for a mastery state transition event.
+type MasteryEventData struct {
+	SkillID      string
+	FromState    string
+	ToState      string
+	Trigger      string
+	FluencyScore float64
+	SessionID    string
+}
+
 // EventRepo provides append access to domain events.
 type EventRepo interface {
 	// AppendLLMRequest records an LLM API call event.
@@ -104,6 +137,9 @@ type EventRepo interface {
 	// AppendAnswerEvent records a single answer event.
 	AppendAnswerEvent(ctx context.Context, data AnswerEventData) error
 
+	// AppendMasteryEvent records a mastery state transition.
+	AppendMasteryEvent(ctx context.Context, data MasteryEventData) error
+
 	// LatestAnswerTime returns the most recent answer timestamp for a skill,
 	// or zero time if no answers exist.
 	LatestAnswerTime(ctx context.Context, skillID string) (time.Time, error)
@@ -111,4 +147,8 @@ type EventRepo interface {
 	// SkillAccuracy returns the historical accuracy for a skill (correct/total),
 	// or 0 if no answers exist.
 	SkillAccuracy(ctx context.Context, skillID string) (float64, error)
+
+	// RecentReviewAccuracy returns the accuracy and count of the last N
+	// review answers for a skill.
+	RecentReviewAccuracy(ctx context.Context, skillID string, lastN int) (accuracy float64, count int, err error)
 }

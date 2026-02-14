@@ -11,6 +11,16 @@ type SessionSummary struct {
 	SkillResults   []SkillResult
 }
 
+// SkillSummaryFluency returns the fluency score for a skill from the mastery service.
+// Returns -1 if the mastery service is not available.
+func SkillSummaryFluency(state *SessionState, skillID string) float64 {
+	if state.MasteryService == nil {
+		return -1
+	}
+	sm := state.MasteryService.GetMastery(skillID)
+	return sm.FluencyScore()
+}
+
 // BuildSummary creates a SessionSummary from the current session state.
 func BuildSummary(state *SessionState) *SessionSummary {
 	var results []SkillResult
@@ -25,6 +35,7 @@ func BuildSummary(state *SessionState) *SessionSummary {
 				}
 			}
 			if !found {
+				sr.FluencyScore = SkillSummaryFluency(state, sr.SkillID)
 				results = append(results, *sr)
 			}
 		}

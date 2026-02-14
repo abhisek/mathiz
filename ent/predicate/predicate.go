@@ -12,6 +12,9 @@ type AnswerEvent func(*sql.Selector)
 // LLMRequestEvent is the predicate function for llmrequestevent builders.
 type LLMRequestEvent func(*sql.Selector)
 
+// MasteryEvent is the predicate function for masteryevent builders.
+type MasteryEvent func(*sql.Selector)
+
 // SessionEvent is the predicate function for sessionevent builders.
 type SessionEvent func(*sql.Selector)
 

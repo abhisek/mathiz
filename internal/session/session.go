@@ -2,7 +2,9 @@ package session
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
 )
@@ -12,6 +14,7 @@ const MaxRecentErrors = 5
 
 // HandleAnswer processes a learner's answer, updating session state and tier progress.
 // Returns a TierAdvancement if the answer caused a tier transition, nil otherwise.
+// Also updates the MasteryService and sets state.MasteryTransition.
 func HandleAnswer(state *SessionState, learnerAnswer string) *TierAdvancement {
 	q := state.CurrentQuestion
 	if q == nil {
@@ -49,7 +52,50 @@ func HandleAnswer(state *SessionState, learnerAnswer string) *TierAdvancement {
 		state.RecentErrors[q.SkillID] = errors
 	}
 
-	// Update tier progress.
+	// Delegate to mastery service if available.
+	if state.MasteryService != nil {
+		return handleAnswerWithMastery(state, q, correct)
+	}
+
+	// Legacy path: update tier progress directly.
+	return handleAnswerLegacy(state, q, correct)
+}
+
+func handleAnswerWithMastery(state *SessionState, q *problemgen.Question, correct bool) *TierAdvancement {
+	responseTimeMs := int(time.Since(state.QuestionStartTime).Milliseconds())
+
+	skill, err := skillgraph.GetSkill(q.SkillID)
+	if err != nil {
+		return nil
+	}
+
+	tierCfg := skill.Tiers[q.Tier]
+	transition := state.MasteryService.RecordAnswer(q.SkillID, correct, responseTimeMs, tierCfg)
+
+	// Sync mastered set from service.
+	state.Mastered = state.MasteryService.MasteredSkills()
+
+	// Sync tier progress from mastery service for planner compatibility.
+	sm := state.MasteryService.GetMastery(q.SkillID)
+	state.TierProgress[q.SkillID] = &TierProgress{
+		SkillID:       q.SkillID,
+		CurrentTier:   sm.CurrentTier,
+		TotalAttempts: sm.TotalAttempts,
+		CorrectCount:  sm.CorrectCount,
+		Accuracy:      sm.Accuracy(),
+	}
+
+	// Store the mastery transition for UI feedback.
+	state.MasteryTransition = transition
+
+	// Convert to TierAdvancement for backward compatibility.
+	if transition != nil {
+		return masteryTransitionToTierAdvancement(transition)
+	}
+	return nil
+}
+
+func handleAnswerLegacy(state *SessionState, q *problemgen.Question, correct bool) *TierAdvancement {
 	tp := state.TierProgress[q.SkillID]
 	if tp == nil {
 		tp = &TierProgress{
@@ -60,7 +106,6 @@ func HandleAnswer(state *SessionState, learnerAnswer string) *TierAdvancement {
 	}
 	tp.Record(correct)
 
-	// Check for tier advancement.
 	skill, err := skillgraph.GetSkill(q.SkillID)
 	if err != nil {
 		return nil
@@ -71,6 +116,36 @@ func HandleAnswer(state *SessionState, learnerAnswer string) *TierAdvancement {
 		return advanceTier(state, tp, skill)
 	}
 
+	return nil
+}
+
+func masteryTransitionToTierAdvancement(t *mastery.StateTransition) *TierAdvancement {
+	switch t.Trigger {
+	case "tier-complete":
+		return &TierAdvancement{
+			SkillID:   t.SkillID,
+			SkillName: t.SkillName,
+			FromTier:  skillgraph.TierLearn,
+			ToTier:    skillgraph.TierProve,
+			Mastered:  false,
+		}
+	case "prove-complete":
+		return &TierAdvancement{
+			SkillID:   t.SkillID,
+			SkillName: t.SkillName,
+			FromTier:  skillgraph.TierProve,
+			ToTier:    skillgraph.TierProve,
+			Mastered:  true,
+		}
+	case "recovery-complete":
+		return &TierAdvancement{
+			SkillID:   t.SkillID,
+			SkillName: t.SkillName,
+			FromTier:  skillgraph.TierLearn,
+			ToTier:    skillgraph.TierLearn,
+			Mastered:  true,
+		}
+	}
 	return nil
 }
 
