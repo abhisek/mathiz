@@ -30,16 +30,12 @@ var playCmd = &cobra.Command{
 
 		// Build LLM provider (optional — app works without it).
 		opts := app.Options{}
-		llmCfg := llm.ConfigFromEnv()
-		if err := llmCfg.Validate(); err == nil {
-			provider, err := llm.NewProvider(ctx, llmCfg, st.EventRepo())
-			if err != nil {
-				return fmt.Errorf("init LLM provider: %w", err)
-			}
-			opts.LLMProvider = provider
-		} else {
+		provider, err := llm.NewProviderFromEnv(ctx, st.EventRepo())
+		if err != nil {
 			fmt.Fprintln(os.Stderr, "LLM provider not configured:", err)
 			fmt.Fprintln(os.Stderr, "AI features will be unavailable.")
+		} else {
+			opts.LLMProvider = provider
 		}
 
 		_ = ctx // will be threaded into app in future specs

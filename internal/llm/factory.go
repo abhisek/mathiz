@@ -35,3 +35,14 @@ func NewProvider(ctx context.Context, cfg Config, eventRepo store.EventRepo) (Pr
 
 	return retried, nil
 }
+
+// NewProviderFromEnv auto-discovers LLM credentials from standard env vars
+// (GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY) and creates a fully
+// decorated provider. Returns an error if no credentials are found.
+func NewProviderFromEnv(ctx context.Context, eventRepo store.EventRepo) (Provider, error) {
+	cfg, ok := DiscoverConfig()
+	if !ok {
+		return nil, fmt.Errorf("no LLM API key found; set one of GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY")
+	}
+	return NewProvider(ctx, cfg, eventRepo)
+}

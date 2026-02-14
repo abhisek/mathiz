@@ -108,6 +108,31 @@ func ConfigFromEnv() Config {
 	return cfg
 }
 
+// DiscoverConfig probes standard API key env vars in priority order
+// (Gemini → OpenAI → Anthropic) and returns a Config for the first
+// provider whose key is found. Returns (Config{}, false) if none found.
+func DiscoverConfig() (Config, bool) {
+	cfg := DefaultConfig()
+
+	if k := os.Getenv("GEMINI_API_KEY"); k != "" {
+		cfg.Provider = "gemini"
+		cfg.Gemini.APIKey = k
+		return cfg, true
+	}
+	if k := os.Getenv("OPENAI_API_KEY"); k != "" {
+		cfg.Provider = "openai"
+		cfg.OpenAI.APIKey = k
+		return cfg, true
+	}
+	if k := os.Getenv("ANTHROPIC_API_KEY"); k != "" {
+		cfg.Provider = "anthropic"
+		cfg.Anthropic.APIKey = k
+		return cfg, true
+	}
+
+	return Config{}, false
+}
+
 // Validate checks that the selected provider has its required API key set.
 func (c Config) Validate() error {
 	switch c.Provider {
