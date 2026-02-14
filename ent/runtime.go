@@ -5,6 +5,7 @@ package ent
 import (
 	"time"
 
+	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/schema"
 	"github.com/abhisek/mathiz/ent/snapshot"
 )
@@ -13,6 +14,31 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	llmrequesteventMixin := schema.LLMRequestEvent{}.Mixin()
+	llmrequesteventMixinFields0 := llmrequesteventMixin[0].Fields()
+	_ = llmrequesteventMixinFields0
+	llmrequesteventFields := schema.LLMRequestEvent{}.Fields()
+	_ = llmrequesteventFields
+	// llmrequesteventDescTimestamp is the schema descriptor for timestamp field.
+	llmrequesteventDescTimestamp := llmrequesteventMixinFields0[1].Descriptor()
+	// llmrequestevent.DefaultTimestamp holds the default value on creation for the timestamp field.
+	llmrequestevent.DefaultTimestamp = llmrequesteventDescTimestamp.Default.(func() time.Time)
+	// llmrequesteventDescInputTokens is the schema descriptor for input_tokens field.
+	llmrequesteventDescInputTokens := llmrequesteventFields[3].Descriptor()
+	// llmrequestevent.DefaultInputTokens holds the default value on creation for the input_tokens field.
+	llmrequestevent.DefaultInputTokens = llmrequesteventDescInputTokens.Default.(int)
+	// llmrequesteventDescOutputTokens is the schema descriptor for output_tokens field.
+	llmrequesteventDescOutputTokens := llmrequesteventFields[4].Descriptor()
+	// llmrequestevent.DefaultOutputTokens holds the default value on creation for the output_tokens field.
+	llmrequestevent.DefaultOutputTokens = llmrequesteventDescOutputTokens.Default.(int)
+	// llmrequesteventDescLatencyMs is the schema descriptor for latency_ms field.
+	llmrequesteventDescLatencyMs := llmrequesteventFields[5].Descriptor()
+	// llmrequestevent.DefaultLatencyMs holds the default value on creation for the latency_ms field.
+	llmrequestevent.DefaultLatencyMs = llmrequesteventDescLatencyMs.Default.(int64)
+	// llmrequesteventDescErrorMessage is the schema descriptor for error_message field.
+	llmrequesteventDescErrorMessage := llmrequesteventFields[7].Descriptor()
+	// llmrequestevent.DefaultErrorMessage holds the default value on creation for the error_message field.
+	llmrequestevent.DefaultErrorMessage = llmrequesteventDescErrorMessage.Default.(string)
 	snapshotFields := schema.Snapshot{}.Fields()
 	_ = snapshotFields
 	// snapshotDescTimestamp is the schema descriptor for timestamp field.

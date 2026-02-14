@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/snapshot"
 )
 
@@ -22,6 +23,8 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
+	LLMRequestEvent *LLMRequestEventClient
 	// Snapshot is the client for interacting with the Snapshot builders.
 	Snapshot *SnapshotClient
 }
@@ -35,6 +38,7 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.LLMRequestEvent = NewLLMRequestEventClient(c.config)
 	c.Snapshot = NewSnapshotClient(c.config)
 }
 
@@ -126,9 +130,10 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Snapshot: NewSnapshotClient(cfg),
+		ctx:             ctx,
+		config:          cfg,
+		LLMRequestEvent: NewLLMRequestEventClient(cfg),
+		Snapshot:        NewSnapshotClient(cfg),
 	}, nil
 }
 
@@ -146,16 +151,17 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Snapshot: NewSnapshotClient(cfg),
+		ctx:             ctx,
+		config:          cfg,
+		LLMRequestEvent: NewLLMRequestEventClient(cfg),
+		Snapshot:        NewSnapshotClient(cfg),
 	}, nil
 }
 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Snapshot.
+//		LLMRequestEvent.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -177,22 +183,159 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.LLMRequestEvent.Use(hooks...)
 	c.Snapshot.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
+	c.LLMRequestEvent.Intercept(interceptors...)
 	c.Snapshot.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *LLMRequestEventMutation:
+		return c.LLMRequestEvent.mutate(ctx, m)
 	case *SnapshotMutation:
 		return c.Snapshot.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// LLMRequestEventClient is a client for the LLMRequestEvent schema.
+type LLMRequestEventClient struct {
+	config
+}
+
+// NewLLMRequestEventClient returns a client for the LLMRequestEvent from the given config.
+func NewLLMRequestEventClient(c config) *LLMRequestEventClient {
+	return &LLMRequestEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `llmrequestevent.Hooks(f(g(h())))`.
+func (c *LLMRequestEventClient) Use(hooks ...Hook) {
+	c.hooks.LLMRequestEvent = append(c.hooks.LLMRequestEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `llmrequestevent.Intercept(f(g(h())))`.
+func (c *LLMRequestEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.LLMRequestEvent = append(c.inters.LLMRequestEvent, interceptors...)
+}
+
+// Create returns a builder for creating a LLMRequestEvent entity.
+func (c *LLMRequestEventClient) Create() *LLMRequestEventCreate {
+	mutation := newLLMRequestEventMutation(c.config, OpCreate)
+	return &LLMRequestEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of LLMRequestEvent entities.
+func (c *LLMRequestEventClient) CreateBulk(builders ...*LLMRequestEventCreate) *LLMRequestEventCreateBulk {
+	return &LLMRequestEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *LLMRequestEventClient) MapCreateBulk(slice any, setFunc func(*LLMRequestEventCreate, int)) *LLMRequestEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &LLMRequestEventCreateBulk{err: fmt.Errorf("calling to LLMRequestEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*LLMRequestEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &LLMRequestEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for LLMRequestEvent.
+func (c *LLMRequestEventClient) Update() *LLMRequestEventUpdate {
+	mutation := newLLMRequestEventMutation(c.config, OpUpdate)
+	return &LLMRequestEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *LLMRequestEventClient) UpdateOne(_m *LLMRequestEvent) *LLMRequestEventUpdateOne {
+	mutation := newLLMRequestEventMutation(c.config, OpUpdateOne, withLLMRequestEvent(_m))
+	return &LLMRequestEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *LLMRequestEventClient) UpdateOneID(id int) *LLMRequestEventUpdateOne {
+	mutation := newLLMRequestEventMutation(c.config, OpUpdateOne, withLLMRequestEventID(id))
+	return &LLMRequestEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for LLMRequestEvent.
+func (c *LLMRequestEventClient) Delete() *LLMRequestEventDelete {
+	mutation := newLLMRequestEventMutation(c.config, OpDelete)
+	return &LLMRequestEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *LLMRequestEventClient) DeleteOne(_m *LLMRequestEvent) *LLMRequestEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *LLMRequestEventClient) DeleteOneID(id int) *LLMRequestEventDeleteOne {
+	builder := c.Delete().Where(llmrequestevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &LLMRequestEventDeleteOne{builder}
+}
+
+// Query returns a query builder for LLMRequestEvent.
+func (c *LLMRequestEventClient) Query() *LLMRequestEventQuery {
+	return &LLMRequestEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeLLMRequestEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a LLMRequestEvent entity by its id.
+func (c *LLMRequestEventClient) Get(ctx context.Context, id int) (*LLMRequestEvent, error) {
+	return c.Query().Where(llmrequestevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *LLMRequestEventClient) GetX(ctx context.Context, id int) *LLMRequestEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *LLMRequestEventClient) Hooks() []Hook {
+	return c.hooks.LLMRequestEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *LLMRequestEventClient) Interceptors() []Interceptor {
+	return c.inters.LLMRequestEvent
+}
+
+func (c *LLMRequestEventClient) mutate(ctx context.Context, m *LLMRequestEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&LLMRequestEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&LLMRequestEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&LLMRequestEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&LLMRequestEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown LLMRequestEvent mutation op: %q", m.Op())
 	}
 }
 
@@ -332,9 +475,9 @@ func (c *SnapshotClient) mutate(ctx context.Context, m *SnapshotMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Snapshot []ent.Hook
+		LLMRequestEvent, Snapshot []ent.Hook
 	}
 	inters struct {
-		Snapshot []ent.Interceptor
+		LLMRequestEvent, Snapshot []ent.Interceptor
 	}
 )

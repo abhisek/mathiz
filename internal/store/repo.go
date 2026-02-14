@@ -41,3 +41,21 @@ type SnapshotRepo interface {
 	// Prune deletes all but the N most recent snapshots.
 	Prune(ctx context.Context, keep int) error
 }
+
+// LLMRequestEventData captures the data for a single LLM request event.
+type LLMRequestEventData struct {
+	Provider     string
+	Model        string
+	Purpose      string
+	InputTokens  int
+	OutputTokens int
+	LatencyMs    int64
+	Success      bool
+	ErrorMessage string
+}
+
+// EventRepo provides append access to domain events.
+type EventRepo interface {
+	// AppendLLMRequest records an LLM API call event.
+	AppendLLMRequest(ctx context.Context, data LLMRequestEventData) error
+}

@@ -8,6 +8,53 @@ import (
 )
 
 var (
+	// LlmRequestEventsColumns holds the columns for the "llm_request_events" table.
+	LlmRequestEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "model", Type: field.TypeString},
+		{Name: "purpose", Type: field.TypeString},
+		{Name: "input_tokens", Type: field.TypeInt, Default: 0},
+		{Name: "output_tokens", Type: field.TypeInt, Default: 0},
+		{Name: "latency_ms", Type: field.TypeInt64, Default: 0},
+		{Name: "success", Type: field.TypeBool},
+		{Name: "error_message", Type: field.TypeString, Default: ""},
+	}
+	// LlmRequestEventsTable holds the schema information for the "llm_request_events" table.
+	LlmRequestEventsTable = &schema.Table{
+		Name:       "llm_request_events",
+		Columns:    LlmRequestEventsColumns,
+		PrimaryKey: []*schema.Column{LlmRequestEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "llmrequestevent_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{LlmRequestEventsColumns[1]},
+			},
+			{
+				Name:    "llmrequestevent_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{LlmRequestEventsColumns[2]},
+			},
+			{
+				Name:    "llmrequestevent_provider",
+				Unique:  false,
+				Columns: []*schema.Column{LlmRequestEventsColumns[3]},
+			},
+			{
+				Name:    "llmrequestevent_purpose",
+				Unique:  false,
+				Columns: []*schema.Column{LlmRequestEventsColumns[5]},
+			},
+			{
+				Name:    "llmrequestevent_success",
+				Unique:  false,
+				Columns: []*schema.Column{LlmRequestEventsColumns[9]},
+			},
+		},
+	}
 	// SnapshotsColumns holds the columns for the "snapshots" table.
 	SnapshotsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -35,6 +82,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		LlmRequestEventsTable,
 		SnapshotsTable,
 	}
 )

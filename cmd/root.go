@@ -10,7 +10,7 @@ var rootCmd = &cobra.Command{
 	Short: "AI math tutor for kids",
 	Long:  "Mathiz — AI-native terminal app that helps children (grades 3-5) build math mastery.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return app.Run()
+		return app.Run(app.Options{})
 	},
 }
 

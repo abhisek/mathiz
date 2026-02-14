@@ -19,6 +19,7 @@ import (
 type Store struct {
 	db     *sql.DB
 	client *ent.Client
+	seq    *sequenceCounter
 }
 
 // Open creates a new Store connected to the SQLite database at dsn.
@@ -42,7 +43,13 @@ func Open(dsn string) (*Store, error) {
 		return nil, fmt.Errorf("auto-migrate: %w", err)
 	}
 
-	return &Store{db: db, client: client}, nil
+	seq, err := newSequenceCounter(db)
+	if err != nil {
+		client.Close()
+		return nil, fmt.Errorf("init sequence counter: %w", err)
+	}
+
+	return &Store{db: db, client: client, seq: seq}, nil
 }
 
 // Client returns the underlying ent client.
@@ -63,6 +70,11 @@ func (s *Store) Close() error {
 // SnapshotRepo returns a SnapshotRepo backed by this store.
 func (s *Store) SnapshotRepo() SnapshotRepo {
 	return &snapshotRepo{client: s.client}
+}
+
+// EventRepo returns an EventRepo backed by this store.
+func (s *Store) EventRepo() EventRepo {
+	return &eventRepo{client: s.client, seq: s.seq}
 }
 
 // applyPragmas configures SQLite for optimal single-user performance.

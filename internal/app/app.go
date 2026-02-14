@@ -7,11 +7,19 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
 	"github.com/abhisek/mathiz/internal/screens/home"
 	"github.com/abhisek/mathiz/internal/ui/layout"
 )
+
+// Options holds dependencies injected into the app.
+type Options struct {
+	// LLMProvider is the LLM provider for AI features. May be nil if
+	// no API key is configured (AI features will be unavailable).
+	LLMProvider llm.Provider
+}
 
 // AppModel is the root Bubble Tea model.
 type AppModel struct {
@@ -109,7 +117,8 @@ func (m AppModel) View() tea.View {
 }
 
 // Run starts the Bubble Tea program.
-func Run() error {
+func Run(opts Options) error {
+	_ = opts // Options will be consumed by future specs (05, 09, 10).
 	p := tea.NewProgram(newAppModel())
 	_, err := p.Run()
 	if err != nil {

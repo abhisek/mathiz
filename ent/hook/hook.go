@@ -9,6 +9,18 @@ import (
 	"github.com/abhisek/mathiz/ent"
 )
 
+// The LLMRequestEventFunc type is an adapter to allow the use of ordinary
+// function as LLMRequestEvent mutator.
+type LLMRequestEventFunc func(context.Context, *ent.LLMRequestEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f LLMRequestEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.LLMRequestEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LLMRequestEventMutation", m)
+}
+
 // The SnapshotFunc type is an adapter to allow the use of ordinary
 // function as Snapshot mutator.
 type SnapshotFunc func(context.Context, *ent.SnapshotMutation) (ent.Value, error)
