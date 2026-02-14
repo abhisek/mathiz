@@ -9,8 +9,10 @@ Mathiz is designed to support math learners across K-12, with an extensible skil
 ## Tech Stack
 
 - **Language:** Go
+- **CLI Framework:** [Cobra](https://github.com/spf13/cobra) -- root command in `main.go`, subcommands in `cmd/<name>/`
 - **TUI Framework:** Charmbracelet
-- **Storage:** SQLite (local, append-only event log + snapshots)
+- **ORM:** [ent](https://entgo.io/) (Go entity framework)
+- **Database:** SQLite via [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go, no CGO) -- local, append-only event log + snapshots
 - **LLM Provider:** Required -- powers question generation, micro-lessons, hints, diagnosis, and context compression (strict JSON, validated)
 
 ## Core Modules
@@ -23,7 +25,7 @@ Mathiz is designed to support math learners across K-12, with an extensible skil
 - **Spaced Repetition** - Per-skill review scheduling based on mastery strength and recency
 - **Rewards (Gems)** - Mastery, retention, and recovery gems tied to real learning milestones
 - **AI Module** - Core system component: generates all questions, micro-lessons, hints, and context compression snapshots; outputs are constrained to strict JSON and programmatically validated
-- **Persistence** - SQLite with append-only event log and periodic compressed snapshots
+- **Persistence** - ent schemas + pure Go SQLite (modernc.org/sqlite), append-only event log and periodic compressed snapshots
 
 ## Key Screens
 
@@ -35,8 +37,8 @@ Each component below gets its own spec document. Components are listed in depend
 
 | # | Component | Spec | Description |
 |---|-----------|------|-------------|
-| 1 | **Project Skeleton & TUI Framework** | `01-skeleton.md` | Go module, Charmbracelet app shell, screen routing, shared UI primitives (input, list, progress), Home screen |
-| 2 | **Persistence Layer** | `02-persistence.md` | SQLite setup, migrations, schema (all tables), repository interfaces, append-only event log |
+| 1 | **Project Skeleton & TUI Framework** | `01-skeleton.md` | Go module, Cobra CLI (root in `main.go`, subcommands in `cmd/<name>/`), Charmbracelet app shell, screen routing, shared UI primitives (input, list, progress), Home screen |
+| 2 | **Persistence Layer** | `02-persistence.md` | ent schemas, pure Go SQLite (modernc.org/sqlite), migrations, repository interfaces, append-only event log |
 | 3 | **Skill Graph** | `03-skill-graph.md` | Skill data model, seed graph JSON (~30-60 nodes), graph traversal APIs (prerequisites, frontier, blocked, available), Skill Map screen |
 | 4 | **LLM Integration** | `04-llm.md` | Provider abstraction (multi-provider), prompt templates, strict JSON schema enforcement, validation pipeline, token limits, error handling |
 | 5 | **Problem Generation** | `05-problem-gen.md` | LLM-powered question generation from skill + learner context, programmatic answer validation, difficulty tiers, deduplication within session |
