@@ -34,7 +34,7 @@ func (p *PlaceholderScreen) View(width, height int) string {
 		Height(height).
 		Align(lipgloss.Center, lipgloss.Center).
 		Foreground(theme.Text).
-		Render("🚧 Coming Soon!\n\nThis feature is being built.\nCheck back later!")
+		Render("╌╌ Coming Soon ╌╌\n\nThis feature is being built.\nCheck back later!")
 
 	return content
 }

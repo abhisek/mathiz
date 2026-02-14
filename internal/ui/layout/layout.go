@@ -77,13 +77,13 @@ func RenderHeader(title string, gems, streak int, width int) string {
 
 	right := lipgloss.NewStyle().
 		Foreground(theme.Accent).
-		Render(fmt.Sprintf("%d", gems)) +
+		Render(fmt.Sprintf("◆ %d", gems)) +
 		lipgloss.NewStyle().
 			Foreground(theme.TextDim).
 			Render("   ") +
 		lipgloss.NewStyle().
 			Foreground(theme.Accent).
-			Render(fmt.Sprintf("%d day", streak))
+			Render(fmt.Sprintf("★ %d day", streak))
 
 	// Calculate spacing
 	leftLen := lipgloss.Width(left)

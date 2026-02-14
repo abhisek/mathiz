@@ -1,6 +1,8 @@
 package home
 
 import (
+	"strings"
+
 	"charm.land/lipgloss/v2"
 
 	tea "charm.land/bubbletea/v2"
@@ -65,43 +67,38 @@ func (h *HomeScreen) Update(msg tea.Msg) (screen.Screen, tea.Cmd) {
 }
 
 func (h *HomeScreen) View(width, height int) string {
-	compact := height < 30 || width < 100
+	// Use full terminal dimensions for responsive checks
+	compactHeight := height < 30
+	compactWidth := width < 100
+	compact := compactHeight || compactWidth
 
-	var content string
+	var sections []string
 
 	if !compact {
-		// Full layout with mascot
-		mascot := lipgloss.NewStyle().
-			Width(width).
-			Align(lipgloss.Center).
-			Render(RenderMascot())
-		content += "\n" + mascot + "\n\n"
+		mascot := lipgloss.PlaceHorizontal(width, lipgloss.Center, RenderMascot())
+		sections = append(sections, mascot)
+	}
+
+	var greetingText string
+	if compact {
+		greetingText = "Hey there, math explorer! ✦"
+	} else {
+		greetingText = "Hey there, math explorer!\nReady to level up today? ✦"
 	}
 
 	greeting := lipgloss.NewStyle().
 		Width(width).
 		Foreground(theme.Text).
 		Align(lipgloss.Center).
-		Render("Hey there, math explorer!\nReady to level up today? 🚀")
+		Render(greetingText)
+	sections = append(sections, greeting)
 
-	if compact {
-		greeting = lipgloss.NewStyle().
-			Width(width).
-			Foreground(theme.Text).
-			Align(lipgloss.Center).
-			Render("Hey there, math explorer! 🚀")
-	}
+	// Render the menu as a left-aligned block, then center the whole block
+	menuBlock := h.menu.View()
+	centeredMenu := lipgloss.PlaceHorizontal(width, lipgloss.Center, menuBlock)
+	sections = append(sections, centeredMenu)
 
-	content += "\n" + greeting + "\n\n"
-
-	menuView := lipgloss.NewStyle().
-		Width(width).
-		Align(lipgloss.Center).
-		Render(h.menu.View())
-
-	content += menuView
-
-	return content
+	return "\n" + strings.Join(sections, "\n\n")
 }
 
 func (h *HomeScreen) Title() string {

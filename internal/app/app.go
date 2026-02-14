@@ -73,7 +73,6 @@ func (m AppModel) View() tea.View {
 	}
 
 	header := layout.RenderHeader(title, 0, 0, m.width)
-	headerHeight := countLines(header)
 
 	var footerHints []layout.KeyHint
 	if m.router.Depth() > 1 {
@@ -90,28 +89,15 @@ func (m AppModel) View() tea.View {
 	}
 
 	footer := layout.RenderFooter(footerHints, m.width)
-	footerHeight := countLines(footer)
 
-	contentHeight := m.height - headerHeight - footerHeight - 2 // -2 for newlines between sections
-	if contentHeight < 0 {
-		contentHeight = 0
-	}
-
-	content := m.router.View(m.width, contentHeight)
+	// Pass full terminal dimensions to the screen so it can make
+	// responsive layout decisions (compact vs full). The frame
+	// composition handles clipping to the content area.
+	content := m.router.View(m.width, m.height)
 	frame := layout.RenderFrame(header, content, footer, m.width, m.height)
 
 	v.SetContent(frame)
 	return v
-}
-
-func countLines(s string) int {
-	n := 1
-	for _, c := range s {
-		if c == '\n' {
-			n++
-		}
-	}
-	return n
 }
 
 // Run starts the Bubble Tea program.
