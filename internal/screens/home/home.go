@@ -67,10 +67,10 @@ func (h *HomeScreen) Update(msg tea.Msg) (screen.Screen, tea.Cmd) {
 }
 
 func (h *HomeScreen) View(width, height int) string {
-	// Use full terminal dimensions for responsive checks
-	compactHeight := height < 30
-	compactWidth := width < 100
-	compact := compactHeight || compactWidth
+	// height is the content area; estimate full terminal height
+	// by adding back header (3) + footer (3) + frame gaps
+	termHeight := height + 8
+	compact := termHeight < 30 || width < 100
 
 	var sections []string
 

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screens/home"
@@ -90,10 +91,14 @@ func (m AppModel) View() tea.View {
 
 	footer := layout.RenderFooter(footerHints, m.width)
 
-	// Pass full terminal dimensions to the screen so it can make
-	// responsive layout decisions (compact vs full). The frame
-	// composition handles clipping to the content area.
-	content := m.router.View(m.width, m.height)
+	headerHeight := lipgloss.Height(header)
+	footerHeight := lipgloss.Height(footer)
+	contentHeight := m.height - headerHeight - footerHeight
+	if contentHeight < 0 {
+		contentHeight = 0
+	}
+
+	content := m.router.View(m.width, contentHeight)
 	frame := layout.RenderFrame(header, content, footer, m.width, m.height)
 
 	v.SetContent(frame)

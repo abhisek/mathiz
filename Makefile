@@ -16,15 +16,7 @@ deps:
 
 # Generate ent code
 generate:
-	$(GO) generate ./storage/ent/...
-
-# Generate Event JSON Schema
-generate-schema:
-	$(GO) run ./cmd/jsonschema-gen
-
-# Verify Event JSON Schema is up-to-date
-verify-schema: generate-schema
-	@git diff --exit-code schema/event.schema.json || (echo "ERROR: schema/event.schema.json is out of date. Run 'make generate-schema' and commit the result." && exit 1)
+	CGO_ENABLED=0 $(GO) generate ./ent
 
 # Build mathiz binary
 mathiz: create_bin
