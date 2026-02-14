@@ -10,6 +10,7 @@ import (
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
 	"github.com/abhisek/mathiz/internal/screens/placeholder"
+	"github.com/abhisek/mathiz/internal/screens/skillmap"
 	"github.com/abhisek/mathiz/internal/ui/components"
 	"github.com/abhisek/mathiz/internal/ui/theme"
 )
@@ -31,7 +32,7 @@ func New() *HomeScreen {
 		}},
 		{Label: "Skill Map", Action: func() tea.Cmd {
 			return func() tea.Msg {
-				return router.PushScreenMsg{Screen: placeholder.New("Skill Map")}
+				return router.PushScreenMsg{Screen: skillmap.New()}
 			}
 		}},
 		{Label: "Gem Vault", Action: func() tea.Cmd {

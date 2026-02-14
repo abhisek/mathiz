@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/abhisek/mathiz/internal/router"
+	"github.com/abhisek/mathiz/internal/screen"
 	"github.com/abhisek/mathiz/internal/screens/home"
 	"github.com/abhisek/mathiz/internal/ui/layout"
 )
@@ -76,7 +77,9 @@ func (m AppModel) View() tea.View {
 	header := layout.RenderHeader(title, 0, 0, m.width)
 
 	var footerHints []layout.KeyHint
-	if m.router.Depth() > 1 {
+	if provider, ok := active.(screen.KeyHintProvider); ok {
+		footerHints = provider.KeyHints()
+	} else if m.router.Depth() > 1 {
 		footerHints = []layout.KeyHint{
 			{Key: "Esc", Description: "Back"},
 			{Key: "Ctrl+C", Description: "Quit"},

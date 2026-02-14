@@ -1,6 +1,10 @@
 package screen
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/abhisek/mathiz/internal/ui/layout"
+)
 
 // Screen defines the interface for all application screens.
 type Screen interface {
@@ -15,4 +19,10 @@ type Screen interface {
 
 	// Title returns the screen name for the header.
 	Title() string
+}
+
+// KeyHintProvider is an optional interface that screens can implement
+// to provide custom footer key hints.
+type KeyHintProvider interface {
+	KeyHints() []layout.KeyHint
 }
