@@ -8,9 +8,11 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/abhisek/mathiz/internal/llm"
+	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
 	"github.com/abhisek/mathiz/internal/screens/home"
+	"github.com/abhisek/mathiz/internal/store"
 	"github.com/abhisek/mathiz/internal/ui/layout"
 )
 
@@ -19,20 +21,31 @@ type Options struct {
 	// LLMProvider is the LLM provider for AI features. May be nil if
 	// no API key is configured (AI features will be unavailable).
 	LLMProvider llm.Provider
+
+	// EventRepo provides event persistence. Required for session tracking.
+	EventRepo store.EventRepo
+
+	// SnapshotRepo manages learner state snapshots. Required for session state.
+	SnapshotRepo store.SnapshotRepo
+
+	// Generator produces math questions. Required for sessions.
+	Generator problemgen.Generator
 }
 
 // AppModel is the root Bubble Tea model.
 type AppModel struct {
 	router *router.Router
+	opts   Options
 	width  int
 	height int
 }
 
 // newAppModel creates a new AppModel with the home screen.
-func newAppModel() AppModel {
-	homeScreen := home.New()
+func newAppModel(opts Options) AppModel {
+	homeScreen := home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo)
 	return AppModel{
 		router: router.New(homeScreen),
+		opts:   opts,
 	}
 }
 
@@ -118,8 +131,7 @@ func (m AppModel) View() tea.View {
 
 // Run starts the Bubble Tea program.
 func Run(opts Options) error {
-	_ = opts // Options will be consumed by future specs (05, 09, 10).
-	p := tea.NewProgram(newAppModel())
+	p := tea.NewProgram(newAppModel(opts))
 	_, err := p.Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error running program:", err)

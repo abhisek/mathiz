@@ -7,6 +7,7 @@ import (
 
 	"github.com/abhisek/mathiz/internal/app"
 	"github.com/abhisek/mathiz/internal/llm"
+	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -29,16 +30,19 @@ var playCmd = &cobra.Command{
 		defer st.Close()
 
 		// Build LLM provider (optional — app works without it).
-		opts := app.Options{}
+		opts := app.Options{
+			EventRepo:    st.EventRepo(),
+			SnapshotRepo: st.SnapshotRepo(),
+		}
 		provider, err := llm.NewProviderFromEnv(ctx, st.EventRepo())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "LLM provider not configured:", err)
 			fmt.Fprintln(os.Stderr, "AI features will be unavailable.")
 		} else {
 			opts.LLMProvider = provider
+			opts.Generator = problemgen.New(provider, problemgen.DefaultConfig())
 		}
 
-		_ = ctx // will be threaded into app in future specs
 		return app.Run(opts)
 	},
 }

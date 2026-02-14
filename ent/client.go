@@ -14,7 +14,9 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
+	"github.com/abhisek/mathiz/ent/sessionevent"
 	"github.com/abhisek/mathiz/ent/snapshot"
 )
 
@@ -23,8 +25,12 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// AnswerEvent is the client for interacting with the AnswerEvent builders.
+	AnswerEvent *AnswerEventClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
 	LLMRequestEvent *LLMRequestEventClient
+	// SessionEvent is the client for interacting with the SessionEvent builders.
+	SessionEvent *SessionEventClient
 	// Snapshot is the client for interacting with the Snapshot builders.
 	Snapshot *SnapshotClient
 }
@@ -38,7 +44,9 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.AnswerEvent = NewAnswerEventClient(c.config)
 	c.LLMRequestEvent = NewLLMRequestEventClient(c.config)
+	c.SessionEvent = NewSessionEventClient(c.config)
 	c.Snapshot = NewSnapshotClient(c.config)
 }
 
@@ -132,7 +140,9 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:             ctx,
 		config:          cfg,
+		AnswerEvent:     NewAnswerEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
+		SessionEvent:    NewSessionEventClient(cfg),
 		Snapshot:        NewSnapshotClient(cfg),
 	}, nil
 }
@@ -153,7 +163,9 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:             ctx,
 		config:          cfg,
+		AnswerEvent:     NewAnswerEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
+		SessionEvent:    NewSessionEventClient(cfg),
 		Snapshot:        NewSnapshotClient(cfg),
 	}, nil
 }
@@ -161,7 +173,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		LLMRequestEvent.
+//		AnswerEvent.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -183,26 +195,167 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.AnswerEvent.Use(hooks...)
 	c.LLMRequestEvent.Use(hooks...)
+	c.SessionEvent.Use(hooks...)
 	c.Snapshot.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
+	c.AnswerEvent.Intercept(interceptors...)
 	c.LLMRequestEvent.Intercept(interceptors...)
+	c.SessionEvent.Intercept(interceptors...)
 	c.Snapshot.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *AnswerEventMutation:
+		return c.AnswerEvent.mutate(ctx, m)
 	case *LLMRequestEventMutation:
 		return c.LLMRequestEvent.mutate(ctx, m)
+	case *SessionEventMutation:
+		return c.SessionEvent.mutate(ctx, m)
 	case *SnapshotMutation:
 		return c.Snapshot.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// AnswerEventClient is a client for the AnswerEvent schema.
+type AnswerEventClient struct {
+	config
+}
+
+// NewAnswerEventClient returns a client for the AnswerEvent from the given config.
+func NewAnswerEventClient(c config) *AnswerEventClient {
+	return &AnswerEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `answerevent.Hooks(f(g(h())))`.
+func (c *AnswerEventClient) Use(hooks ...Hook) {
+	c.hooks.AnswerEvent = append(c.hooks.AnswerEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `answerevent.Intercept(f(g(h())))`.
+func (c *AnswerEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.AnswerEvent = append(c.inters.AnswerEvent, interceptors...)
+}
+
+// Create returns a builder for creating a AnswerEvent entity.
+func (c *AnswerEventClient) Create() *AnswerEventCreate {
+	mutation := newAnswerEventMutation(c.config, OpCreate)
+	return &AnswerEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of AnswerEvent entities.
+func (c *AnswerEventClient) CreateBulk(builders ...*AnswerEventCreate) *AnswerEventCreateBulk {
+	return &AnswerEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AnswerEventClient) MapCreateBulk(slice any, setFunc func(*AnswerEventCreate, int)) *AnswerEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AnswerEventCreateBulk{err: fmt.Errorf("calling to AnswerEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AnswerEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AnswerEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for AnswerEvent.
+func (c *AnswerEventClient) Update() *AnswerEventUpdate {
+	mutation := newAnswerEventMutation(c.config, OpUpdate)
+	return &AnswerEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AnswerEventClient) UpdateOne(_m *AnswerEvent) *AnswerEventUpdateOne {
+	mutation := newAnswerEventMutation(c.config, OpUpdateOne, withAnswerEvent(_m))
+	return &AnswerEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AnswerEventClient) UpdateOneID(id int) *AnswerEventUpdateOne {
+	mutation := newAnswerEventMutation(c.config, OpUpdateOne, withAnswerEventID(id))
+	return &AnswerEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for AnswerEvent.
+func (c *AnswerEventClient) Delete() *AnswerEventDelete {
+	mutation := newAnswerEventMutation(c.config, OpDelete)
+	return &AnswerEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AnswerEventClient) DeleteOne(_m *AnswerEvent) *AnswerEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AnswerEventClient) DeleteOneID(id int) *AnswerEventDeleteOne {
+	builder := c.Delete().Where(answerevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AnswerEventDeleteOne{builder}
+}
+
+// Query returns a query builder for AnswerEvent.
+func (c *AnswerEventClient) Query() *AnswerEventQuery {
+	return &AnswerEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAnswerEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a AnswerEvent entity by its id.
+func (c *AnswerEventClient) Get(ctx context.Context, id int) (*AnswerEvent, error) {
+	return c.Query().Where(answerevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AnswerEventClient) GetX(ctx context.Context, id int) *AnswerEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *AnswerEventClient) Hooks() []Hook {
+	return c.hooks.AnswerEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *AnswerEventClient) Interceptors() []Interceptor {
+	return c.inters.AnswerEvent
+}
+
+func (c *AnswerEventClient) mutate(ctx context.Context, m *AnswerEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AnswerEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AnswerEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AnswerEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AnswerEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown AnswerEvent mutation op: %q", m.Op())
 	}
 }
 
@@ -336,6 +489,139 @@ func (c *LLMRequestEventClient) mutate(ctx context.Context, m *LLMRequestEventMu
 		return (&LLMRequestEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown LLMRequestEvent mutation op: %q", m.Op())
+	}
+}
+
+// SessionEventClient is a client for the SessionEvent schema.
+type SessionEventClient struct {
+	config
+}
+
+// NewSessionEventClient returns a client for the SessionEvent from the given config.
+func NewSessionEventClient(c config) *SessionEventClient {
+	return &SessionEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `sessionevent.Hooks(f(g(h())))`.
+func (c *SessionEventClient) Use(hooks ...Hook) {
+	c.hooks.SessionEvent = append(c.hooks.SessionEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `sessionevent.Intercept(f(g(h())))`.
+func (c *SessionEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SessionEvent = append(c.inters.SessionEvent, interceptors...)
+}
+
+// Create returns a builder for creating a SessionEvent entity.
+func (c *SessionEventClient) Create() *SessionEventCreate {
+	mutation := newSessionEventMutation(c.config, OpCreate)
+	return &SessionEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SessionEvent entities.
+func (c *SessionEventClient) CreateBulk(builders ...*SessionEventCreate) *SessionEventCreateBulk {
+	return &SessionEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SessionEventClient) MapCreateBulk(slice any, setFunc func(*SessionEventCreate, int)) *SessionEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SessionEventCreateBulk{err: fmt.Errorf("calling to SessionEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SessionEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SessionEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SessionEvent.
+func (c *SessionEventClient) Update() *SessionEventUpdate {
+	mutation := newSessionEventMutation(c.config, OpUpdate)
+	return &SessionEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SessionEventClient) UpdateOne(_m *SessionEvent) *SessionEventUpdateOne {
+	mutation := newSessionEventMutation(c.config, OpUpdateOne, withSessionEvent(_m))
+	return &SessionEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SessionEventClient) UpdateOneID(id int) *SessionEventUpdateOne {
+	mutation := newSessionEventMutation(c.config, OpUpdateOne, withSessionEventID(id))
+	return &SessionEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SessionEvent.
+func (c *SessionEventClient) Delete() *SessionEventDelete {
+	mutation := newSessionEventMutation(c.config, OpDelete)
+	return &SessionEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SessionEventClient) DeleteOne(_m *SessionEvent) *SessionEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SessionEventClient) DeleteOneID(id int) *SessionEventDeleteOne {
+	builder := c.Delete().Where(sessionevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SessionEventDeleteOne{builder}
+}
+
+// Query returns a query builder for SessionEvent.
+func (c *SessionEventClient) Query() *SessionEventQuery {
+	return &SessionEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSessionEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SessionEvent entity by its id.
+func (c *SessionEventClient) Get(ctx context.Context, id int) (*SessionEvent, error) {
+	return c.Query().Where(sessionevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SessionEventClient) GetX(ctx context.Context, id int) *SessionEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *SessionEventClient) Hooks() []Hook {
+	return c.hooks.SessionEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *SessionEventClient) Interceptors() []Interceptor {
+	return c.inters.SessionEvent
+}
+
+func (c *SessionEventClient) mutate(ctx context.Context, m *SessionEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SessionEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SessionEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SessionEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SessionEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SessionEvent mutation op: %q", m.Op())
 	}
 }
 
@@ -475,9 +761,9 @@ func (c *SnapshotClient) mutate(ctx context.Context, m *SnapshotMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		LLMRequestEvent, Snapshot []ent.Hook
+		AnswerEvent, LLMRequestEvent, SessionEvent, Snapshot []ent.Hook
 	}
 	inters struct {
-		LLMRequestEvent, Snapshot []ent.Interceptor
+		AnswerEvent, LLMRequestEvent, SessionEvent, Snapshot []ent.Interceptor
 	}
 )

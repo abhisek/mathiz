@@ -7,10 +7,13 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
 	"github.com/abhisek/mathiz/internal/screens/placeholder"
+	sessionscreen "github.com/abhisek/mathiz/internal/screens/session"
 	"github.com/abhisek/mathiz/internal/screens/skillmap"
+	"github.com/abhisek/mathiz/internal/store"
 	"github.com/abhisek/mathiz/internal/ui/components"
 	"github.com/abhisek/mathiz/internal/ui/theme"
 )
@@ -23,11 +26,18 @@ type HomeScreen struct {
 var _ screen.Screen = (*HomeScreen)(nil)
 
 // New creates a new HomeScreen.
-func New() *HomeScreen {
+func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo) *HomeScreen {
 	items := []components.MenuItem{
 		{Label: "Start Practice", Action: func() tea.Cmd {
+			if generator == nil || eventRepo == nil || snapRepo == nil {
+				return func() tea.Msg {
+					return router.PushScreenMsg{Screen: placeholder.New("Start Practice")}
+				}
+			}
 			return func() tea.Msg {
-				return router.PushScreenMsg{Screen: placeholder.New("Start Practice")}
+				return router.PushScreenMsg{
+					Screen: sessionscreen.New(generator, eventRepo, snapRepo),
+				}
 			}
 		}},
 		{Label: "Skill Map", Action: func() tea.Cmd {

@@ -9,6 +9,18 @@ import (
 	"github.com/abhisek/mathiz/ent"
 )
 
+// The AnswerEventFunc type is an adapter to allow the use of ordinary
+// function as AnswerEvent mutator.
+type AnswerEventFunc func(context.Context, *ent.AnswerEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AnswerEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AnswerEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AnswerEventMutation", m)
+}
+
 // The LLMRequestEventFunc type is an adapter to allow the use of ordinary
 // function as LLMRequestEvent mutator.
 type LLMRequestEventFunc func(context.Context, *ent.LLMRequestEventMutation) (ent.Value, error)
@@ -19,6 +31,18 @@ func (f LLMRequestEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LLMRequestEventMutation", m)
+}
+
+// The SessionEventFunc type is an adapter to allow the use of ordinary
+// function as SessionEvent mutator.
+type SessionEventFunc func(context.Context, *ent.SessionEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SessionEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SessionEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SessionEventMutation", m)
 }
 
 // The SnapshotFunc type is an adapter to allow the use of ordinary

@@ -12,7 +12,9 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
+	"github.com/abhisek/mathiz/ent/sessionevent"
 	"github.com/abhisek/mathiz/ent/snapshot"
 )
 
@@ -74,7 +76,9 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			answerevent.Table:     answerevent.ValidColumn,
 			llmrequestevent.Table: llmrequestevent.ValidColumn,
+			sessionevent.Table:    sessionevent.ValidColumn,
 			snapshot.Table:        snapshot.ValidColumn,
 		})
 	})

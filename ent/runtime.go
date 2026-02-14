@@ -5,8 +5,10 @@ package ent
 import (
 	"time"
 
+	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/schema"
+	"github.com/abhisek/mathiz/ent/sessionevent"
 	"github.com/abhisek/mathiz/ent/snapshot"
 )
 
@@ -14,6 +16,47 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	answereventMixin := schema.AnswerEvent{}.Mixin()
+	answereventMixinFields0 := answereventMixin[0].Fields()
+	_ = answereventMixinFields0
+	answereventFields := schema.AnswerEvent{}.Fields()
+	_ = answereventFields
+	// answereventDescTimestamp is the schema descriptor for timestamp field.
+	answereventDescTimestamp := answereventMixinFields0[1].Descriptor()
+	// answerevent.DefaultTimestamp holds the default value on creation for the timestamp field.
+	answerevent.DefaultTimestamp = answereventDescTimestamp.Default.(func() time.Time)
+	// answereventDescSessionID is the schema descriptor for session_id field.
+	answereventDescSessionID := answereventFields[0].Descriptor()
+	// answerevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
+	answerevent.SessionIDValidator = answereventDescSessionID.Validators[0].(func(string) error)
+	// answereventDescSkillID is the schema descriptor for skill_id field.
+	answereventDescSkillID := answereventFields[1].Descriptor()
+	// answerevent.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
+	answerevent.SkillIDValidator = answereventDescSkillID.Validators[0].(func(string) error)
+	// answereventDescTier is the schema descriptor for tier field.
+	answereventDescTier := answereventFields[2].Descriptor()
+	// answerevent.TierValidator is a validator for the "tier" field. It is called by the builders before save.
+	answerevent.TierValidator = answereventDescTier.Validators[0].(func(string) error)
+	// answereventDescCategory is the schema descriptor for category field.
+	answereventDescCategory := answereventFields[3].Descriptor()
+	// answerevent.CategoryValidator is a validator for the "category" field. It is called by the builders before save.
+	answerevent.CategoryValidator = answereventDescCategory.Validators[0].(func(string) error)
+	// answereventDescQuestionText is the schema descriptor for question_text field.
+	answereventDescQuestionText := answereventFields[4].Descriptor()
+	// answerevent.QuestionTextValidator is a validator for the "question_text" field. It is called by the builders before save.
+	answerevent.QuestionTextValidator = answereventDescQuestionText.Validators[0].(func(string) error)
+	// answereventDescCorrectAnswer is the schema descriptor for correct_answer field.
+	answereventDescCorrectAnswer := answereventFields[5].Descriptor()
+	// answerevent.CorrectAnswerValidator is a validator for the "correct_answer" field. It is called by the builders before save.
+	answerevent.CorrectAnswerValidator = answereventDescCorrectAnswer.Validators[0].(func(string) error)
+	// answereventDescLearnerAnswer is the schema descriptor for learner_answer field.
+	answereventDescLearnerAnswer := answereventFields[6].Descriptor()
+	// answerevent.LearnerAnswerValidator is a validator for the "learner_answer" field. It is called by the builders before save.
+	answerevent.LearnerAnswerValidator = answereventDescLearnerAnswer.Validators[0].(func(string) error)
+	// answereventDescAnswerFormat is the schema descriptor for answer_format field.
+	answereventDescAnswerFormat := answereventFields[9].Descriptor()
+	// answerevent.AnswerFormatValidator is a validator for the "answer_format" field. It is called by the builders before save.
+	answerevent.AnswerFormatValidator = answereventDescAnswerFormat.Validators[0].(func(string) error)
 	llmrequesteventMixin := schema.LLMRequestEvent{}.Mixin()
 	llmrequesteventMixinFields0 := llmrequesteventMixin[0].Fields()
 	_ = llmrequesteventMixinFields0
@@ -39,6 +82,35 @@ func init() {
 	llmrequesteventDescErrorMessage := llmrequesteventFields[7].Descriptor()
 	// llmrequestevent.DefaultErrorMessage holds the default value on creation for the error_message field.
 	llmrequestevent.DefaultErrorMessage = llmrequesteventDescErrorMessage.Default.(string)
+	sessioneventMixin := schema.SessionEvent{}.Mixin()
+	sessioneventMixinFields0 := sessioneventMixin[0].Fields()
+	_ = sessioneventMixinFields0
+	sessioneventFields := schema.SessionEvent{}.Fields()
+	_ = sessioneventFields
+	// sessioneventDescTimestamp is the schema descriptor for timestamp field.
+	sessioneventDescTimestamp := sessioneventMixinFields0[1].Descriptor()
+	// sessionevent.DefaultTimestamp holds the default value on creation for the timestamp field.
+	sessionevent.DefaultTimestamp = sessioneventDescTimestamp.Default.(func() time.Time)
+	// sessioneventDescSessionID is the schema descriptor for session_id field.
+	sessioneventDescSessionID := sessioneventFields[0].Descriptor()
+	// sessionevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
+	sessionevent.SessionIDValidator = sessioneventDescSessionID.Validators[0].(func(string) error)
+	// sessioneventDescAction is the schema descriptor for action field.
+	sessioneventDescAction := sessioneventFields[1].Descriptor()
+	// sessionevent.ActionValidator is a validator for the "action" field. It is called by the builders before save.
+	sessionevent.ActionValidator = sessioneventDescAction.Validators[0].(func(string) error)
+	// sessioneventDescQuestionsServed is the schema descriptor for questions_served field.
+	sessioneventDescQuestionsServed := sessioneventFields[2].Descriptor()
+	// sessionevent.DefaultQuestionsServed holds the default value on creation for the questions_served field.
+	sessionevent.DefaultQuestionsServed = sessioneventDescQuestionsServed.Default.(int)
+	// sessioneventDescCorrectAnswers is the schema descriptor for correct_answers field.
+	sessioneventDescCorrectAnswers := sessioneventFields[3].Descriptor()
+	// sessionevent.DefaultCorrectAnswers holds the default value on creation for the correct_answers field.
+	sessionevent.DefaultCorrectAnswers = sessioneventDescCorrectAnswers.Default.(int)
+	// sessioneventDescDurationSecs is the schema descriptor for duration_secs field.
+	sessioneventDescDurationSecs := sessioneventFields[4].Descriptor()
+	// sessionevent.DefaultDurationSecs holds the default value on creation for the duration_secs field.
+	sessionevent.DefaultDurationSecs = sessioneventDescDurationSecs.Default.(int)
 	snapshotFields := schema.Snapshot{}.Fields()
 	_ = snapshotFields
 	// snapshotDescTimestamp is the schema descriptor for timestamp field.

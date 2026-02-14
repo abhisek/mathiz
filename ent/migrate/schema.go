@@ -8,6 +8,55 @@ import (
 )
 
 var (
+	// AnswerEventsColumns holds the columns for the "answer_events" table.
+	AnswerEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "session_id", Type: field.TypeString},
+		{Name: "skill_id", Type: field.TypeString},
+		{Name: "tier", Type: field.TypeString},
+		{Name: "category", Type: field.TypeString},
+		{Name: "question_text", Type: field.TypeString},
+		{Name: "correct_answer", Type: field.TypeString},
+		{Name: "learner_answer", Type: field.TypeString},
+		{Name: "correct", Type: field.TypeBool},
+		{Name: "time_ms", Type: field.TypeInt},
+		{Name: "answer_format", Type: field.TypeString},
+	}
+	// AnswerEventsTable holds the schema information for the "answer_events" table.
+	AnswerEventsTable = &schema.Table{
+		Name:       "answer_events",
+		Columns:    AnswerEventsColumns,
+		PrimaryKey: []*schema.Column{AnswerEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "answerevent_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{AnswerEventsColumns[1]},
+			},
+			{
+				Name:    "answerevent_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{AnswerEventsColumns[2]},
+			},
+			{
+				Name:    "answerevent_session_id",
+				Unique:  false,
+				Columns: []*schema.Column{AnswerEventsColumns[3]},
+			},
+			{
+				Name:    "answerevent_skill_id",
+				Unique:  false,
+				Columns: []*schema.Column{AnswerEventsColumns[4]},
+			},
+			{
+				Name:    "answerevent_correct",
+				Unique:  false,
+				Columns: []*schema.Column{AnswerEventsColumns[10]},
+			},
+		},
+	}
 	// LlmRequestEventsColumns holds the columns for the "llm_request_events" table.
 	LlmRequestEventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -55,6 +104,46 @@ var (
 			},
 		},
 	}
+	// SessionEventsColumns holds the columns for the "session_events" table.
+	SessionEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "session_id", Type: field.TypeString},
+		{Name: "action", Type: field.TypeString},
+		{Name: "questions_served", Type: field.TypeInt, Default: 0},
+		{Name: "correct_answers", Type: field.TypeInt, Default: 0},
+		{Name: "duration_secs", Type: field.TypeInt, Default: 0},
+		{Name: "plan_summary", Type: field.TypeJSON, Nullable: true},
+	}
+	// SessionEventsTable holds the schema information for the "session_events" table.
+	SessionEventsTable = &schema.Table{
+		Name:       "session_events",
+		Columns:    SessionEventsColumns,
+		PrimaryKey: []*schema.Column{SessionEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "sessionevent_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{SessionEventsColumns[1]},
+			},
+			{
+				Name:    "sessionevent_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{SessionEventsColumns[2]},
+			},
+			{
+				Name:    "sessionevent_session_id",
+				Unique:  false,
+				Columns: []*schema.Column{SessionEventsColumns[3]},
+			},
+			{
+				Name:    "sessionevent_action",
+				Unique:  false,
+				Columns: []*schema.Column{SessionEventsColumns[4]},
+			},
+		},
+	}
 	// SnapshotsColumns holds the columns for the "snapshots" table.
 	SnapshotsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -82,7 +171,9 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AnswerEventsTable,
 		LlmRequestEventsTable,
+		SessionEventsTable,
 		SnapshotsTable,
 	}
 )

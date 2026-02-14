@@ -6,8 +6,14 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// AnswerEvent is the predicate function for answerevent builders.
+type AnswerEvent func(*sql.Selector)
+
 // LLMRequestEvent is the predicate function for llmrequestevent builders.
 type LLMRequestEvent func(*sql.Selector)
+
+// SessionEvent is the predicate function for sessionevent builders.
+type SessionEvent func(*sql.Selector)
 
 // Snapshot is the predicate function for snapshot builders.
 type Snapshot func(*sql.Selector)
