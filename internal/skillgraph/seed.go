@@ -2,7 +2,7 @@ package skillgraph
 
 import "fmt"
 
-// skills contains all 52 skill definitions for the MVP.
+// skills contains all 53 skill definitions for the MVP.
 var skills = []Skill{
 
 	// ── Number & Place Value (8 nodes) ────────────────────────
@@ -104,7 +104,7 @@ var skills = []Skill{
 		Tiers:         DefaultTiers(),
 	},
 
-	// ── Addition & Subtraction (10 nodes) ─────────────────────
+	// ── Addition & Subtraction (11 nodes) ─────────────────────
 
 	{
 		ID:            "add-2digit",
@@ -128,6 +128,18 @@ var skills = []Skill{
 		EstimatedMins: 10,
 		Keywords:      []string{"subtraction", "borrow", "regrouping"},
 		Prerequisites: []string{"pv-hundreds"},
+		Tiers:         DefaultTiers(),
+	},
+	{
+		ID:            "add-multi-2digit",
+		Name:          "Add Multiple 2-Digit Numbers",
+		Description:   "Add up to four 2-digit numbers using place value strategies",
+		Strand:        StrandAddSub,
+		GradeLevel:    3,
+		CommonCoreID:  "2.NBT.B.6",
+		EstimatedMins: 10,
+		Keywords:      []string{"addition", "multiple addends", "two-digit", "regroup"},
+		Prerequisites: []string{"add-2digit"},
 		Tiers:         DefaultTiers(),
 	},
 	{
