@@ -46,11 +46,12 @@ func (s *Service) loadFromMasterySnapshot(data *store.MasterySnapshotData) {
 	}
 	for id, sd := range data.Skills {
 		sm := &SkillMastery{
-			SkillID:       id,
-			State:         MasteryState(sd.State),
-			CurrentTier:   tierFromString(sd.CurrentTier),
-			TotalAttempts: sd.TotalAttempts,
-			CorrectCount:  sd.CorrectCount,
+			SkillID:              id,
+			State:                MasteryState(sd.State),
+			CurrentTier:          tierFromString(sd.CurrentTier),
+			TotalAttempts:        sd.TotalAttempts,
+			CorrectCount:         sd.CorrectCount,
+			MisconceptionPenalty: sd.MisconceptionPenalty,
 			Fluency: FluencyMetrics{
 				SpeedScores: sd.SpeedScores,
 				SpeedWindow: sd.SpeedWindow,
@@ -161,6 +162,7 @@ func (s *Service) advanceTier(sm *SkillMastery, skillName string) *StateTransiti
 		sm.CurrentTier = skillgraph.TierProve
 		sm.TotalAttempts = 0
 		sm.CorrectCount = 0
+		sm.MisconceptionPenalty = 0
 		return &StateTransition{
 			SkillID:   sm.SkillID,
 			SkillName: skillName,
@@ -174,6 +176,7 @@ func (s *Service) advanceTier(sm *SkillMastery, skillName string) *StateTransiti
 		now := time.Now()
 		sm.State = StateMastered
 		sm.MasteredAt = &now
+		sm.MisconceptionPenalty = 0
 		return &StateTransition{
 			SkillID:   sm.SkillID,
 			SkillName: skillName,
@@ -186,6 +189,7 @@ func (s *Service) advanceTier(sm *SkillMastery, skillName string) *StateTransiti
 		// Recovery complete → Mastered.
 		sm.State = StateMastered
 		sm.RustyAt = nil
+		sm.MisconceptionPenalty = 0
 		return &StateTransition{
 			SkillID:   sm.SkillID,
 			SkillName: skillName,
@@ -213,6 +217,7 @@ func (s *Service) MarkRusty(skillID string) *StateTransition {
 	sm.TotalAttempts = 0
 	sm.CorrectCount = 0
 	sm.CurrentTier = skillgraph.TierLearn
+	sm.MisconceptionPenalty = 0
 
 	return &StateTransition{
 		SkillID:   sm.SkillID,
@@ -258,15 +263,16 @@ func (s *Service) SnapshotData() *store.MasterySnapshotData {
 
 	for id, sm := range s.skills {
 		sd := &store.SkillMasteryData{
-			SkillID:       id,
-			State:         string(sm.State),
-			CurrentTier:   tierToString(sm.CurrentTier),
-			TotalAttempts: sm.TotalAttempts,
-			CorrectCount:  sm.CorrectCount,
-			SpeedScores:   sm.Fluency.SpeedScores,
-			SpeedWindow:   sm.Fluency.SpeedWindow,
-			Streak:        sm.Fluency.Streak,
-			StreakCap:      sm.Fluency.StreakCap,
+			SkillID:              id,
+			State:                string(sm.State),
+			CurrentTier:          tierToString(sm.CurrentTier),
+			TotalAttempts:        sm.TotalAttempts,
+			CorrectCount:         sm.CorrectCount,
+			SpeedScores:          sm.Fluency.SpeedScores,
+			SpeedWindow:          sm.Fluency.SpeedWindow,
+			Streak:               sm.Fluency.Streak,
+			StreakCap:             sm.Fluency.StreakCap,
+			MisconceptionPenalty: sm.MisconceptionPenalty,
 		}
 		if sm.MasteredAt != nil {
 			s := sm.MasteredAt.Format(time.RFC3339)

@@ -59,6 +59,9 @@ func (m *mockEventRepo) AppendMasteryEvent(_ context.Context, _ store.MasteryEve
 func (m *mockEventRepo) RecentReviewAccuracy(_ context.Context, _ string, _ int) (float64, int, error) {
 	return 0, 0, nil
 }
+func (m *mockEventRepo) AppendDiagnosisEvent(_ context.Context, _ store.DiagnosisEventData) error {
+	return nil
+}
 
 // mockSnapshotRepo implements store.SnapshotRepo for testing.
 type mockSnapshotRepo struct {
@@ -100,7 +103,7 @@ func testSessionScreen() (*SessionScreen, *mockEventRepo, *mockSnapshotRepo) {
 	eventRepo := &mockEventRepo{}
 	snapRepo := &mockSnapshotRepo{}
 
-	s := New(gen, eventRepo, snapRepo)
+	s := New(gen, eventRepo, snapRepo, nil)
 	return s, eventRepo, snapRepo
 }
 

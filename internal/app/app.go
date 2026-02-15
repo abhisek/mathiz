@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/abhisek/mathiz/internal/diagnosis"
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/router"
@@ -30,6 +31,9 @@ type Options struct {
 
 	// Generator produces math questions. Required for sessions.
 	Generator problemgen.Generator
+
+	// DiagnosisService classifies wrong answers. May be nil if LLM is unavailable.
+	DiagnosisService *diagnosis.Service
 }
 
 // AppModel is the root Bubble Tea model.
@@ -42,7 +46,7 @@ type AppModel struct {
 
 // newAppModel creates a new AppModel with the home screen.
 func newAppModel(opts Options) AppModel {
-	homeScreen := home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo)
+	homeScreen := home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService)
 	return AppModel{
 		router: router.New(homeScreen),
 		opts:   opts,

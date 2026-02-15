@@ -9,6 +9,9 @@ import (
 // AnswerEvent is the predicate function for answerevent builders.
 type AnswerEvent func(*sql.Selector)
 
+// DiagnosisEvent is the predicate function for diagnosisevent builders.
+type DiagnosisEvent func(*sql.Selector)
+
 // LLMRequestEvent is the predicate function for llmrequestevent builders.
 type LLMRequestEvent func(*sql.Selector)
 

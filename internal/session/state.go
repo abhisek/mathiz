@@ -3,9 +3,11 @@ package session
 import (
 	"time"
 
+	"github.com/abhisek/mathiz/internal/diagnosis"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
+	"github.com/abhisek/mathiz/internal/store"
 )
 
 // SpacedRepScheduler is the interface for session-level spaced rep operations.
@@ -102,6 +104,15 @@ type SessionState struct {
 
 	// SpacedRepSched is the spaced repetition scheduler for answer recording (nil if not enabled).
 	SpacedRepSched SpacedRepScheduler
+
+	// DiagnosisService classifies wrong answers (nil if diagnosis disabled).
+	DiagnosisService *diagnosis.Service
+
+	// LastDiagnosis is the most recent diagnosis result (nil if last answer was correct).
+	LastDiagnosis *diagnosis.DiagnosisResult
+
+	// EventRepo is used for querying historical accuracy for diagnosis.
+	EventRepo store.EventRepo
 }
 
 // SkillResult tracks per-skill performance within a single session.

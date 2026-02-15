@@ -21,6 +21,18 @@ func (f AnswerEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AnswerEventMutation", m)
 }
 
+// The DiagnosisEventFunc type is an adapter to allow the use of ordinary
+// function as DiagnosisEvent mutator.
+type DiagnosisEventFunc func(context.Context, *ent.DiagnosisEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DiagnosisEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DiagnosisEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagnosisEventMutation", m)
+}
+
 // The LLMRequestEventFunc type is an adapter to allow the use of ordinary
 // function as LLMRequestEvent mutator.
 type LLMRequestEventFunc func(context.Context, *ent.LLMRequestEventMutation) (ent.Value, error)

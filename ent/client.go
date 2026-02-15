@@ -15,6 +15,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/abhisek/mathiz/ent/answerevent"
+	"github.com/abhisek/mathiz/ent/diagnosisevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/sessionevent"
@@ -28,6 +29,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// AnswerEvent is the client for interacting with the AnswerEvent builders.
 	AnswerEvent *AnswerEventClient
+	// DiagnosisEvent is the client for interacting with the DiagnosisEvent builders.
+	DiagnosisEvent *DiagnosisEventClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
 	LLMRequestEvent *LLMRequestEventClient
 	// MasteryEvent is the client for interacting with the MasteryEvent builders.
@@ -48,6 +51,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.AnswerEvent = NewAnswerEventClient(c.config)
+	c.DiagnosisEvent = NewDiagnosisEventClient(c.config)
 	c.LLMRequestEvent = NewLLMRequestEventClient(c.config)
 	c.MasteryEvent = NewMasteryEventClient(c.config)
 	c.SessionEvent = NewSessionEventClient(c.config)
@@ -145,6 +149,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ctx:             ctx,
 		config:          cfg,
 		AnswerEvent:     NewAnswerEventClient(cfg),
+		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
 		MasteryEvent:    NewMasteryEventClient(cfg),
 		SessionEvent:    NewSessionEventClient(cfg),
@@ -169,6 +174,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ctx:             ctx,
 		config:          cfg,
 		AnswerEvent:     NewAnswerEventClient(cfg),
+		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
 		MasteryEvent:    NewMasteryEventClient(cfg),
 		SessionEvent:    NewSessionEventClient(cfg),
@@ -201,21 +207,23 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.AnswerEvent.Use(hooks...)
-	c.LLMRequestEvent.Use(hooks...)
-	c.MasteryEvent.Use(hooks...)
-	c.SessionEvent.Use(hooks...)
-	c.Snapshot.Use(hooks...)
+	for _, n := range []interface{ Use(...Hook) }{
+		c.AnswerEvent, c.DiagnosisEvent, c.LLMRequestEvent, c.MasteryEvent,
+		c.SessionEvent, c.Snapshot,
+	} {
+		n.Use(hooks...)
+	}
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.AnswerEvent.Intercept(interceptors...)
-	c.LLMRequestEvent.Intercept(interceptors...)
-	c.MasteryEvent.Intercept(interceptors...)
-	c.SessionEvent.Intercept(interceptors...)
-	c.Snapshot.Intercept(interceptors...)
+	for _, n := range []interface{ Intercept(...Interceptor) }{
+		c.AnswerEvent, c.DiagnosisEvent, c.LLMRequestEvent, c.MasteryEvent,
+		c.SessionEvent, c.Snapshot,
+	} {
+		n.Intercept(interceptors...)
+	}
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -223,6 +231,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *AnswerEventMutation:
 		return c.AnswerEvent.mutate(ctx, m)
+	case *DiagnosisEventMutation:
+		return c.DiagnosisEvent.mutate(ctx, m)
 	case *LLMRequestEventMutation:
 		return c.LLMRequestEvent.mutate(ctx, m)
 	case *MasteryEventMutation:
@@ -366,6 +376,139 @@ func (c *AnswerEventClient) mutate(ctx context.Context, m *AnswerEventMutation) 
 		return (&AnswerEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown AnswerEvent mutation op: %q", m.Op())
+	}
+}
+
+// DiagnosisEventClient is a client for the DiagnosisEvent schema.
+type DiagnosisEventClient struct {
+	config
+}
+
+// NewDiagnosisEventClient returns a client for the DiagnosisEvent from the given config.
+func NewDiagnosisEventClient(c config) *DiagnosisEventClient {
+	return &DiagnosisEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `diagnosisevent.Hooks(f(g(h())))`.
+func (c *DiagnosisEventClient) Use(hooks ...Hook) {
+	c.hooks.DiagnosisEvent = append(c.hooks.DiagnosisEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `diagnosisevent.Intercept(f(g(h())))`.
+func (c *DiagnosisEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DiagnosisEvent = append(c.inters.DiagnosisEvent, interceptors...)
+}
+
+// Create returns a builder for creating a DiagnosisEvent entity.
+func (c *DiagnosisEventClient) Create() *DiagnosisEventCreate {
+	mutation := newDiagnosisEventMutation(c.config, OpCreate)
+	return &DiagnosisEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DiagnosisEvent entities.
+func (c *DiagnosisEventClient) CreateBulk(builders ...*DiagnosisEventCreate) *DiagnosisEventCreateBulk {
+	return &DiagnosisEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DiagnosisEventClient) MapCreateBulk(slice any, setFunc func(*DiagnosisEventCreate, int)) *DiagnosisEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DiagnosisEventCreateBulk{err: fmt.Errorf("calling to DiagnosisEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DiagnosisEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DiagnosisEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DiagnosisEvent.
+func (c *DiagnosisEventClient) Update() *DiagnosisEventUpdate {
+	mutation := newDiagnosisEventMutation(c.config, OpUpdate)
+	return &DiagnosisEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DiagnosisEventClient) UpdateOne(_m *DiagnosisEvent) *DiagnosisEventUpdateOne {
+	mutation := newDiagnosisEventMutation(c.config, OpUpdateOne, withDiagnosisEvent(_m))
+	return &DiagnosisEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DiagnosisEventClient) UpdateOneID(id int) *DiagnosisEventUpdateOne {
+	mutation := newDiagnosisEventMutation(c.config, OpUpdateOne, withDiagnosisEventID(id))
+	return &DiagnosisEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DiagnosisEvent.
+func (c *DiagnosisEventClient) Delete() *DiagnosisEventDelete {
+	mutation := newDiagnosisEventMutation(c.config, OpDelete)
+	return &DiagnosisEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DiagnosisEventClient) DeleteOne(_m *DiagnosisEvent) *DiagnosisEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DiagnosisEventClient) DeleteOneID(id int) *DiagnosisEventDeleteOne {
+	builder := c.Delete().Where(diagnosisevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DiagnosisEventDeleteOne{builder}
+}
+
+// Query returns a query builder for DiagnosisEvent.
+func (c *DiagnosisEventClient) Query() *DiagnosisEventQuery {
+	return &DiagnosisEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDiagnosisEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DiagnosisEvent entity by its id.
+func (c *DiagnosisEventClient) Get(ctx context.Context, id int) (*DiagnosisEvent, error) {
+	return c.Query().Where(diagnosisevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DiagnosisEventClient) GetX(ctx context.Context, id int) *DiagnosisEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DiagnosisEventClient) Hooks() []Hook {
+	return c.hooks.DiagnosisEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *DiagnosisEventClient) Interceptors() []Interceptor {
+	return c.inters.DiagnosisEvent
+}
+
+func (c *DiagnosisEventClient) mutate(ctx context.Context, m *DiagnosisEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DiagnosisEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DiagnosisEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DiagnosisEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DiagnosisEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DiagnosisEvent mutation op: %q", m.Op())
 	}
 }
 
@@ -904,10 +1047,11 @@ func (c *SnapshotClient) mutate(ctx context.Context, m *SnapshotMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		AnswerEvent, LLMRequestEvent, MasteryEvent, SessionEvent, Snapshot []ent.Hook
+		AnswerEvent, DiagnosisEvent, LLMRequestEvent, MasteryEvent, SessionEvent,
+		Snapshot []ent.Hook
 	}
 	inters struct {
-		AnswerEvent, LLMRequestEvent, MasteryEvent, SessionEvent,
+		AnswerEvent, DiagnosisEvent, LLMRequestEvent, MasteryEvent, SessionEvent,
 		Snapshot []ent.Interceptor
 	}
 )

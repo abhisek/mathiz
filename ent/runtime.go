@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/abhisek/mathiz/ent/answerevent"
+	"github.com/abhisek/mathiz/ent/diagnosisevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/schema"
@@ -58,6 +59,47 @@ func init() {
 	answereventDescAnswerFormat := answereventFields[9].Descriptor()
 	// answerevent.AnswerFormatValidator is a validator for the "answer_format" field. It is called by the builders before save.
 	answerevent.AnswerFormatValidator = answereventDescAnswerFormat.Validators[0].(func(string) error)
+	diagnosiseventMixin := schema.DiagnosisEvent{}.Mixin()
+	diagnosiseventMixinFields0 := diagnosiseventMixin[0].Fields()
+	_ = diagnosiseventMixinFields0
+	diagnosiseventFields := schema.DiagnosisEvent{}.Fields()
+	_ = diagnosiseventFields
+	// diagnosiseventDescTimestamp is the schema descriptor for timestamp field.
+	diagnosiseventDescTimestamp := diagnosiseventMixinFields0[1].Descriptor()
+	// diagnosisevent.DefaultTimestamp holds the default value on creation for the timestamp field.
+	diagnosisevent.DefaultTimestamp = diagnosiseventDescTimestamp.Default.(func() time.Time)
+	// diagnosiseventDescSessionID is the schema descriptor for session_id field.
+	diagnosiseventDescSessionID := diagnosiseventFields[0].Descriptor()
+	// diagnosisevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
+	diagnosisevent.SessionIDValidator = diagnosiseventDescSessionID.Validators[0].(func(string) error)
+	// diagnosiseventDescSkillID is the schema descriptor for skill_id field.
+	diagnosiseventDescSkillID := diagnosiseventFields[1].Descriptor()
+	// diagnosisevent.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
+	diagnosisevent.SkillIDValidator = diagnosiseventDescSkillID.Validators[0].(func(string) error)
+	// diagnosiseventDescQuestionText is the schema descriptor for question_text field.
+	diagnosiseventDescQuestionText := diagnosiseventFields[2].Descriptor()
+	// diagnosisevent.QuestionTextValidator is a validator for the "question_text" field. It is called by the builders before save.
+	diagnosisevent.QuestionTextValidator = diagnosiseventDescQuestionText.Validators[0].(func(string) error)
+	// diagnosiseventDescCorrectAnswer is the schema descriptor for correct_answer field.
+	diagnosiseventDescCorrectAnswer := diagnosiseventFields[3].Descriptor()
+	// diagnosisevent.CorrectAnswerValidator is a validator for the "correct_answer" field. It is called by the builders before save.
+	diagnosisevent.CorrectAnswerValidator = diagnosiseventDescCorrectAnswer.Validators[0].(func(string) error)
+	// diagnosiseventDescLearnerAnswer is the schema descriptor for learner_answer field.
+	diagnosiseventDescLearnerAnswer := diagnosiseventFields[4].Descriptor()
+	// diagnosisevent.LearnerAnswerValidator is a validator for the "learner_answer" field. It is called by the builders before save.
+	diagnosisevent.LearnerAnswerValidator = diagnosiseventDescLearnerAnswer.Validators[0].(func(string) error)
+	// diagnosiseventDescCategory is the schema descriptor for category field.
+	diagnosiseventDescCategory := diagnosiseventFields[5].Descriptor()
+	// diagnosisevent.CategoryValidator is a validator for the "category" field. It is called by the builders before save.
+	diagnosisevent.CategoryValidator = diagnosiseventDescCategory.Validators[0].(func(string) error)
+	// diagnosiseventDescClassifierName is the schema descriptor for classifier_name field.
+	diagnosiseventDescClassifierName := diagnosiseventFields[8].Descriptor()
+	// diagnosisevent.ClassifierNameValidator is a validator for the "classifier_name" field. It is called by the builders before save.
+	diagnosisevent.ClassifierNameValidator = diagnosiseventDescClassifierName.Validators[0].(func(string) error)
+	// diagnosiseventDescReasoning is the schema descriptor for reasoning field.
+	diagnosiseventDescReasoning := diagnosiseventFields[9].Descriptor()
+	// diagnosisevent.DefaultReasoning holds the default value on creation for the reasoning field.
+	diagnosisevent.DefaultReasoning = diagnosiseventDescReasoning.Default.(string)
 	llmrequesteventMixin := schema.LLMRequestEvent{}.Mixin()
 	llmrequesteventMixinFields0 := llmrequesteventMixin[0].Fields()
 	_ = llmrequesteventMixinFields0

@@ -1,9 +1,11 @@
 package session
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/abhisek/mathiz/internal/diagnosis"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
@@ -41,9 +43,39 @@ func HandleAnswer(state *SessionState, learnerAnswer string) *TierAdvancement {
 	// Track prior questions for dedup.
 	state.PriorQuestions[q.SkillID] = append(state.PriorQuestions[q.SkillID], q.Text)
 
-	// Track errors for LLM context.
+	// Track errors for LLM context and run diagnosis.
+	state.LastDiagnosis = nil
 	if !correct {
-		errCtx := BuildErrorContext(q, learnerAnswer)
+		var diag *diagnosis.DiagnosisResult
+		if state.DiagnosisService != nil {
+			responseTimeMs := int(time.Since(state.QuestionStartTime).Milliseconds())
+			var skillAccuracy float64
+			if state.EventRepo != nil {
+				skillAccuracy, _ = state.EventRepo.SkillAccuracy(context.Background(), q.SkillID)
+			}
+			diag = state.DiagnosisService.Diagnose(
+				context.Background(),
+				q,
+				learnerAnswer,
+				responseTimeMs,
+				skillAccuracy,
+				func(asyncResult *diagnosis.DiagnosisResult) {
+					if asyncResult.Category == diagnosis.CategoryMisconception && state.MasteryService != nil {
+						sm := state.MasteryService.GetMastery(q.SkillID)
+						sm.MisconceptionPenalty++
+					}
+				},
+			)
+			state.LastDiagnosis = diag
+
+			// Apply synchronous misconception penalty.
+			if diag.Category == diagnosis.CategoryMisconception && state.MasteryService != nil {
+				sm := state.MasteryService.GetMastery(q.SkillID)
+				sm.MisconceptionPenalty++
+			}
+		}
+
+		errCtx := BuildErrorContext(q, learnerAnswer, diag)
 		errors := state.RecentErrors[q.SkillID]
 		errors = append(errors, errCtx)
 		if len(errors) > MaxRecentErrors {
@@ -236,11 +268,25 @@ func CurrentSlot(state *SessionState) *PlanSlot {
 }
 
 // BuildErrorContext constructs an error description string for LLM context.
-func BuildErrorContext(question *problemgen.Question, learnerAnswer string) string {
-	return fmt.Sprintf(
+// When a diagnosis is available, it enriches the context with the category
+// and misconception label.
+func BuildErrorContext(question *problemgen.Question, learnerAnswer string, diag *diagnosis.DiagnosisResult) string {
+	base := fmt.Sprintf(
 		"Answered %s for '%s', correct answer was %s",
 		learnerAnswer,
 		question.Text,
 		question.Answer,
 	)
+	if diag == nil || diag.Category == diagnosis.CategoryUnclassified {
+		return base
+	}
+	enriched := fmt.Sprintf("%s [%s", base, diag.Category)
+	if diag.MisconceptionID != "" {
+		m := diagnosis.GetMisconception(diag.MisconceptionID)
+		if m != nil {
+			enriched += ": " + m.Label
+		}
+	}
+	enriched += "]"
+	return enriched
 }

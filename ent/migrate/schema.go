@@ -57,6 +57,50 @@ var (
 			},
 		},
 	}
+	// DiagnosisEventsColumns holds the columns for the "diagnosis_events" table.
+	DiagnosisEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "session_id", Type: field.TypeString},
+		{Name: "skill_id", Type: field.TypeString},
+		{Name: "question_text", Type: field.TypeString},
+		{Name: "correct_answer", Type: field.TypeString},
+		{Name: "learner_answer", Type: field.TypeString},
+		{Name: "category", Type: field.TypeString},
+		{Name: "misconception_id", Type: field.TypeString, Nullable: true},
+		{Name: "confidence", Type: field.TypeFloat64},
+		{Name: "classifier_name", Type: field.TypeString},
+		{Name: "reasoning", Type: field.TypeString, Nullable: true, Default: ""},
+	}
+	// DiagnosisEventsTable holds the schema information for the "diagnosis_events" table.
+	DiagnosisEventsTable = &schema.Table{
+		Name:       "diagnosis_events",
+		Columns:    DiagnosisEventsColumns,
+		PrimaryKey: []*schema.Column{DiagnosisEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "diagnosisevent_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{DiagnosisEventsColumns[1]},
+			},
+			{
+				Name:    "diagnosisevent_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{DiagnosisEventsColumns[2]},
+			},
+			{
+				Name:    "diagnosisevent_skill_id",
+				Unique:  false,
+				Columns: []*schema.Column{DiagnosisEventsColumns[4]},
+			},
+			{
+				Name:    "diagnosisevent_session_id",
+				Unique:  false,
+				Columns: []*schema.Column{DiagnosisEventsColumns[3]},
+			},
+		},
+	}
 	// LlmRequestEventsColumns holds the columns for the "llm_request_events" table.
 	LlmRequestEventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -207,6 +251,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AnswerEventsTable,
+		DiagnosisEventsTable,
 		LlmRequestEventsTable,
 		MasteryEventsTable,
 		SessionEventsTable,

@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/abhisek/mathiz/ent/answerevent"
+	"github.com/abhisek/mathiz/ent/diagnosisevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/predicate"
@@ -30,6 +31,7 @@ const (
 
 	// Node types.
 	TypeAnswerEvent     = "AnswerEvent"
+	TypeDiagnosisEvent  = "DiagnosisEvent"
 	TypeLLMRequestEvent = "LLMRequestEvent"
 	TypeMasteryEvent    = "MasteryEvent"
 	TypeSessionEvent    = "SessionEvent"
@@ -1023,6 +1025,1036 @@ func (m *AnswerEventMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *AnswerEventMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown AnswerEvent edge %s", name)
+}
+
+// DiagnosisEventMutation represents an operation that mutates the DiagnosisEvent nodes in the graph.
+type DiagnosisEventMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	sequence         *int64
+	addsequence      *int64
+	timestamp        *time.Time
+	session_id       *string
+	skill_id         *string
+	question_text    *string
+	correct_answer   *string
+	learner_answer   *string
+	category         *string
+	misconception_id *string
+	confidence       *float64
+	addconfidence    *float64
+	classifier_name  *string
+	reasoning        *string
+	clearedFields    map[string]struct{}
+	done             bool
+	oldValue         func(context.Context) (*DiagnosisEvent, error)
+	predicates       []predicate.DiagnosisEvent
+}
+
+var _ ent.Mutation = (*DiagnosisEventMutation)(nil)
+
+// diagnosiseventOption allows management of the mutation configuration using functional options.
+type diagnosiseventOption func(*DiagnosisEventMutation)
+
+// newDiagnosisEventMutation creates new mutation for the DiagnosisEvent entity.
+func newDiagnosisEventMutation(c config, op Op, opts ...diagnosiseventOption) *DiagnosisEventMutation {
+	m := &DiagnosisEventMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDiagnosisEvent,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDiagnosisEventID sets the ID field of the mutation.
+func withDiagnosisEventID(id int) diagnosiseventOption {
+	return func(m *DiagnosisEventMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DiagnosisEvent
+		)
+		m.oldValue = func(ctx context.Context) (*DiagnosisEvent, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DiagnosisEvent.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDiagnosisEvent sets the old DiagnosisEvent of the mutation.
+func withDiagnosisEvent(node *DiagnosisEvent) diagnosiseventOption {
+	return func(m *DiagnosisEventMutation) {
+		m.oldValue = func(context.Context) (*DiagnosisEvent, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DiagnosisEventMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DiagnosisEventMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DiagnosisEventMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DiagnosisEventMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DiagnosisEvent.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSequence sets the "sequence" field.
+func (m *DiagnosisEventMutation) SetSequence(i int64) {
+	m.sequence = &i
+	m.addsequence = nil
+}
+
+// Sequence returns the value of the "sequence" field in the mutation.
+func (m *DiagnosisEventMutation) Sequence() (r int64, exists bool) {
+	v := m.sequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSequence returns the old "sequence" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldSequence(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSequence is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSequence requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSequence: %w", err)
+	}
+	return oldValue.Sequence, nil
+}
+
+// AddSequence adds i to the "sequence" field.
+func (m *DiagnosisEventMutation) AddSequence(i int64) {
+	if m.addsequence != nil {
+		*m.addsequence += i
+	} else {
+		m.addsequence = &i
+	}
+}
+
+// AddedSequence returns the value that was added to the "sequence" field in this mutation.
+func (m *DiagnosisEventMutation) AddedSequence() (r int64, exists bool) {
+	v := m.addsequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSequence resets all changes to the "sequence" field.
+func (m *DiagnosisEventMutation) ResetSequence() {
+	m.sequence = nil
+	m.addsequence = nil
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (m *DiagnosisEventMutation) SetTimestamp(t time.Time) {
+	m.timestamp = &t
+}
+
+// Timestamp returns the value of the "timestamp" field in the mutation.
+func (m *DiagnosisEventMutation) Timestamp() (r time.Time, exists bool) {
+	v := m.timestamp
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimestamp returns the old "timestamp" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldTimestamp(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimestamp is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimestamp requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimestamp: %w", err)
+	}
+	return oldValue.Timestamp, nil
+}
+
+// ResetTimestamp resets all changes to the "timestamp" field.
+func (m *DiagnosisEventMutation) ResetTimestamp() {
+	m.timestamp = nil
+}
+
+// SetSessionID sets the "session_id" field.
+func (m *DiagnosisEventMutation) SetSessionID(s string) {
+	m.session_id = &s
+}
+
+// SessionID returns the value of the "session_id" field in the mutation.
+func (m *DiagnosisEventMutation) SessionID() (r string, exists bool) {
+	v := m.session_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSessionID returns the old "session_id" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldSessionID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSessionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSessionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSessionID: %w", err)
+	}
+	return oldValue.SessionID, nil
+}
+
+// ResetSessionID resets all changes to the "session_id" field.
+func (m *DiagnosisEventMutation) ResetSessionID() {
+	m.session_id = nil
+}
+
+// SetSkillID sets the "skill_id" field.
+func (m *DiagnosisEventMutation) SetSkillID(s string) {
+	m.skill_id = &s
+}
+
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *DiagnosisEventMutation) SkillID() (r string, exists bool) {
+	v := m.skill_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillID returns the old "skill_id" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldSkillID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
+	}
+	return oldValue.SkillID, nil
+}
+
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *DiagnosisEventMutation) ResetSkillID() {
+	m.skill_id = nil
+}
+
+// SetQuestionText sets the "question_text" field.
+func (m *DiagnosisEventMutation) SetQuestionText(s string) {
+	m.question_text = &s
+}
+
+// QuestionText returns the value of the "question_text" field in the mutation.
+func (m *DiagnosisEventMutation) QuestionText() (r string, exists bool) {
+	v := m.question_text
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuestionText returns the old "question_text" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldQuestionText(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuestionText is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuestionText requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuestionText: %w", err)
+	}
+	return oldValue.QuestionText, nil
+}
+
+// ResetQuestionText resets all changes to the "question_text" field.
+func (m *DiagnosisEventMutation) ResetQuestionText() {
+	m.question_text = nil
+}
+
+// SetCorrectAnswer sets the "correct_answer" field.
+func (m *DiagnosisEventMutation) SetCorrectAnswer(s string) {
+	m.correct_answer = &s
+}
+
+// CorrectAnswer returns the value of the "correct_answer" field in the mutation.
+func (m *DiagnosisEventMutation) CorrectAnswer() (r string, exists bool) {
+	v := m.correct_answer
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCorrectAnswer returns the old "correct_answer" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldCorrectAnswer(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCorrectAnswer is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCorrectAnswer requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCorrectAnswer: %w", err)
+	}
+	return oldValue.CorrectAnswer, nil
+}
+
+// ResetCorrectAnswer resets all changes to the "correct_answer" field.
+func (m *DiagnosisEventMutation) ResetCorrectAnswer() {
+	m.correct_answer = nil
+}
+
+// SetLearnerAnswer sets the "learner_answer" field.
+func (m *DiagnosisEventMutation) SetLearnerAnswer(s string) {
+	m.learner_answer = &s
+}
+
+// LearnerAnswer returns the value of the "learner_answer" field in the mutation.
+func (m *DiagnosisEventMutation) LearnerAnswer() (r string, exists bool) {
+	v := m.learner_answer
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLearnerAnswer returns the old "learner_answer" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldLearnerAnswer(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLearnerAnswer is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLearnerAnswer requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLearnerAnswer: %w", err)
+	}
+	return oldValue.LearnerAnswer, nil
+}
+
+// ResetLearnerAnswer resets all changes to the "learner_answer" field.
+func (m *DiagnosisEventMutation) ResetLearnerAnswer() {
+	m.learner_answer = nil
+}
+
+// SetCategory sets the "category" field.
+func (m *DiagnosisEventMutation) SetCategory(s string) {
+	m.category = &s
+}
+
+// Category returns the value of the "category" field in the mutation.
+func (m *DiagnosisEventMutation) Category() (r string, exists bool) {
+	v := m.category
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCategory returns the old "category" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldCategory(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCategory is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCategory requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCategory: %w", err)
+	}
+	return oldValue.Category, nil
+}
+
+// ResetCategory resets all changes to the "category" field.
+func (m *DiagnosisEventMutation) ResetCategory() {
+	m.category = nil
+}
+
+// SetMisconceptionID sets the "misconception_id" field.
+func (m *DiagnosisEventMutation) SetMisconceptionID(s string) {
+	m.misconception_id = &s
+}
+
+// MisconceptionID returns the value of the "misconception_id" field in the mutation.
+func (m *DiagnosisEventMutation) MisconceptionID() (r string, exists bool) {
+	v := m.misconception_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMisconceptionID returns the old "misconception_id" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldMisconceptionID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMisconceptionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMisconceptionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMisconceptionID: %w", err)
+	}
+	return oldValue.MisconceptionID, nil
+}
+
+// ClearMisconceptionID clears the value of the "misconception_id" field.
+func (m *DiagnosisEventMutation) ClearMisconceptionID() {
+	m.misconception_id = nil
+	m.clearedFields[diagnosisevent.FieldMisconceptionID] = struct{}{}
+}
+
+// MisconceptionIDCleared returns if the "misconception_id" field was cleared in this mutation.
+func (m *DiagnosisEventMutation) MisconceptionIDCleared() bool {
+	_, ok := m.clearedFields[diagnosisevent.FieldMisconceptionID]
+	return ok
+}
+
+// ResetMisconceptionID resets all changes to the "misconception_id" field.
+func (m *DiagnosisEventMutation) ResetMisconceptionID() {
+	m.misconception_id = nil
+	delete(m.clearedFields, diagnosisevent.FieldMisconceptionID)
+}
+
+// SetConfidence sets the "confidence" field.
+func (m *DiagnosisEventMutation) SetConfidence(f float64) {
+	m.confidence = &f
+	m.addconfidence = nil
+}
+
+// Confidence returns the value of the "confidence" field in the mutation.
+func (m *DiagnosisEventMutation) Confidence() (r float64, exists bool) {
+	v := m.confidence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfidence returns the old "confidence" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldConfidence(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfidence is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfidence requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfidence: %w", err)
+	}
+	return oldValue.Confidence, nil
+}
+
+// AddConfidence adds f to the "confidence" field.
+func (m *DiagnosisEventMutation) AddConfidence(f float64) {
+	if m.addconfidence != nil {
+		*m.addconfidence += f
+	} else {
+		m.addconfidence = &f
+	}
+}
+
+// AddedConfidence returns the value that was added to the "confidence" field in this mutation.
+func (m *DiagnosisEventMutation) AddedConfidence() (r float64, exists bool) {
+	v := m.addconfidence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetConfidence resets all changes to the "confidence" field.
+func (m *DiagnosisEventMutation) ResetConfidence() {
+	m.confidence = nil
+	m.addconfidence = nil
+}
+
+// SetClassifierName sets the "classifier_name" field.
+func (m *DiagnosisEventMutation) SetClassifierName(s string) {
+	m.classifier_name = &s
+}
+
+// ClassifierName returns the value of the "classifier_name" field in the mutation.
+func (m *DiagnosisEventMutation) ClassifierName() (r string, exists bool) {
+	v := m.classifier_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldClassifierName returns the old "classifier_name" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldClassifierName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldClassifierName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldClassifierName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldClassifierName: %w", err)
+	}
+	return oldValue.ClassifierName, nil
+}
+
+// ResetClassifierName resets all changes to the "classifier_name" field.
+func (m *DiagnosisEventMutation) ResetClassifierName() {
+	m.classifier_name = nil
+}
+
+// SetReasoning sets the "reasoning" field.
+func (m *DiagnosisEventMutation) SetReasoning(s string) {
+	m.reasoning = &s
+}
+
+// Reasoning returns the value of the "reasoning" field in the mutation.
+func (m *DiagnosisEventMutation) Reasoning() (r string, exists bool) {
+	v := m.reasoning
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReasoning returns the old "reasoning" field's value of the DiagnosisEvent entity.
+// If the DiagnosisEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagnosisEventMutation) OldReasoning(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReasoning is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReasoning requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReasoning: %w", err)
+	}
+	return oldValue.Reasoning, nil
+}
+
+// ClearReasoning clears the value of the "reasoning" field.
+func (m *DiagnosisEventMutation) ClearReasoning() {
+	m.reasoning = nil
+	m.clearedFields[diagnosisevent.FieldReasoning] = struct{}{}
+}
+
+// ReasoningCleared returns if the "reasoning" field was cleared in this mutation.
+func (m *DiagnosisEventMutation) ReasoningCleared() bool {
+	_, ok := m.clearedFields[diagnosisevent.FieldReasoning]
+	return ok
+}
+
+// ResetReasoning resets all changes to the "reasoning" field.
+func (m *DiagnosisEventMutation) ResetReasoning() {
+	m.reasoning = nil
+	delete(m.clearedFields, diagnosisevent.FieldReasoning)
+}
+
+// Where appends a list predicates to the DiagnosisEventMutation builder.
+func (m *DiagnosisEventMutation) Where(ps ...predicate.DiagnosisEvent) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DiagnosisEventMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DiagnosisEventMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DiagnosisEvent, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DiagnosisEventMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DiagnosisEventMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DiagnosisEvent).
+func (m *DiagnosisEventMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DiagnosisEventMutation) Fields() []string {
+	fields := make([]string, 0, 12)
+	if m.sequence != nil {
+		fields = append(fields, diagnosisevent.FieldSequence)
+	}
+	if m.timestamp != nil {
+		fields = append(fields, diagnosisevent.FieldTimestamp)
+	}
+	if m.session_id != nil {
+		fields = append(fields, diagnosisevent.FieldSessionID)
+	}
+	if m.skill_id != nil {
+		fields = append(fields, diagnosisevent.FieldSkillID)
+	}
+	if m.question_text != nil {
+		fields = append(fields, diagnosisevent.FieldQuestionText)
+	}
+	if m.correct_answer != nil {
+		fields = append(fields, diagnosisevent.FieldCorrectAnswer)
+	}
+	if m.learner_answer != nil {
+		fields = append(fields, diagnosisevent.FieldLearnerAnswer)
+	}
+	if m.category != nil {
+		fields = append(fields, diagnosisevent.FieldCategory)
+	}
+	if m.misconception_id != nil {
+		fields = append(fields, diagnosisevent.FieldMisconceptionID)
+	}
+	if m.confidence != nil {
+		fields = append(fields, diagnosisevent.FieldConfidence)
+	}
+	if m.classifier_name != nil {
+		fields = append(fields, diagnosisevent.FieldClassifierName)
+	}
+	if m.reasoning != nil {
+		fields = append(fields, diagnosisevent.FieldReasoning)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DiagnosisEventMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case diagnosisevent.FieldSequence:
+		return m.Sequence()
+	case diagnosisevent.FieldTimestamp:
+		return m.Timestamp()
+	case diagnosisevent.FieldSessionID:
+		return m.SessionID()
+	case diagnosisevent.FieldSkillID:
+		return m.SkillID()
+	case diagnosisevent.FieldQuestionText:
+		return m.QuestionText()
+	case diagnosisevent.FieldCorrectAnswer:
+		return m.CorrectAnswer()
+	case diagnosisevent.FieldLearnerAnswer:
+		return m.LearnerAnswer()
+	case diagnosisevent.FieldCategory:
+		return m.Category()
+	case diagnosisevent.FieldMisconceptionID:
+		return m.MisconceptionID()
+	case diagnosisevent.FieldConfidence:
+		return m.Confidence()
+	case diagnosisevent.FieldClassifierName:
+		return m.ClassifierName()
+	case diagnosisevent.FieldReasoning:
+		return m.Reasoning()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DiagnosisEventMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case diagnosisevent.FieldSequence:
+		return m.OldSequence(ctx)
+	case diagnosisevent.FieldTimestamp:
+		return m.OldTimestamp(ctx)
+	case diagnosisevent.FieldSessionID:
+		return m.OldSessionID(ctx)
+	case diagnosisevent.FieldSkillID:
+		return m.OldSkillID(ctx)
+	case diagnosisevent.FieldQuestionText:
+		return m.OldQuestionText(ctx)
+	case diagnosisevent.FieldCorrectAnswer:
+		return m.OldCorrectAnswer(ctx)
+	case diagnosisevent.FieldLearnerAnswer:
+		return m.OldLearnerAnswer(ctx)
+	case diagnosisevent.FieldCategory:
+		return m.OldCategory(ctx)
+	case diagnosisevent.FieldMisconceptionID:
+		return m.OldMisconceptionID(ctx)
+	case diagnosisevent.FieldConfidence:
+		return m.OldConfidence(ctx)
+	case diagnosisevent.FieldClassifierName:
+		return m.OldClassifierName(ctx)
+	case diagnosisevent.FieldReasoning:
+		return m.OldReasoning(ctx)
+	}
+	return nil, fmt.Errorf("unknown DiagnosisEvent field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagnosisEventMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case diagnosisevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSequence(v)
+		return nil
+	case diagnosisevent.FieldTimestamp:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimestamp(v)
+		return nil
+	case diagnosisevent.FieldSessionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSessionID(v)
+		return nil
+	case diagnosisevent.FieldSkillID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillID(v)
+		return nil
+	case diagnosisevent.FieldQuestionText:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuestionText(v)
+		return nil
+	case diagnosisevent.FieldCorrectAnswer:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCorrectAnswer(v)
+		return nil
+	case diagnosisevent.FieldLearnerAnswer:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLearnerAnswer(v)
+		return nil
+	case diagnosisevent.FieldCategory:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCategory(v)
+		return nil
+	case diagnosisevent.FieldMisconceptionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMisconceptionID(v)
+		return nil
+	case diagnosisevent.FieldConfidence:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfidence(v)
+		return nil
+	case diagnosisevent.FieldClassifierName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetClassifierName(v)
+		return nil
+	case diagnosisevent.FieldReasoning:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReasoning(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DiagnosisEvent field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DiagnosisEventMutation) AddedFields() []string {
+	var fields []string
+	if m.addsequence != nil {
+		fields = append(fields, diagnosisevent.FieldSequence)
+	}
+	if m.addconfidence != nil {
+		fields = append(fields, diagnosisevent.FieldConfidence)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DiagnosisEventMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case diagnosisevent.FieldSequence:
+		return m.AddedSequence()
+	case diagnosisevent.FieldConfidence:
+		return m.AddedConfidence()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagnosisEventMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case diagnosisevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSequence(v)
+		return nil
+	case diagnosisevent.FieldConfidence:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddConfidence(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DiagnosisEvent numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DiagnosisEventMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(diagnosisevent.FieldMisconceptionID) {
+		fields = append(fields, diagnosisevent.FieldMisconceptionID)
+	}
+	if m.FieldCleared(diagnosisevent.FieldReasoning) {
+		fields = append(fields, diagnosisevent.FieldReasoning)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DiagnosisEventMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DiagnosisEventMutation) ClearField(name string) error {
+	switch name {
+	case diagnosisevent.FieldMisconceptionID:
+		m.ClearMisconceptionID()
+		return nil
+	case diagnosisevent.FieldReasoning:
+		m.ClearReasoning()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagnosisEvent nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DiagnosisEventMutation) ResetField(name string) error {
+	switch name {
+	case diagnosisevent.FieldSequence:
+		m.ResetSequence()
+		return nil
+	case diagnosisevent.FieldTimestamp:
+		m.ResetTimestamp()
+		return nil
+	case diagnosisevent.FieldSessionID:
+		m.ResetSessionID()
+		return nil
+	case diagnosisevent.FieldSkillID:
+		m.ResetSkillID()
+		return nil
+	case diagnosisevent.FieldQuestionText:
+		m.ResetQuestionText()
+		return nil
+	case diagnosisevent.FieldCorrectAnswer:
+		m.ResetCorrectAnswer()
+		return nil
+	case diagnosisevent.FieldLearnerAnswer:
+		m.ResetLearnerAnswer()
+		return nil
+	case diagnosisevent.FieldCategory:
+		m.ResetCategory()
+		return nil
+	case diagnosisevent.FieldMisconceptionID:
+		m.ResetMisconceptionID()
+		return nil
+	case diagnosisevent.FieldConfidence:
+		m.ResetConfidence()
+		return nil
+	case diagnosisevent.FieldClassifierName:
+		m.ResetClassifierName()
+		return nil
+	case diagnosisevent.FieldReasoning:
+		m.ResetReasoning()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagnosisEvent field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DiagnosisEventMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DiagnosisEventMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DiagnosisEventMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DiagnosisEventMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DiagnosisEventMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DiagnosisEventMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DiagnosisEventMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown DiagnosisEvent unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DiagnosisEventMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown DiagnosisEvent edge %s", name)
 }
 
 // LLMRequestEventMutation represents an operation that mutates the LLMRequestEvent nodes in the graph.

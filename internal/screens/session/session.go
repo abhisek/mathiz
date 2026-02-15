@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/abhisek/mathiz/internal/diagnosis"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/router"
@@ -22,29 +23,31 @@ import (
 
 // SessionScreen implements screen.Screen for the active session.
 type SessionScreen struct {
-	state     *sess.SessionState
-	generator problemgen.Generator
-	eventRepo store.EventRepo
-	snapRepo  store.SnapshotRepo
-	planner   sess.Planner
-	scheduler *spacedrep.Scheduler
-	input     components.TextInput
-	mcActive  bool // true when showing multiple choice
-	mcSelected int
-	errMsg    string
+	state        *sess.SessionState
+	generator    problemgen.Generator
+	eventRepo    store.EventRepo
+	snapRepo     store.SnapshotRepo
+	diagService  *diagnosis.Service
+	planner      sess.Planner
+	scheduler    *spacedrep.Scheduler
+	input        components.TextInput
+	mcActive     bool // true when showing multiple choice
+	mcSelected   int
+	errMsg       string
 }
 
 var _ screen.Screen = (*SessionScreen)(nil)
 var _ screen.KeyHintProvider = (*SessionScreen)(nil)
 
 // New creates a new SessionScreen with injected dependencies.
-func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo) *SessionScreen {
+func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service) *SessionScreen {
 	return &SessionScreen{
-		generator: generator,
-		eventRepo: eventRepo,
-		snapRepo:  snapRepo,
-		planner:   sess.NewPlanner(context.Background(), eventRepo),
-		input:     components.NewTextInput("Type your answer...", false, 20),
+		generator:   generator,
+		eventRepo:   eventRepo,
+		snapRepo:    snapRepo,
+		diagService: diagService,
+		planner:     sess.NewPlanner(context.Background(), eventRepo),
+		input:       components.NewTextInput("Type your answer...", false, 20),
 	}
 }
 
@@ -187,6 +190,8 @@ func (s *SessionScreen) initSession() tea.Cmd {
 		state := sess.NewSessionState(plan, sessionID, mastered, tierProgress)
 		state.MasteryService = masterySvc
 		state.SpacedRepSched = scheduler
+		state.DiagnosisService = s.diagService
+		state.EventRepo = s.eventRepo
 
 		// Persist session start event.
 		var planSummary []store.PlanSlotSummaryData

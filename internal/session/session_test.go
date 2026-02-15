@@ -235,7 +235,7 @@ func TestErrorContext_Construction(t *testing.T) {
 		Answer: "852",
 	}
 
-	result := BuildErrorContext(q, "842")
+	result := BuildErrorContext(q, "842", nil)
 	expected := "Answered 842 for 'What is 567 + 285?', correct answer was 852"
 
 	if result != expected {

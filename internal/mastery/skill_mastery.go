@@ -16,6 +16,11 @@ type SkillMastery struct {
 	Fluency       FluencyMetrics
 	MasteredAt    *time.Time // When mastery was first achieved
 	RustyAt       *time.Time // When skill was last marked rusty
+
+	// MisconceptionPenalty is the number of extra correct answers required
+	// to complete the current tier, incremented by misconception diagnoses.
+	// Reset to 0 on tier advancement.
+	MisconceptionPenalty int
 }
 
 // Accuracy returns the current accuracy ratio.
@@ -32,7 +37,13 @@ func (sm *SkillMastery) FluencyScore() float64 {
 }
 
 // IsTierComplete checks if the current tier's criteria are met.
+// MisconceptionPenalty adds extra correct answers required beyond the
+// base accuracy threshold.
 func (sm *SkillMastery) IsTierComplete(cfg skillgraph.TierConfig) bool {
-	return sm.TotalAttempts >= cfg.ProblemsRequired &&
-		sm.Accuracy() >= cfg.AccuracyThreshold
+	if sm.TotalAttempts < cfg.ProblemsRequired {
+		return false
+	}
+	requiredCorrect := int(float64(cfg.ProblemsRequired)*cfg.AccuracyThreshold + 0.5)
+	requiredCorrect += sm.MisconceptionPenalty
+	return sm.CorrectCount >= requiredCorrect
 }

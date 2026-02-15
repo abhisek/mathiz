@@ -37,6 +37,9 @@ func (m *mockEventRepo) SkillAccuracy(_ context.Context, _ string) (float64, err
 func (m *mockEventRepo) RecentReviewAccuracy(_ context.Context, _ string, _ int) (float64, int, error) {
 	return m.reviewAccuracy, m.reviewCount, m.reviewErr
 }
+func (m *mockEventRepo) AppendDiagnosisEvent(_ context.Context, _ store.DiagnosisEventData) error {
+	return nil
+}
 
 func testSkillID() string {
 	skills := skillgraph.AllSkills()

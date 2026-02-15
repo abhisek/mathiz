@@ -57,8 +57,9 @@ type SkillMasteryData struct {
 	SpeedWindow   int       `json:"speed_window"`
 	Streak        int       `json:"streak"`
 	StreakCap     int       `json:"streak_cap"`
-	MasteredAt    *string   `json:"mastered_at,omitempty"`
-	RustyAt       *string   `json:"rusty_at,omitempty"`
+	MasteredAt           *string `json:"mastered_at,omitempty"`
+	RustyAt              *string `json:"rusty_at,omitempty"`
+	MisconceptionPenalty int     `json:"misconception_penalty,omitempty"`
 }
 
 // TierProgressData is the serialized form of tier progress for a skill.
@@ -142,6 +143,20 @@ type MasteryEventData struct {
 	SessionID    string
 }
 
+// DiagnosisEventData captures a diagnosis result for persistence.
+type DiagnosisEventData struct {
+	SessionID       string
+	SkillID         string
+	QuestionText    string
+	CorrectAnswer   string
+	LearnerAnswer   string
+	Category        string
+	MisconceptionID *string
+	Confidence      float64
+	ClassifierName  string
+	Reasoning       string
+}
+
 // EventRepo provides append access to domain events.
 type EventRepo interface {
 	// AppendLLMRequest records an LLM API call event.
@@ -167,4 +182,7 @@ type EventRepo interface {
 	// RecentReviewAccuracy returns the accuracy and count of the last N
 	// review answers for a skill.
 	RecentReviewAccuracy(ctx context.Context, skillID string, lastN int) (accuracy float64, count int, err error)
+
+	// AppendDiagnosisEvent records a diagnosis result for a wrong answer.
+	AppendDiagnosisEvent(ctx context.Context, data DiagnosisEventData) error
 }

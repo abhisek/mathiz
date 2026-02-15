@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/abhisek/mathiz/internal/app"
+	"github.com/abhisek/mathiz/internal/diagnosis"
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/store"
@@ -41,6 +42,9 @@ var playCmd = &cobra.Command{
 		} else {
 			opts.LLMProvider = provider
 			opts.Generator = problemgen.New(provider, problemgen.DefaultConfig())
+			diagService := diagnosis.NewService(provider)
+			defer diagService.Close()
+			opts.DiagnosisService = diagService
 		}
 
 		return app.Run(opts)

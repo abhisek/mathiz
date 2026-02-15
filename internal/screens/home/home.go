@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/abhisek/mathiz/internal/diagnosis"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
@@ -26,7 +27,7 @@ type HomeScreen struct {
 var _ screen.Screen = (*HomeScreen)(nil)
 
 // New creates a new HomeScreen.
-func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo) *HomeScreen {
+func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service) *HomeScreen {
 	items := []components.MenuItem{
 		{Label: "Start Practice", Action: func() tea.Cmd {
 			if generator == nil || eventRepo == nil || snapRepo == nil {
@@ -36,7 +37,7 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 			}
 			return func() tea.Msg {
 				return router.PushScreenMsg{
-					Screen: sessionscreen.New(generator, eventRepo, snapRepo),
+					Screen: sessionscreen.New(generator, eventRepo, snapRepo, diagService),
 				}
 			}
 		}},
