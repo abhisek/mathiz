@@ -9,8 +9,9 @@ import (
 
 // MenuItem represents a single item in a navigation menu.
 type MenuItem struct {
-	Label  string
-	Action func() tea.Cmd
+	Label    string
+	Action   func() tea.Cmd
+	Disabled bool
 }
 
 // Menu is a vertical navigation menu.
@@ -21,9 +22,16 @@ type Menu struct {
 
 // NewMenu creates a new menu with the given items.
 func NewMenu(items []MenuItem) Menu {
+	selected := 0
+	for i, item := range items {
+		if !item.Disabled {
+			selected = i
+			break
+		}
+	}
 	return Menu{
 		Items:    items,
-		Selected: 0,
+		Selected: selected,
 	}
 }
 
@@ -41,17 +49,23 @@ func (m Menu) Update(msg tea.Msg) (Menu, tea.Cmd) {
 
 	switch kmsg.String() {
 	case "up", "k":
-		if m.Selected > 0 {
-			m.Selected--
+		for i := m.Selected - 1; i >= 0; i-- {
+			if !m.Items[i].Disabled {
+				m.Selected = i
+				break
+			}
 		}
 	case "down", "j":
-		if m.Selected < len(m.Items)-1 {
-			m.Selected++
+		for i := m.Selected + 1; i < len(m.Items); i++ {
+			if !m.Items[i].Disabled {
+				m.Selected = i
+				break
+			}
 		}
 	case "enter":
 		if m.Selected >= 0 && m.Selected < len(m.Items) {
 			item := m.Items[m.Selected]
-			if item.Action != nil {
+			if item.Action != nil && !item.Disabled {
 				return m, item.Action()
 			}
 		}

@@ -34,6 +34,7 @@ type HomeScreen struct {
 	reviewsDue    int
 	mascotVariant MascotVariant
 	updateResult  *selfupdate.UpdateResult
+	llmMissing    bool
 }
 
 var _ screen.Screen = (*HomeScreen)(nil)
@@ -92,14 +93,13 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 	skillStates := computeSkillStates(snap)
 	reviewBadges := computeReviewBadges(snap)
 
+	llmMissing := generator == nil
 	menuLabels := []string{"START GAME", "SKILL MAP", "GEM VAULT", "HISTORY", "EXIT GAME"}
 
 	items := []components.MenuItem{
-		{Label: menuLabels[0], Action: func() tea.Cmd {
+		{Label: menuLabels[0], Disabled: llmMissing, Action: func() tea.Cmd {
 			if generator == nil || eventRepo == nil || snapRepo == nil {
-				return func() tea.Msg {
-					return router.PushScreenMsg{Screen: placeholder.New("Start Game")}
-				}
+				return nil
 			}
 			return func() tea.Msg {
 				return router.PushScreenMsg{
@@ -145,6 +145,7 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 		reviewsDue:    reviewsDue,
 		mascotVariant: mascotVariant,
 		updateResult:  updateResult,
+		llmMissing:    llmMissing,
 	}
 }
 
@@ -164,9 +165,17 @@ func (h *HomeScreen) View(width, height int) string {
 	cw := contentWidth(width)
 	compact := width < 100
 
+	// Build disabled set from menu items.
+	disabledItems := make(map[int]bool)
+	for i, item := range h.menu.Items {
+		if item.Disabled {
+			disabledItems[i] = true
+		}
+	}
+
 	// Pre-render candidates and measure heights.
-	menuBordered := renderArcadeMenu(h.menuLabels, h.menu.Selected, cw)
-	menuCompact := renderArcadeMenuCompact(h.menuLabels, h.menu.Selected, cw)
+	menuBordered := renderArcadeMenu(h.menuLabels, h.menu.Selected, cw, disabledItems)
+	menuCompact := renderArcadeMenuCompact(h.menuLabels, h.menu.Selected, cw, disabledItems)
 	statsBar := renderStatsBar(h.masteredCount, h.gemCount, h.reviewsDue, cw, compact)
 	titleCompact := renderTitle(cw, true)
 	titleFull := renderTitle(cw, false)
@@ -241,7 +250,19 @@ func (h *HomeScreen) View(width, height int) string {
 		canMascot = true
 	}
 
-	// 6. Lowest priority: update note (only if update available and space allows).
+	// 6. LLM banner (only when LLM is missing and space allows).
+	var llmBanner string
+	canLLMBanner := false
+	if h.llmMissing {
+		llmBanner = renderLLMBanner(cw)
+		hBanner := lipgloss.Height(llmBanner)
+		if used+1+hBanner <= available {
+			canLLMBanner = true
+			used += 1 + hBanner
+		}
+	}
+
+	// 7. Lowest priority: update note (only if update available and space allows).
 	var updateNote string
 	canUpdate := false
 	if h.updateResult != nil && h.updateResult.UpdateAvailable {
@@ -252,7 +273,7 @@ func (h *HomeScreen) View(width, height int) string {
 		}
 	}
 
-	// Assemble sections in display order: title, mascot, stats, menu, update.
+	// Assemble sections in display order: title, mascot, stats, banner, menu, update.
 	var sections []string
 
 	if canTitle {
@@ -269,6 +290,10 @@ func (h *HomeScreen) View(width, height int) string {
 
 	if canStats {
 		sections = append(sections, statsBar)
+	}
+
+	if canLLMBanner {
+		sections = append(sections, llmBanner)
 	}
 
 	sections = append(sections, menu)

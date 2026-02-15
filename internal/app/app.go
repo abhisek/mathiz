@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -69,6 +70,7 @@ type AppModel struct {
 	width        int
 	height       int
 	updateResult *selfupdate.UpdateResult
+	gemCount     int // cached gem total for header display
 }
 
 // newAppModel creates a new AppModel with the welcome screen,
@@ -91,6 +93,21 @@ func newAppModel(opts Options) *AppModel {
 	return m
 }
 
+// gemCountMsg delivers an updated gem total to the model.
+type gemCountMsg struct{ total int }
+
+// loadGemCount returns a Cmd that fetches the gem total from the store.
+func (m *AppModel) loadGemCount() tea.Cmd {
+	if m.opts.GemService == nil {
+		return nil
+	}
+	svc := m.opts.GemService
+	return func() tea.Msg {
+		snap := svc.SnapshotData(context.Background())
+		return gemCountMsg{total: snap.TotalCount}
+	}
+}
+
 // waitForUpdate returns a tea.Cmd that blocks on the update channel.
 func waitForUpdate(ch <-chan *selfupdate.UpdateResult) tea.Cmd {
 	if ch == nil {
@@ -110,11 +127,16 @@ func (m *AppModel) Init() tea.Cmd {
 		m.router.Active().Init(),
 		tea.RequestBackgroundColor,
 		waitForUpdate(m.opts.UpdateCh),
+		m.loadGemCount(),
 	)
 }
 
 func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case gemCountMsg:
+		m.gemCount = msg.total
+		return m, nil
+
 	case UpdateAvailableMsg:
 		m.updateResult = msg.Result
 		return m, nil
@@ -133,6 +155,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.opts.DirectSession && m.router.Depth() <= 1 {
 			return m, tea.Quit
 		}
+		// Refresh gem count when returning from a screen (e.g. after session awards gems).
+		cmd := m.router.Update(msg)
+		return m, tea.Batch(cmd, m.loadGemCount())
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -179,7 +204,7 @@ func (m *AppModel) View() tea.View {
 		title = active.Title()
 	}
 
-	header := layout.RenderHeader(title, 0, 0, m.width)
+	header := layout.RenderHeader(title, m.gemCount, 0, m.width)
 
 	var footerHints []layout.KeyHint
 	if provider, ok := active.(screen.KeyHintProvider); ok {

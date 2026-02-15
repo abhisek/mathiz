@@ -101,7 +101,7 @@ func reviewText(due int, compact bool, active, dim lipgloss.Style) string {
 const buttonWidth = 22
 
 // renderArcadeMenu renders each menu item as a fixed-width button.
-func renderArcadeMenu(items []string, selected int, cw int) string {
+func renderArcadeMenu(items []string, selected int, cw int, disabled map[int]bool) string {
 	selectedBtn := lipgloss.NewStyle().
 		Width(buttonWidth).
 		Align(lipgloss.Center).
@@ -120,9 +120,19 @@ func renderArcadeMenu(items []string, selected int, cw int) string {
 		BorderForeground(theme.Border).
 		Padding(0, 1)
 
+	disabledBtn := lipgloss.NewStyle().
+		Width(buttonWidth).
+		Align(lipgloss.Center).
+		Foreground(theme.TextDim).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(theme.Border).
+		Padding(0, 1)
+
 	var buttons []string
 	for i, label := range items {
-		if i == selected {
+		if disabled[i] {
+			buttons = append(buttons, disabledBtn.Render(label))
+		} else if i == selected {
 			buttons = append(buttons, selectedBtn.Render("▸ "+label))
 		} else {
 			buttons = append(buttons, normalBtn.Render(label))
@@ -138,11 +148,15 @@ func renderArcadeMenu(items []string, selected int, cw int) string {
 
 // renderArcadeMenuCompact renders menu items as simple text lines (no borders)
 // for very small terminals where bordered buttons would overflow.
-func renderArcadeMenuCompact(items []string, selected int, cw int) string {
+func renderArcadeMenuCompact(items []string, selected int, cw int, disabled map[int]bool) string {
 	var lines []string
 	for i, label := range items {
 		var line string
-		if i == selected {
+		if disabled[i] {
+			line = lipgloss.NewStyle().
+				Foreground(theme.TextDim).
+				Render("   " + label)
+		} else if i == selected {
 			line = lipgloss.NewStyle().
 				Foreground(theme.BgDark).
 				Background(theme.ArcadeYellow).
@@ -161,6 +175,15 @@ func renderArcadeMenuCompact(items []string, selected int, cw int) string {
 		Width(cw).
 		Align(lipgloss.Center).
 		Render(block)
+}
+
+// renderLLMBanner renders a warning banner when no LLM API key is configured.
+func renderLLMBanner(cw int) string {
+	return lipgloss.NewStyle().
+		Foreground(theme.Accent).
+		Width(cw).
+		Align(lipgloss.Center).
+		Render("⚠ Set an LLM API key to start playing (see mathiz --help)")
 }
 
 // renderMascotBox renders the mascot centered in a box matching content width.
