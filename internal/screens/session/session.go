@@ -360,6 +360,12 @@ func (s *SessionScreen) handleFeedbackDone() (screen.Screen, tea.Cmd) {
 		return s, nil
 	}
 
+	// Check if skill was mastered and slot should be completed (before clearing state).
+	slot := sess.CurrentSlot(s.state)
+	if slot != nil && s.state.Mastered[slot.Skill.ID] {
+		s.state.CompletedSlots[s.state.CurrentSlotIndex] = true
+	}
+
 	s.state.ShowingFeedback = false
 	s.state.Phase = sess.PhaseActive
 	s.state.CurrentQuestion = nil
@@ -370,20 +376,6 @@ func (s *SessionScreen) handleFeedbackDone() (screen.Screen, tea.Cmd) {
 	// If time expired, end the session.
 	if s.state.TimeExpired {
 		return s, func() tea.Msg { return sessionEndMsg{} }
-	}
-
-	// Check if tier was completed and slot should be removed.
-	if s.state.CurrentQuestion != nil {
-		slot := sess.CurrentSlot(s.state)
-		if slot != nil {
-			tp := s.state.TierProgress[slot.Skill.ID]
-			if tp != nil {
-				// Check if this skill was just mastered or tier advanced.
-				if s.state.Mastered[slot.Skill.ID] {
-					s.state.CompletedSlots[s.state.CurrentSlotIndex] = true
-				}
-			}
-		}
 	}
 
 	// Check if a lesson is ready.
@@ -719,9 +711,18 @@ func (s *SessionScreen) generateNextQuestion() tea.Cmd {
 		}
 
 		slot := &state.Plan.Slots[state.CurrentSlotIndex]
+
+		// Use the actual current tier from mastery service, not the fixed plan tier.
+		tier := slot.Tier
+		if state.MasteryService != nil {
+			if sm := state.MasteryService.GetMastery(slot.Skill.ID); sm != nil {
+				tier = sm.CurrentTier
+			}
+		}
+
 		input := problemgen.GenerateInput{
 			Skill:          slot.Skill,
-			Tier:           slot.Tier,
+			Tier:           tier,
 			PriorQuestions: state.PriorQuestions[slot.Skill.ID],
 			RecentErrors:   state.RecentErrors[slot.Skill.ID],
 		}

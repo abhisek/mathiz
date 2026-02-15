@@ -2,8 +2,10 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/abhisek/mathiz/internal/store"
@@ -29,17 +31,19 @@ func (l *LoggingProvider) Generate(ctx context.Context, req Request) (*Response,
 	latencyMs := time.Since(start).Milliseconds()
 
 	data := store.LLMRequestEventData{
-		Provider:  l.inner.ModelID(),
-		Model:     l.inner.ModelID(),
-		Purpose:   purpose,
-		LatencyMs: latencyMs,
-		Success:   err == nil,
+		Provider:    l.inner.ModelID(),
+		Model:       l.inner.ModelID(),
+		Purpose:     purpose,
+		LatencyMs:   latencyMs,
+		Success:     err == nil,
+		RequestBody: serializeRequest(req),
 	}
 
 	if resp != nil {
 		data.InputTokens = resp.Usage.InputTokens
 		data.OutputTokens = resp.Usage.OutputTokens
 		data.Model = resp.Model
+		data.ResponseBody = string(resp.Content)
 	}
 
 	if err != nil {
@@ -56,4 +60,32 @@ func (l *LoggingProvider) Generate(ctx context.Context, req Request) (*Response,
 
 func (l *LoggingProvider) ModelID() string {
 	return l.inner.ModelID()
+}
+
+// serializeRequest builds a readable representation of the LLM request.
+func serializeRequest(req Request) string {
+	var b strings.Builder
+
+	if req.System != "" {
+		b.WriteString("[system]\n")
+		b.WriteString(req.System)
+		b.WriteString("\n\n")
+	}
+
+	for _, m := range req.Messages {
+		b.WriteString(fmt.Sprintf("[%s]\n", m.Role))
+		b.WriteString(m.Content)
+		b.WriteString("\n\n")
+	}
+
+	if req.Schema != nil {
+		schemaDef, err := json.Marshal(req.Schema.Definition)
+		if err == nil {
+			b.WriteString(fmt.Sprintf("[schema: %s]\n", req.Schema.Name))
+			b.WriteString(string(schemaDef))
+			b.WriteString("\n")
+		}
+	}
+
+	return b.String()
 }

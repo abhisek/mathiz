@@ -120,6 +120,34 @@ func (_c *LLMRequestEventCreate) SetNillableErrorMessage(v *string) *LLMRequestE
 	return _c
 }
 
+// SetRequestBody sets the "request_body" field.
+func (_c *LLMRequestEventCreate) SetRequestBody(v string) *LLMRequestEventCreate {
+	_c.mutation.SetRequestBody(v)
+	return _c
+}
+
+// SetNillableRequestBody sets the "request_body" field if the given value is not nil.
+func (_c *LLMRequestEventCreate) SetNillableRequestBody(v *string) *LLMRequestEventCreate {
+	if v != nil {
+		_c.SetRequestBody(*v)
+	}
+	return _c
+}
+
+// SetResponseBody sets the "response_body" field.
+func (_c *LLMRequestEventCreate) SetResponseBody(v string) *LLMRequestEventCreate {
+	_c.mutation.SetResponseBody(v)
+	return _c
+}
+
+// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
+func (_c *LLMRequestEventCreate) SetNillableResponseBody(v *string) *LLMRequestEventCreate {
+	if v != nil {
+		_c.SetResponseBody(*v)
+	}
+	return _c
+}
+
 // Mutation returns the LLMRequestEventMutation object of the builder.
 func (_c *LLMRequestEventCreate) Mutation() *LLMRequestEventMutation {
 	return _c.mutation
@@ -175,6 +203,14 @@ func (_c *LLMRequestEventCreate) defaults() {
 		v := llmrequestevent.DefaultErrorMessage
 		_c.mutation.SetErrorMessage(v)
 	}
+	if _, ok := _c.mutation.RequestBody(); !ok {
+		v := llmrequestevent.DefaultRequestBody
+		_c.mutation.SetRequestBody(v)
+	}
+	if _, ok := _c.mutation.ResponseBody(); !ok {
+		v := llmrequestevent.DefaultResponseBody
+		_c.mutation.SetResponseBody(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -208,6 +244,12 @@ func (_c *LLMRequestEventCreate) check() error {
 	}
 	if _, ok := _c.mutation.ErrorMessage(); !ok {
 		return &ValidationError{Name: "error_message", err: errors.New(`ent: missing required field "LLMRequestEvent.error_message"`)}
+	}
+	if _, ok := _c.mutation.RequestBody(); !ok {
+		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "LLMRequestEvent.request_body"`)}
+	}
+	if _, ok := _c.mutation.ResponseBody(); !ok {
+		return &ValidationError{Name: "response_body", err: errors.New(`ent: missing required field "LLMRequestEvent.response_body"`)}
 	}
 	return nil
 }
@@ -274,6 +316,14 @@ func (_c *LLMRequestEventCreate) createSpec() (*LLMRequestEvent, *sqlgraph.Creat
 	if value, ok := _c.mutation.ErrorMessage(); ok {
 		_spec.SetField(llmrequestevent.FieldErrorMessage, field.TypeString, value)
 		_node.ErrorMessage = value
+	}
+	if value, ok := _c.mutation.RequestBody(); ok {
+		_spec.SetField(llmrequestevent.FieldRequestBody, field.TypeString, value)
+		_node.RequestBody = value
+	}
+	if value, ok := _c.mutation.ResponseBody(); ok {
+		_spec.SetField(llmrequestevent.FieldResponseBody, field.TypeString, value)
+		_node.ResponseBody = value
 	}
 	return _node, _spec
 }

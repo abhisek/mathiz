@@ -104,6 +104,16 @@ func ErrorMessage(v string) predicate.LLMRequestEvent {
 	return predicate.LLMRequestEvent(sql.FieldEQ(FieldErrorMessage, v))
 }
 
+// RequestBody applies equality check predicate on the "request_body" field. It's identical to RequestBodyEQ.
+func RequestBody(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldEQ(FieldRequestBody, v))
+}
+
+// ResponseBody applies equality check predicate on the "response_body" field. It's identical to ResponseBodyEQ.
+func ResponseBody(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldEQ(FieldResponseBody, v))
+}
+
 // SequenceEQ applies the EQ predicate on the "sequence" field.
 func SequenceEQ(v int64) predicate.LLMRequestEvent {
 	return predicate.LLMRequestEvent(sql.FieldEQ(FieldSequence, v))
@@ -572,6 +582,136 @@ func ErrorMessageEqualFold(v string) predicate.LLMRequestEvent {
 // ErrorMessageContainsFold applies the ContainsFold predicate on the "error_message" field.
 func ErrorMessageContainsFold(v string) predicate.LLMRequestEvent {
 	return predicate.LLMRequestEvent(sql.FieldContainsFold(FieldErrorMessage, v))
+}
+
+// RequestBodyEQ applies the EQ predicate on the "request_body" field.
+func RequestBodyEQ(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldEQ(FieldRequestBody, v))
+}
+
+// RequestBodyNEQ applies the NEQ predicate on the "request_body" field.
+func RequestBodyNEQ(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldNEQ(FieldRequestBody, v))
+}
+
+// RequestBodyIn applies the In predicate on the "request_body" field.
+func RequestBodyIn(vs ...string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldIn(FieldRequestBody, vs...))
+}
+
+// RequestBodyNotIn applies the NotIn predicate on the "request_body" field.
+func RequestBodyNotIn(vs ...string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldNotIn(FieldRequestBody, vs...))
+}
+
+// RequestBodyGT applies the GT predicate on the "request_body" field.
+func RequestBodyGT(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldGT(FieldRequestBody, v))
+}
+
+// RequestBodyGTE applies the GTE predicate on the "request_body" field.
+func RequestBodyGTE(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldGTE(FieldRequestBody, v))
+}
+
+// RequestBodyLT applies the LT predicate on the "request_body" field.
+func RequestBodyLT(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldLT(FieldRequestBody, v))
+}
+
+// RequestBodyLTE applies the LTE predicate on the "request_body" field.
+func RequestBodyLTE(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldLTE(FieldRequestBody, v))
+}
+
+// RequestBodyContains applies the Contains predicate on the "request_body" field.
+func RequestBodyContains(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldContains(FieldRequestBody, v))
+}
+
+// RequestBodyHasPrefix applies the HasPrefix predicate on the "request_body" field.
+func RequestBodyHasPrefix(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldHasPrefix(FieldRequestBody, v))
+}
+
+// RequestBodyHasSuffix applies the HasSuffix predicate on the "request_body" field.
+func RequestBodyHasSuffix(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldHasSuffix(FieldRequestBody, v))
+}
+
+// RequestBodyEqualFold applies the EqualFold predicate on the "request_body" field.
+func RequestBodyEqualFold(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldEqualFold(FieldRequestBody, v))
+}
+
+// RequestBodyContainsFold applies the ContainsFold predicate on the "request_body" field.
+func RequestBodyContainsFold(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldContainsFold(FieldRequestBody, v))
+}
+
+// ResponseBodyEQ applies the EQ predicate on the "response_body" field.
+func ResponseBodyEQ(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldEQ(FieldResponseBody, v))
+}
+
+// ResponseBodyNEQ applies the NEQ predicate on the "response_body" field.
+func ResponseBodyNEQ(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldNEQ(FieldResponseBody, v))
+}
+
+// ResponseBodyIn applies the In predicate on the "response_body" field.
+func ResponseBodyIn(vs ...string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldIn(FieldResponseBody, vs...))
+}
+
+// ResponseBodyNotIn applies the NotIn predicate on the "response_body" field.
+func ResponseBodyNotIn(vs ...string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldNotIn(FieldResponseBody, vs...))
+}
+
+// ResponseBodyGT applies the GT predicate on the "response_body" field.
+func ResponseBodyGT(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldGT(FieldResponseBody, v))
+}
+
+// ResponseBodyGTE applies the GTE predicate on the "response_body" field.
+func ResponseBodyGTE(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldGTE(FieldResponseBody, v))
+}
+
+// ResponseBodyLT applies the LT predicate on the "response_body" field.
+func ResponseBodyLT(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldLT(FieldResponseBody, v))
+}
+
+// ResponseBodyLTE applies the LTE predicate on the "response_body" field.
+func ResponseBodyLTE(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldLTE(FieldResponseBody, v))
+}
+
+// ResponseBodyContains applies the Contains predicate on the "response_body" field.
+func ResponseBodyContains(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldContains(FieldResponseBody, v))
+}
+
+// ResponseBodyHasPrefix applies the HasPrefix predicate on the "response_body" field.
+func ResponseBodyHasPrefix(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldHasPrefix(FieldResponseBody, v))
+}
+
+// ResponseBodyHasSuffix applies the HasSuffix predicate on the "response_body" field.
+func ResponseBodyHasSuffix(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldHasSuffix(FieldResponseBody, v))
+}
+
+// ResponseBodyEqualFold applies the EqualFold predicate on the "response_body" field.
+func ResponseBodyEqualFold(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldEqualFold(FieldResponseBody, v))
+}
+
+// ResponseBodyContainsFold applies the ContainsFold predicate on the "response_body" field.
+func ResponseBodyContainsFold(v string) predicate.LLMRequestEvent {
+	return predicate.LLMRequestEvent(sql.FieldContainsFold(FieldResponseBody, v))
 }
 
 // And groups predicates with the AND operator between them.

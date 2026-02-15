@@ -140,6 +140,7 @@ func RenderFooter(hints []KeyHint, width int) string {
 }
 
 // RenderFrame composes the full frame: header + content + footer.
+// The output is exactly width×height to prevent terminal artifacts.
 func RenderFrame(header, content, footer string, width, height int) string {
 	headerHeight := lipgloss.Height(header)
 	footerHeight := lipgloss.Height(footer)

@@ -84,6 +84,12 @@ func (m *mockEventRepo) GemCounts(_ context.Context) (map[string]int, int, error
 func (m *mockEventRepo) QuerySessionSummaries(_ context.Context, _ store.QueryOpts) ([]store.SessionSummaryRecord, error) {
 	return nil, nil
 }
+func (m *mockEventRepo) QueryLLMEvents(_ context.Context, _ store.QueryOpts) ([]store.LLMRequestEventRecord, error) {
+	return nil, nil
+}
+func (m *mockEventRepo) GetLLMEvent(_ context.Context, _ int) (*store.LLMRequestEventRecord, error) {
+	return nil, nil
+}
 
 // mockSnapshotRepo implements store.SnapshotRepo for testing.
 type mockSnapshotRepo struct {

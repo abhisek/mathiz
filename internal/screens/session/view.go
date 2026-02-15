@@ -3,12 +3,15 @@ package session
 import (
 	"fmt"
 	"image/color"
+	"math"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 
 	"github.com/abhisek/mathiz/internal/gems"
 	sess "github.com/abhisek/mathiz/internal/session"
+	"github.com/abhisek/mathiz/internal/skillgraph"
+	"github.com/abhisek/mathiz/internal/ui/components"
 	"github.com/abhisek/mathiz/internal/ui/theme"
 )
 
@@ -40,15 +43,17 @@ func (s *SessionScreen) renderQuestionView(width, height int) string {
 	secs := int(remaining.Seconds()) % 60
 	timerStr := fmt.Sprintf("%d:%02d", mins, secs)
 
+	// Line 1: Skill name (left) + slot indicator + correct count + timer (right).
 	infoLeft := lipgloss.NewStyle().
 		Foreground(theme.Secondary).
 		Bold(true).
-		Render(fmt.Sprintf("  Skill: %s", skillName))
+		Render(fmt.Sprintf("  %s", skillName))
 
+	slotStr := fmt.Sprintf("Slot %d/%d", state.CurrentSlotIndex+1, len(state.Plan.Slots))
 	infoRight := lipgloss.NewStyle().
 		Foreground(theme.TextDim).
-		Render(fmt.Sprintf("Q %d/~15  %s %d  %s %s",
-			state.TotalQuestions+1,
+		Render(fmt.Sprintf("%s  %s %d  %s %s",
+			slotStr,
 			lipgloss.NewStyle().Foreground(theme.Success).Render("*"),
 			state.TotalCorrect,
 			lipgloss.NewStyle().Foreground(theme.Accent).Render("T"),
@@ -63,6 +68,11 @@ func (s *SessionScreen) renderQuestionView(width, height int) string {
 
 	b.WriteString(infoLine)
 	b.WriteString("\n")
+
+	// Line 2: Tier progress indicator with progress bar.
+	b.WriteString(s.renderTierProgress(slot, width))
+	b.WriteString("\n")
+
 	b.WriteString(lipgloss.NewStyle().Foreground(theme.Border).Render(strings.Repeat("─", width-4)))
 	b.WriteString("\n\n")
 
@@ -89,6 +99,74 @@ func (s *SessionScreen) renderQuestionView(width, height int) string {
 	}
 
 	return b.String()
+}
+
+// renderTierProgress renders the tier progress indicator line.
+func (s *SessionScreen) renderTierProgress(slot *sess.PlanSlot, width int) string {
+	if slot == nil {
+		return ""
+	}
+
+	// Determine the actual current tier from the mastery service (not the fixed plan tier).
+	currentTier := slot.Tier
+	if s.state.MasteryService != nil {
+		sm := s.state.MasteryService.GetMastery(slot.Skill.ID)
+		if sm != nil {
+			currentTier = sm.CurrentTier
+		}
+	}
+
+	tierLabel := "Learn"
+	if slot.Category == sess.CategoryReview {
+		tierLabel = "Review"
+	} else if currentTier == skillgraph.TierProve {
+		tierLabel = "Prove"
+	}
+
+	tierRendered := lipgloss.NewStyle().
+		Foreground(theme.Accent).
+		Bold(true).
+		Render(fmt.Sprintf("  %s", tierLabel))
+
+	// Calculate correct/needed from mastery service using the actual current tier.
+	var correct, needed int
+	cfg := slot.Skill.Tiers[currentTier]
+
+	if s.state.MasteryService != nil {
+		sm := s.state.MasteryService.GetMastery(slot.Skill.ID)
+		if sm != nil {
+			needed = int(math.Ceil(float64(cfg.ProblemsRequired)*cfg.AccuracyThreshold)) + sm.MisconceptionPenalty
+			correct = sm.CorrectCount
+			if correct > needed {
+				correct = needed
+			}
+		}
+	}
+	if needed == 0 {
+		needed = int(math.Ceil(float64(cfg.ProblemsRequired) * cfg.AccuracyThreshold))
+	}
+
+	fractionStr := lipgloss.NewStyle().
+		Foreground(theme.TextDim).
+		Render(fmt.Sprintf(" %d/%d", correct, needed))
+
+	// Progress bar.
+	var pct float64
+	if needed > 0 {
+		pct = float64(correct) / float64(needed)
+	}
+	if pct > 1.0 {
+		pct = 1.0
+	}
+
+	labelWidth := lipgloss.Width(tierRendered) + lipgloss.Width(fractionStr) + 2
+	barWidth := width - labelWidth - 6
+	if barWidth < 8 {
+		barWidth = 8
+	}
+	bar := components.NewProgressBar("", pct, false, barWidth)
+
+	return tierRendered + fractionStr + "  " + bar.View()
 }
 
 // renderMultipleChoice renders multiple choice options.

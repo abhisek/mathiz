@@ -21,4 +21,5 @@ func init() {
 	rootCmd.AddCommand(playCmd)
 	rootCmd.AddCommand(resetCmd)
 	rootCmd.AddCommand(statsCmd)
+	rootCmd.AddCommand(llmCmd)
 }

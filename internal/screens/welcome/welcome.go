@@ -72,11 +72,8 @@ func (w *WelcomeScreen) Update(msg tea.Msg) (screen.Screen, tea.Cmd) {
 		})
 
 	case tea.KeyPressMsg:
-		// Only transition once the full animation has played.
-		if w.elapsed >= totalDur {
-			return w, w.transition()
-		}
-		return w, nil
+		// Any keypress skips the animation and transitions immediately.
+		return w, w.transition()
 	}
 
 	return w, nil

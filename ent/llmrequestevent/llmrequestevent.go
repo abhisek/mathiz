@@ -33,6 +33,10 @@ const (
 	FieldSuccess = "success"
 	// FieldErrorMessage holds the string denoting the error_message field in the database.
 	FieldErrorMessage = "error_message"
+	// FieldRequestBody holds the string denoting the request_body field in the database.
+	FieldRequestBody = "request_body"
+	// FieldResponseBody holds the string denoting the response_body field in the database.
+	FieldResponseBody = "response_body"
 	// Table holds the table name of the llmrequestevent in the database.
 	Table = "llm_request_events"
 )
@@ -50,6 +54,8 @@ var Columns = []string{
 	FieldLatencyMs,
 	FieldSuccess,
 	FieldErrorMessage,
+	FieldRequestBody,
+	FieldResponseBody,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -73,6 +79,10 @@ var (
 	DefaultLatencyMs int64
 	// DefaultErrorMessage holds the default value on creation for the "error_message" field.
 	DefaultErrorMessage string
+	// DefaultRequestBody holds the default value on creation for the "request_body" field.
+	DefaultRequestBody string
+	// DefaultResponseBody holds the default value on creation for the "response_body" field.
+	DefaultResponseBody string
 )
 
 // OrderOption defines the ordering options for the LLMRequestEvent queries.
@@ -131,4 +141,14 @@ func BySuccess(opts ...sql.OrderTermOption) OrderOption {
 // ByErrorMessage orders the results by the error_message field.
 func ByErrorMessage(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldErrorMessage, opts...).ToFunc()
+}
+
+// ByRequestBody orders the results by the request_body field.
+func ByRequestBody(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestBody, opts...).ToFunc()
+}
+
+// ByResponseBody orders the results by the response_body field.
+func ByResponseBody(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldResponseBody, opts...).ToFunc()
 }

@@ -74,18 +74,22 @@ func TestPhaseTransitions(t *testing.T) {
 	}
 }
 
-func TestKeypressDuringAnimationIgnored(t *testing.T) {
+func TestKeypressDuringAnimationSkipsToTransition(t *testing.T) {
 	w, callCount := newTestWelcomeWithCounter()
 
 	// Advance a bit so we're mid-animation
 	sendTicks(w, 3)
 
 	_, cmd := w.Update(tea.KeyPressMsg{Code: ' '})
-	if cmd != nil {
-		t.Error("keypress during animation should be ignored")
+	if cmd == nil {
+		t.Fatal("keypress during animation should trigger transition")
 	}
-	if *callCount != 0 {
-		t.Errorf("factory should not be called during animation, got %d", *callCount)
+	msg := cmd()
+	if _, ok := msg.(router.ReplaceScreenMsg); !ok {
+		t.Fatalf("expected ReplaceScreenMsg, got %T", msg)
+	}
+	if *callCount != 1 {
+		t.Errorf("factory should be called once, got %d", *callCount)
 	}
 }
 

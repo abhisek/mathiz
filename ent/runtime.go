@@ -178,6 +178,14 @@ func init() {
 	llmrequesteventDescErrorMessage := llmrequesteventFields[7].Descriptor()
 	// llmrequestevent.DefaultErrorMessage holds the default value on creation for the error_message field.
 	llmrequestevent.DefaultErrorMessage = llmrequesteventDescErrorMessage.Default.(string)
+	// llmrequesteventDescRequestBody is the schema descriptor for request_body field.
+	llmrequesteventDescRequestBody := llmrequesteventFields[8].Descriptor()
+	// llmrequestevent.DefaultRequestBody holds the default value on creation for the request_body field.
+	llmrequestevent.DefaultRequestBody = llmrequesteventDescRequestBody.Default.(string)
+	// llmrequesteventDescResponseBody is the schema descriptor for response_body field.
+	llmrequesteventDescResponseBody := llmrequesteventFields[9].Descriptor()
+	// llmrequestevent.DefaultResponseBody holds the default value on creation for the response_body field.
+	llmrequestevent.DefaultResponseBody = llmrequesteventDescResponseBody.Default.(string)
 	lessoneventMixin := schema.LessonEvent{}.Mixin()
 	lessoneventMixinFields0 := lessoneventMixin[0].Fields()
 	_ = lessoneventMixinFields0

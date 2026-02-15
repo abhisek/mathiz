@@ -160,6 +160,34 @@ func (_u *LLMRequestEventUpdate) SetNillableErrorMessage(v *string) *LLMRequestE
 	return _u
 }
 
+// SetRequestBody sets the "request_body" field.
+func (_u *LLMRequestEventUpdate) SetRequestBody(v string) *LLMRequestEventUpdate {
+	_u.mutation.SetRequestBody(v)
+	return _u
+}
+
+// SetNillableRequestBody sets the "request_body" field if the given value is not nil.
+func (_u *LLMRequestEventUpdate) SetNillableRequestBody(v *string) *LLMRequestEventUpdate {
+	if v != nil {
+		_u.SetRequestBody(*v)
+	}
+	return _u
+}
+
+// SetResponseBody sets the "response_body" field.
+func (_u *LLMRequestEventUpdate) SetResponseBody(v string) *LLMRequestEventUpdate {
+	_u.mutation.SetResponseBody(v)
+	return _u
+}
+
+// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
+func (_u *LLMRequestEventUpdate) SetNillableResponseBody(v *string) *LLMRequestEventUpdate {
+	if v != nil {
+		_u.SetResponseBody(*v)
+	}
+	return _u
+}
+
 // Mutation returns the LLMRequestEventMutation object of the builder.
 func (_u *LLMRequestEventUpdate) Mutation() *LLMRequestEventMutation {
 	return _u.mutation
@@ -233,6 +261,12 @@ func (_u *LLMRequestEventUpdate) sqlSave(ctx context.Context) (_node int, err er
 	}
 	if value, ok := _u.mutation.ErrorMessage(); ok {
 		_spec.SetField(llmrequestevent.FieldErrorMessage, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RequestBody(); ok {
+		_spec.SetField(llmrequestevent.FieldRequestBody, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ResponseBody(); ok {
+		_spec.SetField(llmrequestevent.FieldResponseBody, field.TypeString, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -387,6 +421,34 @@ func (_u *LLMRequestEventUpdateOne) SetNillableErrorMessage(v *string) *LLMReque
 	return _u
 }
 
+// SetRequestBody sets the "request_body" field.
+func (_u *LLMRequestEventUpdateOne) SetRequestBody(v string) *LLMRequestEventUpdateOne {
+	_u.mutation.SetRequestBody(v)
+	return _u
+}
+
+// SetNillableRequestBody sets the "request_body" field if the given value is not nil.
+func (_u *LLMRequestEventUpdateOne) SetNillableRequestBody(v *string) *LLMRequestEventUpdateOne {
+	if v != nil {
+		_u.SetRequestBody(*v)
+	}
+	return _u
+}
+
+// SetResponseBody sets the "response_body" field.
+func (_u *LLMRequestEventUpdateOne) SetResponseBody(v string) *LLMRequestEventUpdateOne {
+	_u.mutation.SetResponseBody(v)
+	return _u
+}
+
+// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
+func (_u *LLMRequestEventUpdateOne) SetNillableResponseBody(v *string) *LLMRequestEventUpdateOne {
+	if v != nil {
+		_u.SetResponseBody(*v)
+	}
+	return _u
+}
+
 // Mutation returns the LLMRequestEventMutation object of the builder.
 func (_u *LLMRequestEventUpdateOne) Mutation() *LLMRequestEventMutation {
 	return _u.mutation
@@ -490,6 +552,12 @@ func (_u *LLMRequestEventUpdateOne) sqlSave(ctx context.Context) (_node *LLMRequ
 	}
 	if value, ok := _u.mutation.ErrorMessage(); ok {
 		_spec.SetField(llmrequestevent.FieldErrorMessage, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RequestBody(); ok {
+		_spec.SetField(llmrequestevent.FieldRequestBody, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ResponseBody(); ok {
+		_spec.SetField(llmrequestevent.FieldResponseBody, field.TypeString, value)
 	}
 	_node = &LLMRequestEvent{config: _u.config}
 	_spec.Assign = _node.assignValues

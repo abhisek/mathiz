@@ -146,7 +146,10 @@ func (h *HomeScreen) View(width, height int) string {
 	centeredMenu := lipgloss.PlaceHorizontal(width, lipgloss.Center, menuBlock)
 	sections = append(sections, centeredMenu)
 
-	return "\n" + strings.Join(sections, "\n\n")
+	content := "\n" + strings.Join(sections, "\n\n")
+
+	// Fill the full width×height to prevent artifacts from previous screens.
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
 }
 
 func (h *HomeScreen) Title() string {

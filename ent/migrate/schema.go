@@ -197,6 +197,8 @@ var (
 		{Name: "latency_ms", Type: field.TypeInt64, Default: 0},
 		{Name: "success", Type: field.TypeBool},
 		{Name: "error_message", Type: field.TypeString, Default: ""},
+		{Name: "request_body", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "response_body", Type: field.TypeString, Size: 2147483647, Default: ""},
 	}
 	// LlmRequestEventsTable holds the schema information for the "llm_request_events" table.
 	LlmRequestEventsTable = &schema.Table{

@@ -102,6 +102,25 @@ type LLMRequestEventData struct {
 	LatencyMs    int64
 	Success      bool
 	ErrorMessage string
+	RequestBody  string
+	ResponseBody string
+}
+
+// LLMRequestEventRecord is a hydrated LLM event for display (includes ID and timestamp).
+type LLMRequestEventRecord struct {
+	ID           int
+	Sequence     int64
+	Timestamp    time.Time
+	Provider     string
+	Model        string
+	Purpose      string
+	InputTokens  int
+	OutputTokens int
+	LatencyMs    int64
+	Success      bool
+	ErrorMessage string
+	RequestBody  string
+	ResponseBody string
 }
 
 // SessionEventData captures the data for a session lifecycle event.
@@ -270,4 +289,10 @@ type EventRepo interface {
 
 	// QuerySessionSummaries returns session end events for the history screen.
 	QuerySessionSummaries(ctx context.Context, opts QueryOpts) ([]SessionSummaryRecord, error)
+
+	// QueryLLMEvents returns LLM request events matching the query options.
+	QueryLLMEvents(ctx context.Context, opts QueryOpts) ([]LLMRequestEventRecord, error)
+
+	// GetLLMEvent returns a single LLM request event by ID, or nil if not found.
+	GetLLMEvent(ctx context.Context, id int) (*LLMRequestEventRecord, error)
 }

@@ -37,6 +37,10 @@ type LLMRequestEvent struct {
 	Success bool `json:"success,omitempty"`
 	// Error message if failed
 	ErrorMessage string `json:"error_message,omitempty"`
+	// Serialized request (system + messages)
+	RequestBody string `json:"request_body,omitempty"`
+	// Raw LLM response content
+	ResponseBody string `json:"response_body,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -49,7 +53,7 @@ func (*LLMRequestEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case llmrequestevent.FieldID, llmrequestevent.FieldSequence, llmrequestevent.FieldInputTokens, llmrequestevent.FieldOutputTokens, llmrequestevent.FieldLatencyMs:
 			values[i] = new(sql.NullInt64)
-		case llmrequestevent.FieldProvider, llmrequestevent.FieldModel, llmrequestevent.FieldPurpose, llmrequestevent.FieldErrorMessage:
+		case llmrequestevent.FieldProvider, llmrequestevent.FieldModel, llmrequestevent.FieldPurpose, llmrequestevent.FieldErrorMessage, llmrequestevent.FieldRequestBody, llmrequestevent.FieldResponseBody:
 			values[i] = new(sql.NullString)
 		case llmrequestevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -134,6 +138,18 @@ func (_m *LLMRequestEvent) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ErrorMessage = value.String
 			}
+		case llmrequestevent.FieldRequestBody:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field request_body", values[i])
+			} else if value.Valid {
+				_m.RequestBody = value.String
+			}
+		case llmrequestevent.FieldResponseBody:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field response_body", values[i])
+			} else if value.Valid {
+				_m.ResponseBody = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -199,6 +215,12 @@ func (_m *LLMRequestEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("error_message=")
 	builder.WriteString(_m.ErrorMessage)
+	builder.WriteString(", ")
+	builder.WriteString("request_body=")
+	builder.WriteString(_m.RequestBody)
+	builder.WriteString(", ")
+	builder.WriteString("response_body=")
+	builder.WriteString(_m.ResponseBody)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -37,6 +37,12 @@ func (LLMRequestEvent) Fields() []ent.Field {
 		field.String("error_message").
 			Default("").
 			Comment("Error message if failed"),
+		field.Text("request_body").
+			Default("").
+			Comment("Serialized request (system + messages)"),
+		field.Text("response_body").
+			Default("").
+			Comment("Raw LLM response content"),
 	}
 }
 

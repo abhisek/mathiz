@@ -3496,6 +3496,8 @@ type LLMRequestEventMutation struct {
 	addlatency_ms    *int64
 	success          *bool
 	error_message    *string
+	request_body     *string
+	response_body    *string
 	clearedFields    map[string]struct{}
 	done             bool
 	oldValue         func(context.Context) (*LLMRequestEvent, error)
@@ -4040,6 +4042,78 @@ func (m *LLMRequestEventMutation) ResetErrorMessage() {
 	m.error_message = nil
 }
 
+// SetRequestBody sets the "request_body" field.
+func (m *LLMRequestEventMutation) SetRequestBody(s string) {
+	m.request_body = &s
+}
+
+// RequestBody returns the value of the "request_body" field in the mutation.
+func (m *LLMRequestEventMutation) RequestBody() (r string, exists bool) {
+	v := m.request_body
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestBody returns the old "request_body" field's value of the LLMRequestEvent entity.
+// If the LLMRequestEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LLMRequestEventMutation) OldRequestBody(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestBody is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestBody requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestBody: %w", err)
+	}
+	return oldValue.RequestBody, nil
+}
+
+// ResetRequestBody resets all changes to the "request_body" field.
+func (m *LLMRequestEventMutation) ResetRequestBody() {
+	m.request_body = nil
+}
+
+// SetResponseBody sets the "response_body" field.
+func (m *LLMRequestEventMutation) SetResponseBody(s string) {
+	m.response_body = &s
+}
+
+// ResponseBody returns the value of the "response_body" field in the mutation.
+func (m *LLMRequestEventMutation) ResponseBody() (r string, exists bool) {
+	v := m.response_body
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResponseBody returns the old "response_body" field's value of the LLMRequestEvent entity.
+// If the LLMRequestEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LLMRequestEventMutation) OldResponseBody(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResponseBody is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResponseBody requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResponseBody: %w", err)
+	}
+	return oldValue.ResponseBody, nil
+}
+
+// ResetResponseBody resets all changes to the "response_body" field.
+func (m *LLMRequestEventMutation) ResetResponseBody() {
+	m.response_body = nil
+}
+
 // Where appends a list predicates to the LLMRequestEventMutation builder.
 func (m *LLMRequestEventMutation) Where(ps ...predicate.LLMRequestEvent) {
 	m.predicates = append(m.predicates, ps...)
@@ -4074,7 +4148,7 @@ func (m *LLMRequestEventMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *LLMRequestEventMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 12)
 	if m.sequence != nil {
 		fields = append(fields, llmrequestevent.FieldSequence)
 	}
@@ -4105,6 +4179,12 @@ func (m *LLMRequestEventMutation) Fields() []string {
 	if m.error_message != nil {
 		fields = append(fields, llmrequestevent.FieldErrorMessage)
 	}
+	if m.request_body != nil {
+		fields = append(fields, llmrequestevent.FieldRequestBody)
+	}
+	if m.response_body != nil {
+		fields = append(fields, llmrequestevent.FieldResponseBody)
+	}
 	return fields
 }
 
@@ -4133,6 +4213,10 @@ func (m *LLMRequestEventMutation) Field(name string) (ent.Value, bool) {
 		return m.Success()
 	case llmrequestevent.FieldErrorMessage:
 		return m.ErrorMessage()
+	case llmrequestevent.FieldRequestBody:
+		return m.RequestBody()
+	case llmrequestevent.FieldResponseBody:
+		return m.ResponseBody()
 	}
 	return nil, false
 }
@@ -4162,6 +4246,10 @@ func (m *LLMRequestEventMutation) OldField(ctx context.Context, name string) (en
 		return m.OldSuccess(ctx)
 	case llmrequestevent.FieldErrorMessage:
 		return m.OldErrorMessage(ctx)
+	case llmrequestevent.FieldRequestBody:
+		return m.OldRequestBody(ctx)
+	case llmrequestevent.FieldResponseBody:
+		return m.OldResponseBody(ctx)
 	}
 	return nil, fmt.Errorf("unknown LLMRequestEvent field %s", name)
 }
@@ -4240,6 +4328,20 @@ func (m *LLMRequestEventMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetErrorMessage(v)
+		return nil
+	case llmrequestevent.FieldRequestBody:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestBody(v)
+		return nil
+	case llmrequestevent.FieldResponseBody:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResponseBody(v)
 		return nil
 	}
 	return fmt.Errorf("unknown LLMRequestEvent field %s", name)
@@ -4370,6 +4472,12 @@ func (m *LLMRequestEventMutation) ResetField(name string) error {
 		return nil
 	case llmrequestevent.FieldErrorMessage:
 		m.ResetErrorMessage()
+		return nil
+	case llmrequestevent.FieldRequestBody:
+		m.ResetRequestBody()
+		return nil
+	case llmrequestevent.FieldResponseBody:
+		m.ResetResponseBody()
 		return nil
 	}
 	return fmt.Errorf("unknown LLMRequestEvent field %s", name)
