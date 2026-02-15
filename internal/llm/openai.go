@@ -43,6 +43,26 @@ func NewOpenAIProvider(cfg OpenAIConfig) (*OpenAIProvider, error) {
 	}, nil
 }
 
+// newOpenAIProviderRaw creates an OpenAIProvider without model name mapping.
+// Used by OpenRouter where model IDs are passed through directly.
+func newOpenAIProviderRaw(cfg OpenAIConfig) (*OpenAIProvider, error) {
+	if cfg.APIKey == "" {
+		return nil, fmt.Errorf("openai API key is required")
+	}
+
+	config := openai.DefaultConfig(cfg.APIKey)
+	if cfg.BaseURL != "" {
+		config.BaseURL = cfg.BaseURL
+	}
+
+	client := openai.NewClientWithConfig(config)
+
+	return &OpenAIProvider{
+		client: client,
+		model:  cfg.Model,
+	}, nil
+}
+
 func (p *OpenAIProvider) Generate(ctx context.Context, req Request) (*Response, error) {
 	messages := buildOpenAIMessages(req)
 

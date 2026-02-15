@@ -20,6 +20,8 @@ func NewProvider(ctx context.Context, cfg Config, eventRepo store.EventRepo) (Pr
 		base, err = NewOpenAIProvider(cfg.OpenAI)
 	case "gemini":
 		base, err = NewGeminiProvider(ctx, cfg.Gemini)
+	case "openrouter":
+		base, err = NewOpenRouterProvider(cfg.OpenRouter)
 	case "mock":
 		return NewMockProvider(), nil
 	default:
@@ -42,7 +44,7 @@ func NewProvider(ctx context.Context, cfg Config, eventRepo store.EventRepo) (Pr
 func NewProviderFromEnv(ctx context.Context, eventRepo store.EventRepo) (Provider, error) {
 	cfg, ok := DiscoverConfig()
 	if !ok {
-		return nil, fmt.Errorf("no LLM API key found; set one of GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY")
+		return nil, fmt.Errorf("no LLM API key found; set one of GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY")
 	}
 	return NewProvider(ctx, cfg, eventRepo)
 }

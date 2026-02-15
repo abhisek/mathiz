@@ -9,13 +9,14 @@ import (
 // Config holds all LLM provider configuration.
 type Config struct {
 	// Provider selects which LLM provider to use.
-	// Values: "anthropic", "openai", "gemini", "mock"
+	// Values: "anthropic", "openai", "gemini", "openrouter", "mock"
 	Provider string
 
-	Anthropic AnthropicConfig
-	OpenAI    OpenAIConfig
-	Gemini    GeminiConfig
-	Retry     RetryConfig
+	Anthropic  AnthropicConfig
+	OpenAI     OpenAIConfig
+	Gemini     GeminiConfig
+	OpenRouter OpenRouterConfig
+	Retry      RetryConfig
 
 	// Timeout is the maximum duration for a single LLM request
 	// (including retries). Default: 30s.
@@ -41,6 +42,13 @@ type GeminiConfig struct {
 	Model  string // Default: "gemini-flash"
 }
 
+// OpenRouterConfig holds OpenRouter-specific configuration.
+type OpenRouterConfig struct {
+	APIKey  string
+	Model   string // Default: "google/gemini-2.0-flash-exp"
+	BaseURL string // Default: "https://openrouter.ai/api/v1"
+}
+
 // RetryConfig configures retry behavior for transient failures.
 type RetryConfig struct {
 	MaxAttempts int
@@ -61,6 +69,9 @@ func DefaultConfig() Config {
 		},
 		Gemini: GeminiConfig{
 			Model: "gemini-flash",
+		},
+		OpenRouter: OpenRouterConfig{
+			Model: "google/gemini-2.0-flash-exp",
 		},
 		Retry: RetryConfig{
 			MaxAttempts: 3,
@@ -105,6 +116,13 @@ func ConfigFromEnv() Config {
 		cfg.Gemini.Model = m
 	}
 
+	if k := os.Getenv("MATHIZ_OPENROUTER_API_KEY"); k != "" {
+		cfg.OpenRouter.APIKey = k
+	}
+	if m := os.Getenv("MATHIZ_OPENROUTER_MODEL"); m != "" {
+		cfg.OpenRouter.Model = m
+	}
+
 	return cfg
 }
 
@@ -129,6 +147,11 @@ func DiscoverConfig() (Config, bool) {
 		cfg.Anthropic.APIKey = k
 		return cfg, true
 	}
+	if k := os.Getenv("OPENROUTER_API_KEY"); k != "" {
+		cfg.Provider = "openrouter"
+		cfg.OpenRouter.APIKey = k
+		return cfg, true
+	}
 
 	return Config{}, false
 }
@@ -147,6 +170,10 @@ func (c Config) Validate() error {
 	case "gemini":
 		if c.Gemini.APIKey == "" {
 			return fmt.Errorf("MATHIZ_GEMINI_API_KEY is required for the gemini provider")
+		}
+	case "openrouter":
+		if c.OpenRouter.APIKey == "" {
+			return fmt.Errorf("MATHIZ_OPENROUTER_API_KEY is required for the openrouter provider")
 		}
 	case "mock":
 		// No API key needed.

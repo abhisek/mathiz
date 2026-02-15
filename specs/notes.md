@@ -86,7 +86,23 @@ thread](https://news.ycombinator.com/item?id=39002138)
 
 ### Adaptive Learning
 
-TODO
+The core idea is:
+
+```
+mastery = fn(speed, accuracy)
+```
+
+Real life evidence shows that a young learner often forgets earlier concepts that they have not yet
+mastered (fluent). Even adults have shown evidence of rusty skills even after having decades of
+fluency in a concept. To tackle this, one of the goals of the system is to adapt to the current
+state of a learner based on their progress, mastery and periodically check for fluency in previously
+mastered skill.
+
+All of this is done using a combination of:
+
+- Mastery evaluator
+- Spaced repetition
+- Error diagnosis
 
 ## Approach
 
@@ -110,4 +126,10 @@ information ..` to write detailed specs for each component. See [specs](../specs
 
 ## Challenges
 
-TODO
+### Spec Drift
+
+The most common problem that I anticipated and noticed very quickly. The TUI drifted first because I
+want to tweak the experience. Also based on feedback from some of the learners, I had to tweak and
+change the design language for the TUI. At this point, I am not sure if its worth keeping the spec
+updated.
+

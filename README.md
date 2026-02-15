@@ -7,7 +7,7 @@ learning](./internal/mastery/) and [positive reinforcement](./internal/gems/) to
 and constrained.
 
 Built with [Claude Code](https://code.claude.ai) using a spec driven development approach. See
-[specs](./specs/) for [author notes](/specs/notes.md) for details.
+[specs](./specs/) and [author notes](/specs/notes.md) for details.
 
 <div align="center">
   <picture>
@@ -32,19 +32,21 @@ Mathiz requires an LLM API key. It automatically discovers keys from standard en
 | `GEMINI_API_KEY` | Gemini | gemini-2.0-flash |
 | `OPENAI_API_KEY` | OpenAI | gpt-4o-mini |
 | `ANTHROPIC_API_KEY` | Anthropic | claude-sonnet-4 |
+| `OPENROUTER_API_KEY` | OpenRouter | google/gemini-2.0-flash-exp |
 
 If you already have one of these set, Mathiz will just work. To override the auto-detected provider or use a custom model:
 
 ```sh
-export MATHIZ_LLM_PROVIDER=gemini          # force a specific provider
-export MATHIZ_GEMINI_MODEL=gemini-2.0-pro  # override default model
+export MATHIZ_LLM_PROVIDER=gemini              # force a specific provider
+export MATHIZ_GEMINI_MODEL=gemini-2.0-pro      # override default model
+export MATHIZ_OPENROUTER_MODEL=anthropic/claude-3-haiku  # override OpenRouter model
 ```
 
 ## Usage
 
 ```sh
-mathiz          # launch the TUI
-mathiz play     # start a practice session directly
+mathiz          # launch the TUI (same as mathiz play)
+mathiz play     # start learning
 mathiz stats    # view learning stats
 mathiz llm      # inspect LLM usage
 mathiz reset    # reset all progress
