@@ -361,6 +361,8 @@ func (s *SessionScreen) handleFeedbackDone() (screen.Screen, tea.Cmd) {
 	}
 
 	s.state.ShowingFeedback = false
+	s.state.Phase = sess.PhaseActive
+	s.state.CurrentQuestion = nil
 	s.state.TierAdvanced = nil
 	s.state.MasteryTransition = nil
 	s.state.PendingGemAward = nil
