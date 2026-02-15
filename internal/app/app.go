@@ -15,6 +15,7 @@ import (
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
 	"github.com/abhisek/mathiz/internal/screens/home"
+	sessionscreen "github.com/abhisek/mathiz/internal/screens/session"
 	"github.com/abhisek/mathiz/internal/screens/welcome"
 	"github.com/abhisek/mathiz/internal/selfupdate"
 	"github.com/abhisek/mathiz/internal/store"
@@ -51,6 +52,9 @@ type Options struct {
 
 	// UpdateCh receives the result of an async version check. May be nil.
 	UpdateCh <-chan *selfupdate.UpdateResult
+
+	// DirectSession skips welcome and home screens, launching a session immediately.
+	DirectSession bool
 }
 
 // UpdateAvailableMsg is sent when an update check completes with a new version.
@@ -67,15 +71,23 @@ type AppModel struct {
 	updateResult *selfupdate.UpdateResult
 }
 
-// newAppModel creates a new AppModel with the welcome screen.
+// newAppModel creates a new AppModel with the welcome screen,
+// or a direct session screen when opts.DirectSession is set.
 func newAppModel(opts Options) *AppModel {
 	m := &AppModel{
 		opts: opts,
 	}
-	homeFactory := func() screen.Screen {
-		return home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService, opts.LessonService, opts.Compressor, opts.GemService, m.updateResult)
+	if opts.DirectSession {
+		m.router = router.New(sessionscreen.New(
+			opts.Generator, opts.EventRepo, opts.SnapshotRepo,
+			opts.DiagnosisService, opts.LessonService, opts.Compressor, opts.GemService,
+		))
+	} else {
+		homeFactory := func() screen.Screen {
+			return home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService, opts.LessonService, opts.Compressor, opts.GemService, m.updateResult)
+		}
+		m.router = router.New(welcome.New(homeFactory))
 	}
-	m.router = router.New(welcome.New(homeFactory))
 	return m
 }
 
@@ -116,6 +128,12 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
+	case router.PopScreenMsg:
+		// In direct session mode, quit when the last screen tries to pop.
+		if m.opts.DirectSession && m.router.Depth() <= 1 {
+			return m, tea.Quit
+		}
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -123,6 +141,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if m.router.Depth() > 1 {
 				return m, func() tea.Msg { return router.PopScreenMsg{} }
+			}
+			if m.opts.DirectSession {
+				return m, tea.Quit
 			}
 			return m, nil
 		}

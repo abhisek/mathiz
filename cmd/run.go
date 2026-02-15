@@ -42,6 +42,9 @@ func runApp(cmd *cobra.Command) error {
 
 	provider, err := llm.NewProviderFromEnv(ctx, eventRepo)
 	if err != nil {
+		if isDirectSession(cmd) {
+			return errNoLLM
+		}
 		fmt.Fprintln(os.Stderr, "LLM provider not configured:", err)
 		fmt.Fprintln(os.Stderr, "AI features will be unavailable.")
 	} else {
@@ -53,6 +56,8 @@ func runApp(cmd *cobra.Command) error {
 		opts.LessonService = lessons.NewService(provider, lessons.DefaultConfig())
 		opts.Compressor = lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
 	}
+
+	opts.DirectSession = isDirectSession(cmd)
 
 	return app.Run(opts)
 }

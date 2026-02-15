@@ -45,8 +45,8 @@ export MATHIZ_OPENROUTER_MODEL=anthropic/claude-3-haiku  # override OpenRouter m
 ## Usage
 
 ```sh
-mathiz          # launch the TUI (same as mathiz play)
-mathiz play     # start learning
+mathiz          # launch the TUI (welcome → home → session)
+mathiz play     # jump straight into a practice session
 mathiz stats    # view learning stats
 mathiz llm      # inspect LLM usage
 mathiz reset    # reset all progress
