@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -12,10 +14,11 @@ import (
 )
 
 const (
-	defaultOwner   = "abhisek"
-	defaultRepo    = "mathiz"
-	defaultTimeout = 5 * time.Second
-	defaultBaseURL = "https://api.github.com"
+	defaultOwner          = "abhisek"
+	defaultRepo           = "mathiz"
+	defaultTimeout        = 5 * time.Second
+	defaultBaseURL        = "https://api.github.com"
+	defaultDownloadBaseURL = "https://github.com"
 )
 
 type CheckInput struct {
@@ -32,11 +35,13 @@ type UpdateResult struct {
 type Option func(*Checker)
 
 type Checker struct {
-	owner   string
-	repo    string
-	timeout time.Duration
-	baseURL string
-	client  *http.Client
+	owner           string
+	repo            string
+	timeout         time.Duration
+	baseURL         string
+	downloadBaseURL string
+	execPath        func() (string, error)
+	client          *http.Client
 }
 
 func WithHTTPClient(client *http.Client) Option {
@@ -51,6 +56,20 @@ func WithBaseURL(baseURL string) Option {
 	}
 }
 
+func WithDownloadBaseURL(url string) Option {
+	return func(c *Checker) {
+		c.downloadBaseURL = url
+	}
+}
+
+// withExecPath overrides the function used to resolve the current binary path.
+// Unexported; intended for tests.
+func withExecPath(fn func() (string, error)) Option {
+	return func(c *Checker) {
+		c.execPath = fn
+	}
+}
+
 func WithTimeout(timeout time.Duration) Option {
 	return func(c *Checker) {
 		c.timeout = timeout
@@ -59,10 +78,12 @@ func WithTimeout(timeout time.Duration) Option {
 
 func NewChecker(opts ...Option) *Checker {
 	c := &Checker{
-		owner:   defaultOwner,
-		repo:    defaultRepo,
-		timeout: defaultTimeout,
-		baseURL: defaultBaseURL,
+		owner:           defaultOwner,
+		repo:            defaultRepo,
+		timeout:         defaultTimeout,
+		baseURL:         defaultBaseURL,
+		downloadBaseURL: defaultDownloadBaseURL,
+		execPath:        defaultExecPath,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -71,6 +92,14 @@ func NewChecker(opts ...Option) *Checker {
 		c.client = &http.Client{Timeout: c.timeout}
 	}
 	return c
+}
+
+func defaultExecPath() (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(exe)
 }
 
 type githubRelease struct {

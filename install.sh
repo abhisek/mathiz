@@ -3,8 +3,19 @@ set -e
 
 do_install() {
   REPO="abhisek/mathiz"
-  INSTALL_DIR="/usr/local/bin"
   BINARY="mathiz"
+
+  # Prefer $HOME/.local/bin if it exists and is in PATH.
+  INSTALL_DIR="/usr/local/bin"
+  if [ -n "$HOME" ]; then
+    local_bin="$HOME/.local/bin"
+    case ":${PATH}:" in
+      *":${local_bin}:"*)
+        INSTALL_DIR="$local_bin"
+        mkdir -p "$INSTALL_DIR"
+        ;;
+    esac
+  fi
 
   # Detect OS and architecture.
   OS="$(uname -s)"

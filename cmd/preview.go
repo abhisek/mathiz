@@ -101,7 +101,7 @@ func runPreview(cmd *cobra.Command, args []string) error {
 		}
 		answer := strings.TrimSpace(scanner.Text())
 		if answer == "" {
-			fmt.Println("(skipped)\n")
+			fmt.Print("(skipped)\n\n")
 			continue
 		}
 
