@@ -1,7 +1,7 @@
 # Mathiz
 
-AI powered math tutor in the terminal. 
-Mathiz helps kids (grades 3-5) build math mastery through adaptive practice, spaced repetition, and LLM generated questions.
+AI powered math playground in the terminal. 
+Mathiz helps kids (grades 2-5) build math mastery through adaptive practice, spaced repetition, and LLM generated questions.
 Mathiz is backed by a static [skill graph](./internal/skillgraph/seed.go), [rule based adaptive
 learning](./internal/mastery/) and [positive reinforcement](./internal/gems/) to make it explainable
 and constrained.
@@ -11,7 +11,7 @@ Built with [Claude Code](https://code.claude.ai) using a spec driven development
 
 <div align="center">
   <picture>
-    <img src="docs/assets/banner.png" alt="Mathiz - AI powered math tutor" width="90%">
+    <img src="docs/assets/banner.png" alt="Mathiz - AI powered math playground" width="90%">
   </picture>
 </div>
 
@@ -63,6 +63,11 @@ mathiz stats --db ~/mathiz-alice.db # Alice's stats
 ```
 
 You can also set the `MATHIZ_DB` environment variable instead. The `--db` flag takes priority over the env var.
+
+## Standard
+
+The current skill graph is based on [Common Core](https://www.thecorestandards.org/Math/) standard.
+But the system is designed to support multiple standards and curriculum.
 
 ## Guides
 
