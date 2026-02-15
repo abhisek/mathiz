@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/gems"
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
+	"github.com/abhisek/mathiz/internal/spacedrep"
 )
 
 // MaxRecentErrors is the maximum number of recent errors tracked per skill.
@@ -137,6 +139,21 @@ func HandleAnswer(state *SessionState, learnerAnswer string) *TierAdvancement {
 		}
 	}
 
+	// Update streak tracking.
+	state.PendingGemAward = nil
+	if correct {
+		state.ConsecutiveCorrect++
+		// Check streak gem thresholds.
+		if state.GemService != nil && state.ConsecutiveCorrect >= state.NextStreakThreshold {
+			award := state.GemService.AwardStreak(context.Background(), state.ConsecutiveCorrect, state.SessionID)
+			state.PendingGemAward = award
+			state.NextStreakThreshold = gems.NextStreakThreshold(state.ConsecutiveCorrect)
+		}
+	} else {
+		state.ConsecutiveCorrect = 0
+		state.NextStreakThreshold = gems.BaseStreakThreshold
+	}
+
 	// Delegate to mastery service if available.
 	if state.MasteryService != nil {
 		return handleAnswerWithMastery(state, q, correct)
@@ -161,7 +178,21 @@ func handleAnswerWithMastery(state *SessionState, q *problemgen.Question, correc
 	if state.SpacedRepSched != nil {
 		slot := CurrentSlot(state)
 		if slot != nil && slot.Category == CategoryReview {
+			prevHits := 0
+			if rs := state.SpacedRepSched.GetReviewState(q.SkillID); rs != nil {
+				prevHits = rs.ConsecutiveHits
+			}
 			state.SpacedRepSched.RecordReview(q.SkillID, correct, time.Now())
+
+			// Check for graduation (retention gem).
+			if correct && state.GemService != nil {
+				if rs := state.SpacedRepSched.GetReviewState(q.SkillID); rs != nil {
+					if rs.Graduated && prevHits < spacedrep.GraduationStage {
+						award := state.GemService.AwardRetention(context.Background(), q.SkillID, skill.Name, state.SessionID)
+						state.PendingGemAward = award
+					}
+				}
+			}
 		}
 	}
 
@@ -189,6 +220,19 @@ func handleAnswerWithMastery(state *SessionState, q *problemgen.Question, correc
 			state.SpacedRepSched.InitSkill(q.SkillID, now)
 		case transition.From == mastery.StateRusty && transition.To == mastery.StateMastered:
 			state.SpacedRepSched.ReInitSkill(q.SkillID, now)
+		}
+	}
+
+	// Award mastery/recovery gems on state transitions.
+	if transition != nil && state.GemService != nil {
+		ctx := context.Background()
+		switch {
+		case transition.From == mastery.StateLearning && transition.To == mastery.StateMastered:
+			award := state.GemService.AwardMastery(ctx, transition.SkillID, transition.SkillName, state.SessionID)
+			state.PendingGemAward = award // mastery takes display priority over streak
+		case transition.From == mastery.StateRusty && transition.To == mastery.StateMastered:
+			award := state.GemService.AwardRecovery(ctx, transition.SkillID, transition.SkillName, state.SessionID)
+			state.PendingGemAward = award
 		}
 	}
 

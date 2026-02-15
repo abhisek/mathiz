@@ -69,6 +69,22 @@ func (m *mockEventRepo) AppendLessonEvent(_ context.Context, _ store.LessonEvent
 	return nil
 }
 
+func (m *mockEventRepo) AppendGemEvent(_ context.Context, _ store.GemEventData) error {
+	return nil
+}
+
+func (m *mockEventRepo) QueryGemEvents(_ context.Context, _ store.QueryOpts) ([]store.GemEventRecord, error) {
+	return nil, nil
+}
+
+func (m *mockEventRepo) GemCounts(_ context.Context) (map[string]int, int, error) {
+	return nil, 0, nil
+}
+
+func (m *mockEventRepo) QuerySessionSummaries(_ context.Context, _ store.QueryOpts) ([]store.SessionSummaryRecord, error) {
+	return nil, nil
+}
+
 // mockSnapshotRepo implements store.SnapshotRepo for testing.
 type mockSnapshotRepo struct {
 	snapshots []*store.Snapshot
@@ -109,7 +125,7 @@ func testSessionScreen() (*SessionScreen, *mockEventRepo, *mockSnapshotRepo) {
 	eventRepo := &mockEventRepo{}
 	snapRepo := &mockSnapshotRepo{}
 
-	s := New(gen, eventRepo, snapRepo, nil, nil, nil)
+	s := New(gen, eventRepo, snapRepo, nil, nil, nil, nil)
 	return s, eventRepo, snapRepo
 }
 

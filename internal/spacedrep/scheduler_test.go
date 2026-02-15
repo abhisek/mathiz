@@ -46,6 +46,22 @@ func (m *mockEventRepo) AppendLessonEvent(_ context.Context, _ store.LessonEvent
 	return nil
 }
 
+func (m *mockEventRepo) AppendGemEvent(_ context.Context, _ store.GemEventData) error {
+	return nil
+}
+
+func (m *mockEventRepo) QueryGemEvents(_ context.Context, _ store.QueryOpts) ([]store.GemEventRecord, error) {
+	return nil, nil
+}
+
+func (m *mockEventRepo) GemCounts(_ context.Context) (map[string]int, int, error) {
+	return nil, 0, nil
+}
+
+func (m *mockEventRepo) QuerySessionSummaries(_ context.Context, _ store.QueryOpts) ([]store.SessionSummaryRecord, error) {
+	return nil, nil
+}
+
 func newTestScheduler(reviews map[string]*ReviewState, masterySvc *mastery.Service, eventRepo store.EventRepo) *Scheduler {
 	if reviews == nil {
 		reviews = make(map[string]*ReviewState)

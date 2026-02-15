@@ -12,6 +12,9 @@ type AnswerEvent func(*sql.Selector)
 // DiagnosisEvent is the predicate function for diagnosisevent builders.
 type DiagnosisEvent func(*sql.Selector)
 
+// GemEvent is the predicate function for gemevent builders.
+type GemEvent func(*sql.Selector)
+
 // HintEvent is the predicate function for hintevent builders.
 type HintEvent func(*sql.Selector)
 

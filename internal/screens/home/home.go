@@ -1,6 +1,8 @@
 package home
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -8,10 +10,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/gems"
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
+	"github.com/abhisek/mathiz/internal/screens/gemvault"
+	"github.com/abhisek/mathiz/internal/screens/history"
 	"github.com/abhisek/mathiz/internal/screens/placeholder"
 	sessionscreen "github.com/abhisek/mathiz/internal/screens/session"
 	"github.com/abhisek/mathiz/internal/screens/skillmap"
@@ -22,13 +27,23 @@ import (
 
 // HomeScreen is the main home screen of the application.
 type HomeScreen struct {
-	menu components.Menu
+	menu     components.Menu
+	gemCount int
 }
 
 var _ screen.Screen = (*HomeScreen)(nil)
 
 // New creates a new HomeScreen.
-func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service, lessonService *lessons.Service, compressor *lessons.Compressor) *HomeScreen {
+func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service, lessonService *lessons.Service, compressor *lessons.Compressor, gemService *gems.Service) *HomeScreen {
+	// Load gem count from snapshot.
+	var gemCount int
+	if snapRepo != nil {
+		snap, err := snapRepo.Latest(context.Background())
+		if err == nil && snap != nil && snap.Data.Gems != nil {
+			gemCount = snap.Data.Gems.TotalCount
+		}
+	}
+
 	items := []components.MenuItem{
 		{Label: "Start Practice", Action: func() tea.Cmd {
 			if generator == nil || eventRepo == nil || snapRepo == nil {
@@ -38,7 +53,7 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 			}
 			return func() tea.Msg {
 				return router.PushScreenMsg{
-					Screen: sessionscreen.New(generator, eventRepo, snapRepo, diagService, lessonService, compressor),
+					Screen: sessionscreen.New(generator, eventRepo, snapRepo, diagService, lessonService, compressor, gemService),
 				}
 			}
 		}},
@@ -48,13 +63,23 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 			}
 		}},
 		{Label: "Gem Vault", Action: func() tea.Cmd {
+			if eventRepo == nil {
+				return func() tea.Msg {
+					return router.PushScreenMsg{Screen: placeholder.New("Gem Vault")}
+				}
+			}
 			return func() tea.Msg {
-				return router.PushScreenMsg{Screen: placeholder.New("Gem Vault")}
+				return router.PushScreenMsg{Screen: gemvault.New(eventRepo)}
 			}
 		}},
 		{Label: "History", Action: func() tea.Cmd {
+			if eventRepo == nil {
+				return func() tea.Msg {
+					return router.PushScreenMsg{Screen: placeholder.New("History")}
+				}
+			}
 			return func() tea.Msg {
-				return router.PushScreenMsg{Screen: placeholder.New("History")}
+				return router.PushScreenMsg{Screen: history.New(eventRepo)}
 			}
 		}},
 		{Label: "Settings", Action: func() tea.Cmd {
@@ -65,7 +90,8 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 	}
 
 	return &HomeScreen{
-		menu: components.NewMenu(items),
+		menu:     components.NewMenu(items),
+		gemCount: gemCount,
 	}
 }
 
@@ -105,6 +131,17 @@ func (h *HomeScreen) View(width, height int) string {
 		Align(lipgloss.Center).
 		Render(greetingText)
 	sections = append(sections, greeting)
+
+	// Gem count display.
+	if h.gemCount > 0 {
+		gemLine := fmt.Sprintf("✦ %d gems", h.gemCount)
+		gemDisplay := lipgloss.NewStyle().
+			Width(width).
+			Foreground(theme.Accent).
+			Align(lipgloss.Center).
+			Render(gemLine)
+		sections = append(sections, gemDisplay)
+	}
 
 	// Render the menu as a left-aligned block, then center the whole block
 	menuBlock := h.menu.View()

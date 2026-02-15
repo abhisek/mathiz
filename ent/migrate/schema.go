@@ -101,6 +101,51 @@ var (
 			},
 		},
 	}
+	// GemEventsColumns holds the columns for the "gem_events" table.
+	GemEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "gem_type", Type: field.TypeString},
+		{Name: "rarity", Type: field.TypeString},
+		{Name: "skill_id", Type: field.TypeString, Nullable: true},
+		{Name: "skill_name", Type: field.TypeString, Nullable: true},
+		{Name: "session_id", Type: field.TypeString},
+		{Name: "reason", Type: field.TypeString},
+	}
+	// GemEventsTable holds the schema information for the "gem_events" table.
+	GemEventsTable = &schema.Table{
+		Name:       "gem_events",
+		Columns:    GemEventsColumns,
+		PrimaryKey: []*schema.Column{GemEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "gemevent_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{GemEventsColumns[1]},
+			},
+			{
+				Name:    "gemevent_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{GemEventsColumns[2]},
+			},
+			{
+				Name:    "gemevent_gem_type",
+				Unique:  false,
+				Columns: []*schema.Column{GemEventsColumns[3]},
+			},
+			{
+				Name:    "gemevent_session_id",
+				Unique:  false,
+				Columns: []*schema.Column{GemEventsColumns[7]},
+			},
+			{
+				Name:    "gemevent_rarity",
+				Unique:  false,
+				Columns: []*schema.Column{GemEventsColumns[4]},
+			},
+		},
+	}
 	// HintEventsColumns holds the columns for the "hint_events" table.
 	HintEventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -330,6 +375,7 @@ var (
 	Tables = []*schema.Table{
 		AnswerEventsTable,
 		DiagnosisEventsTable,
+		GemEventsTable,
 		HintEventsTable,
 		LlmRequestEventsTable,
 		LessonEventsTable,

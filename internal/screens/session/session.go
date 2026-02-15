@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/gems"
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
@@ -40,6 +41,7 @@ type SessionScreen struct {
 	diagService   *diagnosis.Service
 	lessonService *lessons.Service
 	compressor    *lessons.Compressor
+	gemService    *gems.Service
 	planner       sess.Planner
 	scheduler     *spacedrep.Scheduler
 	input         components.TextInput
@@ -62,7 +64,7 @@ var _ screen.Screen = (*SessionScreen)(nil)
 var _ screen.KeyHintProvider = (*SessionScreen)(nil)
 
 // New creates a new SessionScreen with injected dependencies.
-func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service, lessonService *lessons.Service, compressor *lessons.Compressor) *SessionScreen {
+func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service, lessonService *lessons.Service, compressor *lessons.Compressor, gemService *gems.Service) *SessionScreen {
 	return &SessionScreen{
 		generator:     generator,
 		eventRepo:     eventRepo,
@@ -70,6 +72,7 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 		diagService:   diagService,
 		lessonService: lessonService,
 		compressor:    compressor,
+		gemService:    gemService,
 		planner:       sess.NewPlanner(context.Background(), eventRepo),
 		input:         components.NewTextInput("Type your answer...", false, 20),
 		practiceInput: components.NewTextInput("Type your answer...", false, 20),
@@ -252,6 +255,10 @@ func (s *SessionScreen) initSession() tea.Cmd {
 		state.EventRepo = s.eventRepo
 		state.LessonService = s.lessonService
 		state.Compressor = s.compressor
+		state.GemService = s.gemService
+		if s.gemService != nil {
+			s.gemService.ResetSession()
+		}
 
 		// Persist session start event.
 		var planSummary []store.PlanSlotSummaryData
@@ -356,6 +363,7 @@ func (s *SessionScreen) handleFeedbackDone() (screen.Screen, tea.Cmd) {
 	s.state.ShowingFeedback = false
 	s.state.TierAdvanced = nil
 	s.state.MasteryTransition = nil
+	s.state.PendingGemAward = nil
 
 	// If time expired, end the session.
 	if s.state.TimeExpired {
@@ -417,6 +425,15 @@ func (s *SessionScreen) handleSessionEnd() (screen.Screen, tea.Cmd) {
 		CorrectAnswers:  s.state.TotalCorrect,
 		DurationSecs:    durationSecs,
 	})
+
+	// Award session gem if timer expired (not early quit).
+	if s.state.TimeExpired && s.gemService != nil {
+		accuracy := float64(0)
+		if s.state.TotalQuestions > 0 {
+			accuracy = float64(s.state.TotalCorrect) / float64(s.state.TotalQuestions)
+		}
+		s.gemService.AwardSession(ctx, accuracy, s.state.SessionID)
+	}
 
 	// Generate learner profile asynchronously and save snapshot.
 	s.saveSnapshotWithProfile(ctx)
@@ -737,7 +754,7 @@ func (s *SessionScreen) generateNextQuestion() tea.Cmd {
 // saveSnapshot persists the current mastery state.
 func (s *SessionScreen) saveSnapshot(ctx context.Context) *store.SnapshotData {
 	snapData := store.SnapshotData{
-		Version: 3,
+		Version: 4,
 	}
 
 	if s.state.MasteryService != nil {
@@ -746,6 +763,10 @@ func (s *SessionScreen) saveSnapshot(ctx context.Context) *store.SnapshotData {
 
 	if s.scheduler != nil {
 		snapData.SpacedRep = s.scheduler.SnapshotData()
+	}
+
+	if s.gemService != nil {
+		snapData.Gems = s.gemService.SnapshotData(ctx)
 	}
 
 	// Preserve existing learner profile from previous snapshot.

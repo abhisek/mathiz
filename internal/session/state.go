@@ -5,10 +5,12 @@ import (
 	"time"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/gems"
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
+	"github.com/abhisek/mathiz/internal/spacedrep"
 	"github.com/abhisek/mathiz/internal/store"
 )
 
@@ -17,6 +19,7 @@ type SpacedRepScheduler interface {
 	RecordReview(skillID string, correct bool, now time.Time)
 	InitSkill(skillID string, masteredAt time.Time)
 	ReInitSkill(skillID string, now time.Time)
+	GetReviewState(skillID string) *spacedrep.ReviewState
 }
 
 // SessionPhase represents the current phase of the session.
@@ -136,6 +139,18 @@ type SessionState struct {
 
 	// ErrorMu protects RecentErrors during async compression callbacks.
 	ErrorMu sync.Mutex
+
+	// ConsecutiveCorrect tracks the current correct-answer streak within the session.
+	ConsecutiveCorrect int
+
+	// NextStreakThreshold is the next streak milestone that will award a gem.
+	NextStreakThreshold int
+
+	// GemService is the gem service for awarding gems (nil if rewards disabled).
+	GemService *gems.Service
+
+	// PendingGemAward is set when a gem is earned, for inline display on the feedback screen.
+	PendingGemAward *gems.GemAward
 }
 
 // SkillResult tracks per-skill performance within a single session.
@@ -189,16 +204,17 @@ func NewSessionState(plan *Plan, sessionID string, mastered map[string]bool, tie
 	}
 
 	return &SessionState{
-		Plan:              plan,
-		SessionID:         sessionID,
-		Mastered:          mastered,
-		TierProgress:      tierProgress,
-		PerSkillResults:   perSkill,
-		PriorQuestions:    make(map[string][]string),
-		RecentErrors:      make(map[string][]string),
-		StartTime:         time.Now(),
-		Phase:             PhaseActive,
-		CompletedSlots:    make(map[int]bool),
-		WrongCountBySkill: make(map[string]int),
+		Plan:                plan,
+		SessionID:           sessionID,
+		Mastered:            mastered,
+		TierProgress:        tierProgress,
+		PerSkillResults:     perSkill,
+		PriorQuestions:      make(map[string][]string),
+		RecentErrors:        make(map[string][]string),
+		StartTime:           time.Now(),
+		Phase:               PhaseActive,
+		CompletedSlots:      make(map[int]bool),
+		WrongCountBySkill:   make(map[string]int),
+		NextStreakThreshold: gems.BaseStreakThreshold,
 	}
 }

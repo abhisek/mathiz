@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
@@ -34,6 +35,7 @@ const (
 	// Node types.
 	TypeAnswerEvent     = "AnswerEvent"
 	TypeDiagnosisEvent  = "DiagnosisEvent"
+	TypeGemEvent        = "GemEvent"
 	TypeHintEvent       = "HintEvent"
 	TypeLLMRequestEvent = "LLMRequestEvent"
 	TypeLessonEvent     = "LessonEvent"
@@ -2059,6 +2061,787 @@ func (m *DiagnosisEventMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *DiagnosisEventMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown DiagnosisEvent edge %s", name)
+}
+
+// GemEventMutation represents an operation that mutates the GemEvent nodes in the graph.
+type GemEventMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	sequence      *int64
+	addsequence   *int64
+	timestamp     *time.Time
+	gem_type      *string
+	rarity        *string
+	skill_id      *string
+	skill_name    *string
+	session_id    *string
+	reason        *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*GemEvent, error)
+	predicates    []predicate.GemEvent
+}
+
+var _ ent.Mutation = (*GemEventMutation)(nil)
+
+// gemeventOption allows management of the mutation configuration using functional options.
+type gemeventOption func(*GemEventMutation)
+
+// newGemEventMutation creates new mutation for the GemEvent entity.
+func newGemEventMutation(c config, op Op, opts ...gemeventOption) *GemEventMutation {
+	m := &GemEventMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeGemEvent,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withGemEventID sets the ID field of the mutation.
+func withGemEventID(id int) gemeventOption {
+	return func(m *GemEventMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *GemEvent
+		)
+		m.oldValue = func(ctx context.Context) (*GemEvent, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().GemEvent.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withGemEvent sets the old GemEvent of the mutation.
+func withGemEvent(node *GemEvent) gemeventOption {
+	return func(m *GemEventMutation) {
+		m.oldValue = func(context.Context) (*GemEvent, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m GemEventMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m GemEventMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *GemEventMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *GemEventMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().GemEvent.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSequence sets the "sequence" field.
+func (m *GemEventMutation) SetSequence(i int64) {
+	m.sequence = &i
+	m.addsequence = nil
+}
+
+// Sequence returns the value of the "sequence" field in the mutation.
+func (m *GemEventMutation) Sequence() (r int64, exists bool) {
+	v := m.sequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSequence returns the old "sequence" field's value of the GemEvent entity.
+// If the GemEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GemEventMutation) OldSequence(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSequence is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSequence requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSequence: %w", err)
+	}
+	return oldValue.Sequence, nil
+}
+
+// AddSequence adds i to the "sequence" field.
+func (m *GemEventMutation) AddSequence(i int64) {
+	if m.addsequence != nil {
+		*m.addsequence += i
+	} else {
+		m.addsequence = &i
+	}
+}
+
+// AddedSequence returns the value that was added to the "sequence" field in this mutation.
+func (m *GemEventMutation) AddedSequence() (r int64, exists bool) {
+	v := m.addsequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSequence resets all changes to the "sequence" field.
+func (m *GemEventMutation) ResetSequence() {
+	m.sequence = nil
+	m.addsequence = nil
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (m *GemEventMutation) SetTimestamp(t time.Time) {
+	m.timestamp = &t
+}
+
+// Timestamp returns the value of the "timestamp" field in the mutation.
+func (m *GemEventMutation) Timestamp() (r time.Time, exists bool) {
+	v := m.timestamp
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimestamp returns the old "timestamp" field's value of the GemEvent entity.
+// If the GemEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GemEventMutation) OldTimestamp(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimestamp is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimestamp requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimestamp: %w", err)
+	}
+	return oldValue.Timestamp, nil
+}
+
+// ResetTimestamp resets all changes to the "timestamp" field.
+func (m *GemEventMutation) ResetTimestamp() {
+	m.timestamp = nil
+}
+
+// SetGemType sets the "gem_type" field.
+func (m *GemEventMutation) SetGemType(s string) {
+	m.gem_type = &s
+}
+
+// GemType returns the value of the "gem_type" field in the mutation.
+func (m *GemEventMutation) GemType() (r string, exists bool) {
+	v := m.gem_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGemType returns the old "gem_type" field's value of the GemEvent entity.
+// If the GemEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GemEventMutation) OldGemType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGemType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGemType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGemType: %w", err)
+	}
+	return oldValue.GemType, nil
+}
+
+// ResetGemType resets all changes to the "gem_type" field.
+func (m *GemEventMutation) ResetGemType() {
+	m.gem_type = nil
+}
+
+// SetRarity sets the "rarity" field.
+func (m *GemEventMutation) SetRarity(s string) {
+	m.rarity = &s
+}
+
+// Rarity returns the value of the "rarity" field in the mutation.
+func (m *GemEventMutation) Rarity() (r string, exists bool) {
+	v := m.rarity
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRarity returns the old "rarity" field's value of the GemEvent entity.
+// If the GemEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GemEventMutation) OldRarity(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRarity is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRarity requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRarity: %w", err)
+	}
+	return oldValue.Rarity, nil
+}
+
+// ResetRarity resets all changes to the "rarity" field.
+func (m *GemEventMutation) ResetRarity() {
+	m.rarity = nil
+}
+
+// SetSkillID sets the "skill_id" field.
+func (m *GemEventMutation) SetSkillID(s string) {
+	m.skill_id = &s
+}
+
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *GemEventMutation) SkillID() (r string, exists bool) {
+	v := m.skill_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillID returns the old "skill_id" field's value of the GemEvent entity.
+// If the GemEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GemEventMutation) OldSkillID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
+	}
+	return oldValue.SkillID, nil
+}
+
+// ClearSkillID clears the value of the "skill_id" field.
+func (m *GemEventMutation) ClearSkillID() {
+	m.skill_id = nil
+	m.clearedFields[gemevent.FieldSkillID] = struct{}{}
+}
+
+// SkillIDCleared returns if the "skill_id" field was cleared in this mutation.
+func (m *GemEventMutation) SkillIDCleared() bool {
+	_, ok := m.clearedFields[gemevent.FieldSkillID]
+	return ok
+}
+
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *GemEventMutation) ResetSkillID() {
+	m.skill_id = nil
+	delete(m.clearedFields, gemevent.FieldSkillID)
+}
+
+// SetSkillName sets the "skill_name" field.
+func (m *GemEventMutation) SetSkillName(s string) {
+	m.skill_name = &s
+}
+
+// SkillName returns the value of the "skill_name" field in the mutation.
+func (m *GemEventMutation) SkillName() (r string, exists bool) {
+	v := m.skill_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillName returns the old "skill_name" field's value of the GemEvent entity.
+// If the GemEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GemEventMutation) OldSkillName(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillName: %w", err)
+	}
+	return oldValue.SkillName, nil
+}
+
+// ClearSkillName clears the value of the "skill_name" field.
+func (m *GemEventMutation) ClearSkillName() {
+	m.skill_name = nil
+	m.clearedFields[gemevent.FieldSkillName] = struct{}{}
+}
+
+// SkillNameCleared returns if the "skill_name" field was cleared in this mutation.
+func (m *GemEventMutation) SkillNameCleared() bool {
+	_, ok := m.clearedFields[gemevent.FieldSkillName]
+	return ok
+}
+
+// ResetSkillName resets all changes to the "skill_name" field.
+func (m *GemEventMutation) ResetSkillName() {
+	m.skill_name = nil
+	delete(m.clearedFields, gemevent.FieldSkillName)
+}
+
+// SetSessionID sets the "session_id" field.
+func (m *GemEventMutation) SetSessionID(s string) {
+	m.session_id = &s
+}
+
+// SessionID returns the value of the "session_id" field in the mutation.
+func (m *GemEventMutation) SessionID() (r string, exists bool) {
+	v := m.session_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSessionID returns the old "session_id" field's value of the GemEvent entity.
+// If the GemEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GemEventMutation) OldSessionID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSessionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSessionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSessionID: %w", err)
+	}
+	return oldValue.SessionID, nil
+}
+
+// ResetSessionID resets all changes to the "session_id" field.
+func (m *GemEventMutation) ResetSessionID() {
+	m.session_id = nil
+}
+
+// SetReason sets the "reason" field.
+func (m *GemEventMutation) SetReason(s string) {
+	m.reason = &s
+}
+
+// Reason returns the value of the "reason" field in the mutation.
+func (m *GemEventMutation) Reason() (r string, exists bool) {
+	v := m.reason
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReason returns the old "reason" field's value of the GemEvent entity.
+// If the GemEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GemEventMutation) OldReason(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReason is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReason requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReason: %w", err)
+	}
+	return oldValue.Reason, nil
+}
+
+// ResetReason resets all changes to the "reason" field.
+func (m *GemEventMutation) ResetReason() {
+	m.reason = nil
+}
+
+// Where appends a list predicates to the GemEventMutation builder.
+func (m *GemEventMutation) Where(ps ...predicate.GemEvent) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the GemEventMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *GemEventMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.GemEvent, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *GemEventMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *GemEventMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (GemEvent).
+func (m *GemEventMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *GemEventMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.sequence != nil {
+		fields = append(fields, gemevent.FieldSequence)
+	}
+	if m.timestamp != nil {
+		fields = append(fields, gemevent.FieldTimestamp)
+	}
+	if m.gem_type != nil {
+		fields = append(fields, gemevent.FieldGemType)
+	}
+	if m.rarity != nil {
+		fields = append(fields, gemevent.FieldRarity)
+	}
+	if m.skill_id != nil {
+		fields = append(fields, gemevent.FieldSkillID)
+	}
+	if m.skill_name != nil {
+		fields = append(fields, gemevent.FieldSkillName)
+	}
+	if m.session_id != nil {
+		fields = append(fields, gemevent.FieldSessionID)
+	}
+	if m.reason != nil {
+		fields = append(fields, gemevent.FieldReason)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *GemEventMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case gemevent.FieldSequence:
+		return m.Sequence()
+	case gemevent.FieldTimestamp:
+		return m.Timestamp()
+	case gemevent.FieldGemType:
+		return m.GemType()
+	case gemevent.FieldRarity:
+		return m.Rarity()
+	case gemevent.FieldSkillID:
+		return m.SkillID()
+	case gemevent.FieldSkillName:
+		return m.SkillName()
+	case gemevent.FieldSessionID:
+		return m.SessionID()
+	case gemevent.FieldReason:
+		return m.Reason()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *GemEventMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case gemevent.FieldSequence:
+		return m.OldSequence(ctx)
+	case gemevent.FieldTimestamp:
+		return m.OldTimestamp(ctx)
+	case gemevent.FieldGemType:
+		return m.OldGemType(ctx)
+	case gemevent.FieldRarity:
+		return m.OldRarity(ctx)
+	case gemevent.FieldSkillID:
+		return m.OldSkillID(ctx)
+	case gemevent.FieldSkillName:
+		return m.OldSkillName(ctx)
+	case gemevent.FieldSessionID:
+		return m.OldSessionID(ctx)
+	case gemevent.FieldReason:
+		return m.OldReason(ctx)
+	}
+	return nil, fmt.Errorf("unknown GemEvent field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GemEventMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case gemevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSequence(v)
+		return nil
+	case gemevent.FieldTimestamp:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimestamp(v)
+		return nil
+	case gemevent.FieldGemType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGemType(v)
+		return nil
+	case gemevent.FieldRarity:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRarity(v)
+		return nil
+	case gemevent.FieldSkillID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillID(v)
+		return nil
+	case gemevent.FieldSkillName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillName(v)
+		return nil
+	case gemevent.FieldSessionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSessionID(v)
+		return nil
+	case gemevent.FieldReason:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReason(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GemEvent field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *GemEventMutation) AddedFields() []string {
+	var fields []string
+	if m.addsequence != nil {
+		fields = append(fields, gemevent.FieldSequence)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *GemEventMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case gemevent.FieldSequence:
+		return m.AddedSequence()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GemEventMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case gemevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSequence(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GemEvent numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *GemEventMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(gemevent.FieldSkillID) {
+		fields = append(fields, gemevent.FieldSkillID)
+	}
+	if m.FieldCleared(gemevent.FieldSkillName) {
+		fields = append(fields, gemevent.FieldSkillName)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *GemEventMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *GemEventMutation) ClearField(name string) error {
+	switch name {
+	case gemevent.FieldSkillID:
+		m.ClearSkillID()
+		return nil
+	case gemevent.FieldSkillName:
+		m.ClearSkillName()
+		return nil
+	}
+	return fmt.Errorf("unknown GemEvent nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *GemEventMutation) ResetField(name string) error {
+	switch name {
+	case gemevent.FieldSequence:
+		m.ResetSequence()
+		return nil
+	case gemevent.FieldTimestamp:
+		m.ResetTimestamp()
+		return nil
+	case gemevent.FieldGemType:
+		m.ResetGemType()
+		return nil
+	case gemevent.FieldRarity:
+		m.ResetRarity()
+		return nil
+	case gemevent.FieldSkillID:
+		m.ResetSkillID()
+		return nil
+	case gemevent.FieldSkillName:
+		m.ResetSkillName()
+		return nil
+	case gemevent.FieldSessionID:
+		m.ResetSessionID()
+		return nil
+	case gemevent.FieldReason:
+		m.ResetReason()
+		return nil
+	}
+	return fmt.Errorf("unknown GemEvent field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *GemEventMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *GemEventMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *GemEventMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *GemEventMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *GemEventMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *GemEventMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *GemEventMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown GemEvent unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *GemEventMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown GemEvent edge %s", name)
 }
 
 // HintEventMutation represents an operation that mutates the HintEvent nodes in the graph.

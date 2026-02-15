@@ -1,6 +1,10 @@
 package session
 
-import "time"
+import (
+	"time"
+
+	"github.com/abhisek/mathiz/internal/gems"
+)
 
 // SessionSummary holds the data displayed on the summary screen.
 type SessionSummary struct {
@@ -9,6 +13,7 @@ type SessionSummary struct {
 	TotalCorrect   int
 	Accuracy       float64
 	SkillResults   []SkillResult
+	GemsEarned     []gems.GemAward
 }
 
 // SkillSummaryFluency returns the fluency score for a skill from the mastery service.
@@ -46,11 +51,17 @@ func BuildSummary(state *SessionState) *SessionSummary {
 		accuracy = float64(state.TotalCorrect) / float64(state.TotalQuestions)
 	}
 
-	return &SessionSummary{
+	summary := &SessionSummary{
 		Duration:       state.Elapsed,
 		TotalQuestions: state.TotalQuestions,
 		TotalCorrect:  state.TotalCorrect,
 		Accuracy:       accuracy,
 		SkillResults:   results,
 	}
+
+	if state.GemService != nil {
+		summary.GemsEarned = state.GemService.SessionGems
+	}
+
+	return summary
 }

@@ -2,10 +2,12 @@ package session
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/abhisek/mathiz/internal/gems"
 	sess "github.com/abhisek/mathiz/internal/session"
 	"github.com/abhisek/mathiz/internal/ui/theme"
 )
@@ -252,6 +254,31 @@ func (s *SessionScreen) renderFeedback(width, height int) string {
 		b.WriteString("\n\n")
 	}
 
+	// Inline gem notification.
+	if state.PendingGemAward != nil {
+		award := state.PendingGemAward
+		gemLine := fmt.Sprintf("%s %s %s Gem",
+			award.Type.Icon(),
+			award.Rarity.DisplayName(),
+			award.Type.DisplayName())
+		reasonLine := fmt.Sprintf("\"%s\"", award.Reason)
+
+		b.WriteString(lipgloss.NewStyle().
+			Width(width).
+			Align(lipgloss.Center).
+			Foreground(rarityColor(award.Rarity)).
+			Bold(true).
+			Render(gemLine))
+		b.WriteString("\n")
+		b.WriteString(lipgloss.NewStyle().
+			Width(width).
+			Align(lipgloss.Center).
+			Foreground(theme.TextDim).
+			Italic(true).
+			Render(reasonLine))
+		b.WriteString("\n\n")
+	}
+
 	b.WriteString(lipgloss.NewStyle().
 		Width(width).
 		Align(lipgloss.Center).
@@ -259,6 +286,22 @@ func (s *SessionScreen) renderFeedback(width, height int) string {
 		Render("Press any key to continue..."))
 
 	return b.String()
+}
+
+// rarityColor returns the theme color for a gem rarity level.
+func rarityColor(r gems.Rarity) color.Color {
+	switch r {
+	case gems.RarityCommon:
+		return theme.Text
+	case gems.RarityRare:
+		return theme.Secondary
+	case gems.RarityEpic:
+		return theme.Primary
+	case gems.RarityLegendary:
+		return theme.Accent
+	default:
+		return theme.Text
+	}
 }
 
 // renderQuitConfirm renders the quit confirmation dialog.

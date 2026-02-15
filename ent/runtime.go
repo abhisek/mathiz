@@ -7,6 +7,7 @@ import (
 
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
@@ -102,6 +103,31 @@ func init() {
 	diagnosiseventDescReasoning := diagnosiseventFields[9].Descriptor()
 	// diagnosisevent.DefaultReasoning holds the default value on creation for the reasoning field.
 	diagnosisevent.DefaultReasoning = diagnosiseventDescReasoning.Default.(string)
+	gemeventMixin := schema.GemEvent{}.Mixin()
+	gemeventMixinFields0 := gemeventMixin[0].Fields()
+	_ = gemeventMixinFields0
+	gemeventFields := schema.GemEvent{}.Fields()
+	_ = gemeventFields
+	// gemeventDescTimestamp is the schema descriptor for timestamp field.
+	gemeventDescTimestamp := gemeventMixinFields0[1].Descriptor()
+	// gemevent.DefaultTimestamp holds the default value on creation for the timestamp field.
+	gemevent.DefaultTimestamp = gemeventDescTimestamp.Default.(func() time.Time)
+	// gemeventDescGemType is the schema descriptor for gem_type field.
+	gemeventDescGemType := gemeventFields[0].Descriptor()
+	// gemevent.GemTypeValidator is a validator for the "gem_type" field. It is called by the builders before save.
+	gemevent.GemTypeValidator = gemeventDescGemType.Validators[0].(func(string) error)
+	// gemeventDescRarity is the schema descriptor for rarity field.
+	gemeventDescRarity := gemeventFields[1].Descriptor()
+	// gemevent.RarityValidator is a validator for the "rarity" field. It is called by the builders before save.
+	gemevent.RarityValidator = gemeventDescRarity.Validators[0].(func(string) error)
+	// gemeventDescSessionID is the schema descriptor for session_id field.
+	gemeventDescSessionID := gemeventFields[4].Descriptor()
+	// gemevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
+	gemevent.SessionIDValidator = gemeventDescSessionID.Validators[0].(func(string) error)
+	// gemeventDescReason is the schema descriptor for reason field.
+	gemeventDescReason := gemeventFields[5].Descriptor()
+	// gemevent.ReasonValidator is a validator for the "reason" field. It is called by the builders before save.
+	gemevent.ReasonValidator = gemeventDescReason.Validators[0].(func(string) error)
 	hinteventMixin := schema.HintEvent{}.Mixin()
 	hinteventMixinFields0 := hinteventMixin[0].Fields()
 	_ = hinteventMixinFields0

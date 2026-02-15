@@ -33,6 +33,18 @@ func (f DiagnosisEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagnosisEventMutation", m)
 }
 
+// The GemEventFunc type is an adapter to allow the use of ordinary
+// function as GemEvent mutator.
+type GemEventFunc func(context.Context, *ent.GemEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f GemEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.GemEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GemEventMutation", m)
+}
+
 // The HintEventFunc type is an adapter to allow the use of ordinary
 // function as HintEvent mutator.
 type HintEventFunc func(context.Context, *ent.HintEventMutation) (ent.Value, error)

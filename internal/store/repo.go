@@ -17,10 +17,11 @@ type QueryOpts struct {
 // SnapshotData captures the full learner state at a point in time.
 // Domain modules register their state types here as they are implemented.
 type SnapshotData struct {
-	Version   int                    `json:"version"`
-	Mastery   *MasterySnapshotData   `json:"mastery,omitempty"`
-	SpacedRep      *SpacedRepSnapshotData `json:"spaced_rep,omitempty"`
-	LearnerProfile *LearnerProfileData   `json:"learner_profile,omitempty"`
+	Version        int                          `json:"version"`
+	Mastery        *MasterySnapshotData         `json:"mastery,omitempty"`
+	SpacedRep      *SpacedRepSnapshotData       `json:"spaced_rep,omitempty"`
+	LearnerProfile *LearnerProfileData          `json:"learner_profile,omitempty"`
+	Gems           *GemsSnapshotData            `json:"gems,omitempty"`
 
 	// Deprecated: kept for migration only. New snapshots use Mastery field.
 	TierProgress map[string]*TierProgressData `json:"tier_progress,omitempty"`
@@ -185,6 +186,44 @@ type DiagnosisEventData struct {
 	Reasoning       string
 }
 
+// GemEventData captures the data for a gem award event.
+type GemEventData struct {
+	GemType   string
+	Rarity    string
+	SkillID   *string // nil for session/streak gems
+	SkillName *string
+	SessionID string
+	Reason    string
+}
+
+// GemEventRecord is a hydrated gem event for display (includes timestamp).
+type GemEventRecord struct {
+	GemType   string
+	Rarity    string
+	SkillID   *string
+	SkillName *string
+	SessionID string
+	Reason    string
+	Sequence  int64
+	Timestamp time.Time
+}
+
+// SessionSummaryRecord is a hydrated session event for the history screen.
+type SessionSummaryRecord struct {
+	SessionID       string
+	Timestamp       time.Time
+	QuestionsServed int
+	CorrectAnswers  int
+	DurationSecs    int
+	GemCount        int // gems awarded in this session
+}
+
+// GemsSnapshotData holds aggregate gem counts for quick loading.
+type GemsSnapshotData struct {
+	TotalCount  int            `json:"total_count"`
+	CountByType map[string]int `json:"count_by_type"`
+}
+
 // EventRepo provides append access to domain events.
 type EventRepo interface {
 	// AppendLLMRequest records an LLM API call event.
@@ -219,4 +258,16 @@ type EventRepo interface {
 
 	// AppendLessonEvent records that a micro-lesson was shown.
 	AppendLessonEvent(ctx context.Context, data LessonEventData) error
+
+	// AppendGemEvent records a gem award event.
+	AppendGemEvent(ctx context.Context, data GemEventData) error
+
+	// QueryGemEvents returns gem events matching the query options.
+	QueryGemEvents(ctx context.Context, opts QueryOpts) ([]GemEventRecord, error)
+
+	// GemCounts returns gem counts grouped by type and the total count.
+	GemCounts(ctx context.Context) (byType map[string]int, total int, err error)
+
+	// QuerySessionSummaries returns session end events for the history screen.
+	QuerySessionSummaries(ctx context.Context, opts QueryOpts) ([]SessionSummaryRecord, error)
 }

@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/gems"
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
@@ -41,6 +42,9 @@ type Options struct {
 
 	// Compressor handles context compression. May be nil if LLM is unavailable.
 	Compressor *lessons.Compressor
+
+	// GemService manages gem awards. May be nil if event repo is unavailable.
+	GemService *gems.Service
 }
 
 // AppModel is the root Bubble Tea model.
@@ -53,7 +57,7 @@ type AppModel struct {
 
 // newAppModel creates a new AppModel with the home screen.
 func newAppModel(opts Options) AppModel {
-	homeScreen := home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService, opts.LessonService, opts.Compressor)
+	homeScreen := home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService, opts.LessonService, opts.Compressor, opts.GemService)
 	return AppModel{
 		router: router.New(homeScreen),
 		opts:   opts,

@@ -16,6 +16,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
@@ -33,6 +34,8 @@ type Client struct {
 	AnswerEvent *AnswerEventClient
 	// DiagnosisEvent is the client for interacting with the DiagnosisEvent builders.
 	DiagnosisEvent *DiagnosisEventClient
+	// GemEvent is the client for interacting with the GemEvent builders.
+	GemEvent *GemEventClient
 	// HintEvent is the client for interacting with the HintEvent builders.
 	HintEvent *HintEventClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
@@ -58,6 +61,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.AnswerEvent = NewAnswerEventClient(c.config)
 	c.DiagnosisEvent = NewDiagnosisEventClient(c.config)
+	c.GemEvent = NewGemEventClient(c.config)
 	c.HintEvent = NewHintEventClient(c.config)
 	c.LLMRequestEvent = NewLLMRequestEventClient(c.config)
 	c.LessonEvent = NewLessonEventClient(c.config)
@@ -158,6 +162,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:          cfg,
 		AnswerEvent:     NewAnswerEventClient(cfg),
 		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
+		GemEvent:        NewGemEventClient(cfg),
 		HintEvent:       NewHintEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
 		LessonEvent:     NewLessonEventClient(cfg),
@@ -185,6 +190,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:          cfg,
 		AnswerEvent:     NewAnswerEventClient(cfg),
 		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
+		GemEvent:        NewGemEventClient(cfg),
 		HintEvent:       NewHintEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
 		LessonEvent:     NewLessonEventClient(cfg),
@@ -220,8 +226,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.AnswerEvent, c.DiagnosisEvent, c.HintEvent, c.LLMRequestEvent, c.LessonEvent,
-		c.MasteryEvent, c.SessionEvent, c.Snapshot,
+		c.AnswerEvent, c.DiagnosisEvent, c.GemEvent, c.HintEvent, c.LLMRequestEvent,
+		c.LessonEvent, c.MasteryEvent, c.SessionEvent, c.Snapshot,
 	} {
 		n.Use(hooks...)
 	}
@@ -231,8 +237,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.AnswerEvent, c.DiagnosisEvent, c.HintEvent, c.LLMRequestEvent, c.LessonEvent,
-		c.MasteryEvent, c.SessionEvent, c.Snapshot,
+		c.AnswerEvent, c.DiagnosisEvent, c.GemEvent, c.HintEvent, c.LLMRequestEvent,
+		c.LessonEvent, c.MasteryEvent, c.SessionEvent, c.Snapshot,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -245,6 +251,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.AnswerEvent.mutate(ctx, m)
 	case *DiagnosisEventMutation:
 		return c.DiagnosisEvent.mutate(ctx, m)
+	case *GemEventMutation:
+		return c.GemEvent.mutate(ctx, m)
 	case *HintEventMutation:
 		return c.HintEvent.mutate(ctx, m)
 	case *LLMRequestEventMutation:
@@ -525,6 +533,139 @@ func (c *DiagnosisEventClient) mutate(ctx context.Context, m *DiagnosisEventMuta
 		return (&DiagnosisEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown DiagnosisEvent mutation op: %q", m.Op())
+	}
+}
+
+// GemEventClient is a client for the GemEvent schema.
+type GemEventClient struct {
+	config
+}
+
+// NewGemEventClient returns a client for the GemEvent from the given config.
+func NewGemEventClient(c config) *GemEventClient {
+	return &GemEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `gemevent.Hooks(f(g(h())))`.
+func (c *GemEventClient) Use(hooks ...Hook) {
+	c.hooks.GemEvent = append(c.hooks.GemEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `gemevent.Intercept(f(g(h())))`.
+func (c *GemEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.GemEvent = append(c.inters.GemEvent, interceptors...)
+}
+
+// Create returns a builder for creating a GemEvent entity.
+func (c *GemEventClient) Create() *GemEventCreate {
+	mutation := newGemEventMutation(c.config, OpCreate)
+	return &GemEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of GemEvent entities.
+func (c *GemEventClient) CreateBulk(builders ...*GemEventCreate) *GemEventCreateBulk {
+	return &GemEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *GemEventClient) MapCreateBulk(slice any, setFunc func(*GemEventCreate, int)) *GemEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &GemEventCreateBulk{err: fmt.Errorf("calling to GemEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*GemEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &GemEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for GemEvent.
+func (c *GemEventClient) Update() *GemEventUpdate {
+	mutation := newGemEventMutation(c.config, OpUpdate)
+	return &GemEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *GemEventClient) UpdateOne(_m *GemEvent) *GemEventUpdateOne {
+	mutation := newGemEventMutation(c.config, OpUpdateOne, withGemEvent(_m))
+	return &GemEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *GemEventClient) UpdateOneID(id int) *GemEventUpdateOne {
+	mutation := newGemEventMutation(c.config, OpUpdateOne, withGemEventID(id))
+	return &GemEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for GemEvent.
+func (c *GemEventClient) Delete() *GemEventDelete {
+	mutation := newGemEventMutation(c.config, OpDelete)
+	return &GemEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *GemEventClient) DeleteOne(_m *GemEvent) *GemEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *GemEventClient) DeleteOneID(id int) *GemEventDeleteOne {
+	builder := c.Delete().Where(gemevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &GemEventDeleteOne{builder}
+}
+
+// Query returns a query builder for GemEvent.
+func (c *GemEventClient) Query() *GemEventQuery {
+	return &GemEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeGemEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a GemEvent entity by its id.
+func (c *GemEventClient) Get(ctx context.Context, id int) (*GemEvent, error) {
+	return c.Query().Where(gemevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *GemEventClient) GetX(ctx context.Context, id int) *GemEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *GemEventClient) Hooks() []Hook {
+	return c.hooks.GemEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *GemEventClient) Interceptors() []Interceptor {
+	return c.inters.GemEvent
+}
+
+func (c *GemEventClient) mutate(ctx context.Context, m *GemEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&GemEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&GemEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&GemEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&GemEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown GemEvent mutation op: %q", m.Op())
 	}
 }
 
@@ -1329,11 +1470,11 @@ func (c *SnapshotClient) mutate(ctx context.Context, m *SnapshotMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		AnswerEvent, DiagnosisEvent, HintEvent, LLMRequestEvent, LessonEvent,
+		AnswerEvent, DiagnosisEvent, GemEvent, HintEvent, LLMRequestEvent, LessonEvent,
 		MasteryEvent, SessionEvent, Snapshot []ent.Hook
 	}
 	inters struct {
-		AnswerEvent, DiagnosisEvent, HintEvent, LLMRequestEvent, LessonEvent,
+		AnswerEvent, DiagnosisEvent, GemEvent, HintEvent, LLMRequestEvent, LessonEvent,
 		MasteryEvent, SessionEvent, Snapshot []ent.Interceptor
 	}
 )

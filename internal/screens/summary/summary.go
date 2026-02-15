@@ -2,11 +2,13 @@ package summary
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/abhisek/mathiz/internal/gems"
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
 	"github.com/abhisek/mathiz/internal/session"
@@ -133,14 +135,45 @@ func (s *SummaryScreen) View(width, height int) string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString("\n")
+	// Gems section.
+	if len(sum.GemsEarned) > 0 {
+		b.WriteString("\n")
+		b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center,
+			lipgloss.NewStyle().Foreground(theme.TextDim).Render("Gems")))
+		b.WriteString("\n")
+		b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center, divider))
+		b.WriteString("\n\n")
 
-	// Gems placeholder.
-	b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center,
-		lipgloss.NewStyle().Foreground(theme.TextDim).Italic(true).
-			Render("(Gems display — see spec 11)")))
+		for _, gem := range sum.GemsEarned {
+			line := fmt.Sprintf("  %s %s %s Gem — %s",
+				gem.Type.Icon(),
+				gem.Rarity.DisplayName(),
+				gem.Type.DisplayName(),
+				gem.Reason)
+			style := lipgloss.NewStyle().Foreground(rarityColor(gem.Rarity))
+			b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center,
+				style.Render(line)))
+			b.WriteString("\n")
+		}
+	}
 
 	return b.String()
+}
+
+// rarityColor returns the theme color for a gem rarity level.
+func rarityColor(r gems.Rarity) color.Color {
+	switch r {
+	case gems.RarityCommon:
+		return theme.Text
+	case gems.RarityRare:
+		return theme.Secondary
+	case gems.RarityEpic:
+		return theme.Primary
+	case gems.RarityLegendary:
+		return theme.Accent
+	default:
+		return theme.Text
+	}
 }
 
 func min(a, b int) int {

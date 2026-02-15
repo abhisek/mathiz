@@ -16,6 +16,8 @@ type Tx struct {
 	AnswerEvent *AnswerEventClient
 	// DiagnosisEvent is the client for interacting with the DiagnosisEvent builders.
 	DiagnosisEvent *DiagnosisEventClient
+	// GemEvent is the client for interacting with the GemEvent builders.
+	GemEvent *GemEventClient
 	// HintEvent is the client for interacting with the HintEvent builders.
 	HintEvent *HintEventClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
@@ -161,6 +163,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.AnswerEvent = NewAnswerEventClient(tx.config)
 	tx.DiagnosisEvent = NewDiagnosisEventClient(tx.config)
+	tx.GemEvent = NewGemEventClient(tx.config)
 	tx.HintEvent = NewHintEventClient(tx.config)
 	tx.LLMRequestEvent = NewLLMRequestEventClient(tx.config)
 	tx.LessonEvent = NewLessonEventClient(tx.config)
