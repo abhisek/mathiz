@@ -52,9 +52,9 @@ var llmListCmd = &cobra.Command{
 			if purpose != "" && e.Purpose != purpose {
 				continue
 			}
-			ok := "\u2705"
+			ok := "✓"
 			if !e.Success {
-				ok = "\u274c"
+				ok = "✗"
 			}
 			model := e.Model
 			if len(model) > 28 {

@@ -128,11 +128,11 @@ var statsCmd = &cobra.Command{
 func stateIcon(state mastery.MasteryState) string {
 	switch state {
 	case mastery.StateMastered:
-		return "\u2705"
+		return "●"
 	case mastery.StateLearning:
-		return "\U0001f4d6"
+		return "◐"
 	case mastery.StateRusty:
-		return "\U0001f504"
+		return "○"
 	default:
 		return " "
 	}
