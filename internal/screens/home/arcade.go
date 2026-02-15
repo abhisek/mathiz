@@ -172,6 +172,16 @@ func renderMascotBox(variant MascotVariant, cw int) string {
 }
 
 // renderCabinetFrame wraps content in a double-border cabinet frame,
+// renderUpdateNote renders a dim one-line update notification.
+func renderUpdateNote(latestVersion string, cw int) string {
+	text := fmt.Sprintf("New version %s available", latestVersion)
+	return lipgloss.NewStyle().
+		Foreground(theme.TextDim).
+		Width(cw).
+		Align(lipgloss.Center).
+		Render(text)
+}
+
 // centering vertically and horizontally within the given dimensions.
 func renderCabinetFrame(content string, width, height int) string {
 	return lipgloss.NewStyle().

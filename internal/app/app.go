@@ -16,6 +16,7 @@ import (
 	"github.com/abhisek/mathiz/internal/screen"
 	"github.com/abhisek/mathiz/internal/screens/home"
 	"github.com/abhisek/mathiz/internal/screens/welcome"
+	"github.com/abhisek/mathiz/internal/selfupdate"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/abhisek/mathiz/internal/ui/layout"
 	"github.com/abhisek/mathiz/internal/ui/theme"
@@ -47,33 +48,65 @@ type Options struct {
 
 	// GemService manages gem awards. May be nil if event repo is unavailable.
 	GemService *gems.Service
+
+	// UpdateCh receives the result of an async version check. May be nil.
+	UpdateCh <-chan *selfupdate.UpdateResult
+}
+
+// UpdateAvailableMsg is sent when an update check completes with a new version.
+type UpdateAvailableMsg struct {
+	Result *selfupdate.UpdateResult
 }
 
 // AppModel is the root Bubble Tea model.
 type AppModel struct {
-	router *router.Router
-	opts   Options
-	width  int
-	height int
+	router       *router.Router
+	opts         Options
+	width        int
+	height       int
+	updateResult *selfupdate.UpdateResult
 }
 
 // newAppModel creates a new AppModel with the welcome screen.
-func newAppModel(opts Options) AppModel {
+func newAppModel(opts Options) *AppModel {
+	m := &AppModel{
+		opts: opts,
+	}
 	homeFactory := func() screen.Screen {
-		return home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService, opts.LessonService, opts.Compressor, opts.GemService)
+		return home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService, opts.LessonService, opts.Compressor, opts.GemService, m.updateResult)
 	}
-	return AppModel{
-		router: router.New(welcome.New(homeFactory)),
-		opts:   opts,
+	m.router = router.New(welcome.New(homeFactory))
+	return m
+}
+
+// waitForUpdate returns a tea.Cmd that blocks on the update channel.
+func waitForUpdate(ch <-chan *selfupdate.UpdateResult) tea.Cmd {
+	if ch == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		result, ok := <-ch
+		if !ok || result == nil || !result.UpdateAvailable {
+			return nil
+		}
+		return UpdateAvailableMsg{Result: result}
 	}
 }
 
-func (m AppModel) Init() tea.Cmd {
-	return tea.Batch(m.router.Active().Init(), tea.RequestBackgroundColor)
+func (m *AppModel) Init() tea.Cmd {
+	return tea.Batch(
+		m.router.Active().Init(),
+		tea.RequestBackgroundColor,
+		waitForUpdate(m.opts.UpdateCh),
+	)
 }
 
-func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case UpdateAvailableMsg:
+		m.updateResult = msg.Result
+		return m, nil
+
 	case tea.BackgroundColorMsg:
 		theme.SetDark(msg.IsDark())
 		return m, nil
@@ -99,7 +132,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m AppModel) View() tea.View {
+func (m *AppModel) View() tea.View {
 	v := tea.NewView("")
 	v.AltScreen = true
 

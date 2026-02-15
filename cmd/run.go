@@ -10,6 +10,7 @@ import (
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
+	"github.com/abhisek/mathiz/internal/selfupdate"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -27,11 +28,16 @@ func runApp(cmd *cobra.Command) error {
 	}
 	defer st.Close()
 
+	// Start async version check (non-blocking).
+	checker := selfupdate.NewChecker()
+	updateCh := checker.CheckAsync(ctx, &selfupdate.CheckInput{Version: version})
+
 	eventRepo := st.EventRepo()
 	opts := app.Options{
 		EventRepo:    eventRepo,
 		SnapshotRepo: st.SnapshotRepo(),
 		GemService:   gems.NewService(eventRepo),
+		UpdateCh:     updateCh,
 	}
 
 	provider, err := llm.NewProviderFromEnv(ctx, eventRepo)

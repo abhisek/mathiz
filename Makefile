@@ -4,6 +4,7 @@ BIN := $(BIN_DIR)/mathiz
 SHELL := /bin/bash
 GITCOMMIT := $(shell git rev-parse HEAD)
 VERSION := "$(shell git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)-$(shell git rev-parse --short HEAD)"
+GO_LDFLAGS := -ldflags "-X github.com/abhisek/mathiz/cmd.version=$(VERSION)"
 
 .PHONY: all deps generate mathiz clean test
 

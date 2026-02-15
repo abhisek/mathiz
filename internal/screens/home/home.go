@@ -19,6 +19,7 @@ import (
 	"github.com/abhisek/mathiz/internal/screens/placeholder"
 	sessionscreen "github.com/abhisek/mathiz/internal/screens/session"
 	"github.com/abhisek/mathiz/internal/screens/skillmap"
+	"github.com/abhisek/mathiz/internal/selfupdate"
 	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/abhisek/mathiz/internal/ui/components"
@@ -32,12 +33,13 @@ type HomeScreen struct {
 	masteredCount int
 	reviewsDue    int
 	mascotVariant MascotVariant
+	updateResult  *selfupdate.UpdateResult
 }
 
 var _ screen.Screen = (*HomeScreen)(nil)
 
 // New creates a new HomeScreen.
-func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service, lessonService *lessons.Service, compressor *lessons.Compressor, gemService *gems.Service) *HomeScreen {
+func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service, lessonService *lessons.Service, compressor *lessons.Compressor, gemService *gems.Service, updateResult *selfupdate.UpdateResult) *HomeScreen {
 	// Load snapshot for gem count and skill states.
 	var snap *store.Snapshot
 	if snapRepo != nil {
@@ -142,6 +144,7 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 		masteredCount: masteredCount,
 		reviewsDue:    reviewsDue,
 		mascotVariant: mascotVariant,
+		updateResult:  updateResult,
 	}
 }
 
@@ -238,7 +241,18 @@ func (h *HomeScreen) View(width, height int) string {
 		canMascot = true
 	}
 
-	// Assemble sections in display order: title, mascot, stats, menu.
+	// 6. Lowest priority: update note (only if update available and space allows).
+	var updateNote string
+	canUpdate := false
+	if h.updateResult != nil && h.updateResult.UpdateAvailable {
+		updateNote = renderUpdateNote(h.updateResult.LatestVersion, cw)
+		hUpdate := lipgloss.Height(updateNote)
+		if used+1+hUpdate <= available {
+			canUpdate = true
+		}
+	}
+
+	// Assemble sections in display order: title, mascot, stats, menu, update.
 	var sections []string
 
 	if canTitle {
@@ -258,6 +272,10 @@ func (h *HomeScreen) View(width, height int) string {
 	}
 
 	sections = append(sections, menu)
+
+	if canUpdate {
+		sections = append(sections, updateNote)
+	}
 
 	content := strings.Join(sections, sep)
 	return renderCabinetFrame(content, width, height)
