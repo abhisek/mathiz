@@ -74,8 +74,8 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 		compressor:    compressor,
 		gemService:    gemService,
 		planner:       sess.NewPlanner(context.Background(), eventRepo),
-		input:         components.NewTextInput("Type your answer...", false, 20),
-		practiceInput: components.NewTextInput("Type your answer...", false, 20),
+		input:         components.NewTextInput("", false, 20),
+		practiceInput: components.NewTextInput("", false, 20),
 	}
 }
 
@@ -319,7 +319,7 @@ func (s *SessionScreen) handleQuestionReady(msg questionReadyMsg) (screen.Screen
 		s.mcSelected = 0
 	} else {
 		s.mcActive = false
-		s.input = components.NewTextInput("Type your answer...", false, 20)
+		s.input = components.NewTextInput("", false, 20)
 	}
 
 	return s, s.input.Init()
@@ -384,7 +384,7 @@ func (s *SessionScreen) handleFeedbackDone() (screen.Screen, tea.Cmd) {
 			s.currentLesson = lesson
 			s.showingLesson = true
 			s.practicePhase = practiceAnswering
-			s.practiceInput = components.NewTextInput("Type your answer...", false, 20)
+			s.practiceInput = components.NewTextInput("", false, 20)
 			s.state.PendingLesson = false
 			return s, s.practiceInput.Init()
 		}

@@ -9,7 +9,6 @@ import (
 
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
-	"github.com/abhisek/mathiz/internal/screens/placeholder"
 	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/ui/layout"
 	"github.com/abhisek/mathiz/internal/ui/theme"
@@ -218,23 +217,9 @@ func (s *SkillMapScreen) selectSkill() tea.Cmd {
 	}
 
 	state := s.skillState(r.skill.ID)
-	switch state {
-	case skillgraph.StateLocked:
-		// Show prerequisite info via placeholder
-		prereqs := skillgraph.Prerequisites(r.skill.ID)
-		var names []string
-		for _, p := range prereqs {
-			names = append(names, p.Name)
-		}
-		msg := fmt.Sprintf("%s\n\nRequires: %s", r.skill.Name, strings.Join(names, ", "))
-		return func() tea.Msg {
-			return router.PushScreenMsg{Screen: placeholder.New(msg)}
-		}
-	default:
-		// Push placeholder for practice (future: push session screen)
-		return func() tea.Msg {
-			return router.PushScreenMsg{Screen: placeholder.New(r.skill.Name)}
-		}
+	detail := newSkillDetail(*r.skill, state, s.mastered)
+	return func() tea.Msg {
+		return router.PushScreenMsg{Screen: detail}
 	}
 }
 
