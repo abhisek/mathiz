@@ -90,6 +90,9 @@ func (m *mockEventRepo) QueryLLMEvents(_ context.Context, _ store.QueryOpts) ([]
 func (m *mockEventRepo) GetLLMEvent(_ context.Context, _ int) (*store.LLMRequestEventRecord, error) {
 	return nil, nil
 }
+func (m *mockEventRepo) LLMUsageByPurpose(_ context.Context) ([]store.LLMUsageStats, error) {
+	return nil, nil
+}
 
 // mockSnapshotRepo implements store.SnapshotRepo for testing.
 type mockSnapshotRepo struct {

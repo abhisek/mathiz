@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	gosql "database/sql"
 	"fmt"
 
 	"entgo.io/ent/dialect/sql"
@@ -13,6 +14,7 @@ import (
 type eventRepo struct {
 	client *ent.Client
 	seq    *sequenceCounter
+	db     *gosql.DB
 }
 
 func (r *eventRepo) AppendLLMRequest(ctx context.Context, data LLMRequestEventData) error {
@@ -81,6 +83,32 @@ func (r *eventRepo) GetLLMEvent(ctx context.Context, id int) (*LLMRequestEventRe
 	}
 	rec := llmEventToRecord(row)
 	return &rec, nil
+}
+
+func (r *eventRepo) LLMUsageByPurpose(ctx context.Context) ([]LLMUsageStats, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT purpose,
+		       COUNT(*) as calls,
+		       COALESCE(SUM(input_tokens), 0) as input_tokens,
+		       COALESCE(SUM(output_tokens), 0) as output_tokens,
+		       CAST(COALESCE(AVG(latency_ms), 0) AS INTEGER) as avg_latency
+		FROM llm_request_events
+		GROUP BY purpose
+		ORDER BY calls DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("query LLM usage: %w", err)
+	}
+	defer rows.Close()
+
+	var stats []LLMUsageStats
+	for rows.Next() {
+		var s LLMUsageStats
+		if err := rows.Scan(&s.Purpose, &s.Calls, &s.InputTokens, &s.OutputTokens, &s.AvgLatencyMs); err != nil {
+			return nil, fmt.Errorf("scan LLM usage row: %w", err)
+		}
+		stats = append(stats, s)
+	}
+	return stats, rows.Err()
 }
 
 func llmEventToRecord(row *ent.LLMRequestEvent) LLMRequestEventRecord {

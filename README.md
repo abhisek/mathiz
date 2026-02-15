@@ -1,9 +1,10 @@
 # Mathiz
 
-AI-powered math tutor for your terminal. Mathiz helps kids (grades 3-5) build math mastery through adaptive practice, spaced repetition, and LLM-generated questions.
+AI-powered math tutor in the terminal. 
+Mathiz helps kids (grades 3-5) build math mastery through adaptive practice, spaced repetition, and LLM generated questions.
 
 Built with [Claude Code](https://code.claude.ai) using a spec driven development approach. See
-[specs](./specs/) for more details.
+[specs](./specs/) for more details and [notes](/specs/notes.md) for author notes.
 
 ## Install
 
@@ -36,17 +37,22 @@ export MATHIZ_GEMINI_MODEL=gemini-2.0-pro  # override default model
 mathiz          # launch the TUI
 mathiz play     # start a practice session directly
 mathiz stats    # view learning stats
+mathiz llm      # inspect LLM usage
 mathiz reset    # reset all progress
 ```
 
+## Guides
+
+- [LLM Usage Auditing](./docs/llm-usage-auditing.md) — inspect LLM requests, responses, and token usage
+
 ## Build from source
 
-Requires Go 1.23+.
+Requires Go 1.25+.
 
 ```sh
 git clone https://github.com/abhisek/mathiz.git
 cd mathiz
-CGO_ENABLED=0 go build -o mathiz .
+make
 ```
 
 ## License

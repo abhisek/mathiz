@@ -142,10 +142,61 @@ var llmViewCmd = &cobra.Command{
 	},
 }
 
+var llmStatsCmd = &cobra.Command{
+	Use:   "stats",
+	Short: "Show aggregated LLM token usage",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dbPath, err := store.DefaultDBPath()
+		if err != nil {
+			return fmt.Errorf("resolve database path: %w", err)
+		}
+
+		s, err := store.Open(dbPath)
+		if err != nil {
+			return fmt.Errorf("open database: %w", err)
+		}
+		defer s.Close()
+
+		ctx := context.Background()
+		stats, err := s.EventRepo().LLMUsageByPurpose(ctx)
+		if err != nil {
+			return fmt.Errorf("query usage: %w", err)
+		}
+
+		if len(stats) == 0 {
+			fmt.Println("No LLM usage recorded yet.")
+			return nil
+		}
+
+		fmt.Println("LLM Token Usage")
+		fmt.Println(strings.Repeat("\u2500", 72))
+		fmt.Printf("%-16s  %6s  %10s  %10s  %10s  %8s\n",
+			"Purpose", "Calls", "Input", "Output", "Total", "Avg Ms")
+		fmt.Println(strings.Repeat("\u2500", 72))
+
+		var totalCalls, totalIn, totalOut int
+		for _, st := range stats {
+			total := st.InputTokens + st.OutputTokens
+			fmt.Printf("%-16s  %6d  %10d  %10d  %10d  %8d\n",
+				st.Purpose, st.Calls, st.InputTokens, st.OutputTokens, total, st.AvgLatencyMs)
+			totalCalls += st.Calls
+			totalIn += st.InputTokens
+			totalOut += st.OutputTokens
+		}
+
+		fmt.Println(strings.Repeat("\u2500", 72))
+		fmt.Printf("%-16s  %6d  %10d  %10d  %10d\n",
+			"TOTAL", totalCalls, totalIn, totalOut, totalIn+totalOut)
+
+		return nil
+	},
+}
+
 func init() {
 	llmListCmd.Flags().IntP("limit", "n", 20, "Number of events to show")
 	llmListCmd.Flags().StringP("purpose", "p", "", "Filter by purpose (e.g. question-gen, lesson, diagnosis)")
 
 	llmCmd.AddCommand(llmListCmd)
 	llmCmd.AddCommand(llmViewCmd)
+	llmCmd.AddCommand(llmStatsCmd)
 }

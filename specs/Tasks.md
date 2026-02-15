@@ -7,267 +7,312 @@ Components are listed in dependency order. Check off tasks as they are completed
 ## 1. Project Skeleton & TUI Framework (`01-skeleton.md`)
 
 ### Go Module & Cobra CLI
-- [ ] Initialize Go module (`github.com/mathiz-ai/mathiz`)
-- [ ] Add dependencies: Cobra, Bubble Tea v2, Lip Gloss v2, Bubbles v2, Huh
-- [ ] Create `main.go` with Cobra root command (launches TUI when no subcommand)
-- [ ] Create `cmd/play.go` — launches TUI (same as bare `mathiz`)
-- [ ] Create `cmd/reset.go` — stub that prints "Not yet implemented"
-- [ ] Create `cmd/stats.go` — stub that prints "Not yet implemented"
+- [x] Initialize Go module (`github.com/mathiz-ai/mathiz`)
+- [x] Add dependencies: Cobra, Bubble Tea v2, Lip Gloss v2, Bubbles v2, Huh
+- [x] Create `main.go` with Cobra root command (launches TUI when no subcommand)
+- [x] Create `cmd/play.go` — launches TUI (same as bare `mathiz`)
+- [x] Create `cmd/reset.go` — stub that prints "Not yet implemented"
+- [x] Create `cmd/stats.go` — stub that prints "Not yet implemented"
 
 ### Theme & Styling
-- [ ] Define color palette constants (Primary, Secondary, Accent, Success, Error, etc.)
-- [ ] Define Lip Gloss style variables (Title, Subtitle, Body, Hint, Header, Footer, Card, etc.)
-- [ ] Define component styles (Selected, Unselected, Correct, Incorrect, ProgressFilled, etc.)
+- [x] Define color palette constants (Primary, Secondary, Accent, Success, Error, etc.)
+- [x] Define Lip Gloss style variables (Title, Subtitle, Body, Hint, Header, Footer, Card, etc.)
+- [x] Define component styles (Selected, Unselected, Correct, Incorrect, ProgressFilled, etc.)
 
 ### Screen Interface & Router
-- [ ] Define `Screen` interface (`Init`, `Update`, `View`, `Title`)
-- [ ] Implement stack-based `Router` (`Push`, `Pop`, `Active`, `Depth`, `Update`, `View`)
-- [ ] Define navigation message types (`PushScreenMsg`, `PopScreenMsg`)
+- [x] Define `Screen` interface (`Init`, `Update`, `View`, `Title`)
+- [x] Implement stack-based `Router` (`Push`, `Pop`, `Active`, `Depth`, `Update`, `View`)
+- [x] Define navigation message types (`PushScreenMsg`, `PopScreenMsg`)
 
 ### Layout System
-- [ ] Implement `RenderFrame` (header + content + footer composition)
-- [ ] Implement `RenderHeader` (logo, screen title, gem count, streak)
-- [ ] Implement `RenderFooter` (contextual key hints)
-- [ ] Implement responsive breakpoints (compact vs full layout)
-- [ ] Implement "Terminal too small" screen (< 80x24)
+- [x] Implement `RenderFrame` (header + content + footer composition)
+- [x] Implement `RenderHeader` (logo, screen title, gem count, streak)
+- [x] Implement `RenderFooter` (contextual key hints)
+- [x] Implement responsive breakpoints (compact vs full layout)
+- [x] Implement "Terminal too small" screen (< 80x24)
 
 ### Shared UI Components
-- [ ] Implement `TextInput` component (styled, numeric-only mode, validation indicator)
-- [ ] Implement `Menu` component (vertical nav, arrow keys, enter to select)
-- [ ] Implement `ProgressBar` component (label, percentage, responsive width)
-- [ ] Implement `Button` component (active/inactive states)
-- [ ] Implement `MultiChoice` component (A/B/C/D selection, post-answer feedback)
+- [x] Implement `TextInput` component (styled, numeric-only mode, validation indicator)
+- [x] Implement `Menu` component (vertical nav, arrow keys, enter to select)
+- [x] Implement `ProgressBar` component (label, percentage, responsive width)
+- [x] Implement `Button` component (active/inactive states)
+- [x] Implement `MultiChoice` component (A/B/C/D selection, post-answer feedback)
 
 ### Screens
-- [ ] Implement `HomeScreen` (mascot, greeting, menu with 5 items)
-- [ ] Implement robot mascot ASCII art (`internal/screens/home/mascot.go`)
-- [ ] Implement compact Home layout (mascot hidden when < 30 rows)
-- [ ] Implement `PlaceholderScreen` ("Coming Soon" for unbuilt features)
+- [x] Implement `HomeScreen` (mascot, greeting, menu with 5 items)
+- [x] Implement robot mascot ASCII art (`internal/screens/home/mascot.go`)
+- [x] Implement compact Home layout (mascot hidden when < 30 rows)
+- [x] Implement `PlaceholderScreen` ("Coming Soon" for unbuilt features)
 
 ### AppModel & Wiring
-- [ ] Implement `AppModel` (root Bubble Tea model, owns router)
-- [ ] Handle global key bindings (Ctrl+C quit, Esc pop, window resize)
-- [ ] Wire Home screen as initial screen on stack
-- [ ] Wire menu items to push placeholder screens
+- [x] Implement `AppModel` (root Bubble Tea model, owns router)
+- [x] Handle global key bindings (Ctrl+C quit, Esc pop, window resize)
+- [x] Wire Home screen as initial screen on stack
+- [x] Wire menu items to push placeholder screens
 
 ### Verification
-- [ ] `go build ./...` compiles cleanly
+- [x] `go build ./...` compiles cleanly
 - [ ] `go vet ./...` passes
-- [ ] TUI launches, shows Home screen with mascot and menu
-- [ ] Arrow keys navigate menu, Enter pushes placeholder, Esc pops back
-- [ ] Resize below 80x24 shows min-size message
+- [x] TUI launches, shows Home screen with mascot and menu
+- [x] Arrow keys navigate menu, Enter pushes placeholder, Esc pops back
+- [x] Resize below 80x24 shows min-size message
+
+### Known Issues
+- Header missing robot emoji (shows "Mathiz" instead of "🤖 Mathiz")
+- Gem/streak symbols use `◆`/`★` instead of spec's `💎`/`🔥`
+- Menu has "Exit Game" instead of spec's "Settings" as last item
+- Placeholder screen uses `╌╌ Coming Soon ╌╌` instead of spec's `🚧 Coming Soon!`
+- Module name is `github.com/abhisek/mathiz` instead of `github.com/mathiz-ai/mathiz`
+- `stats` command is fully implemented (not a stub) — beyond spec scope
 
 ---
 
 ## 2. Persistence Layer (`02-persistence.md`)
 
 ### Database Setup
-- [ ] Add `modernc.org/sqlite` and `entgo.io/ent` dependencies
-- [ ] Implement `Store` struct with `Open`/`Close` (holds `*ent.Client`)
-- [ ] Configure SQLite pragmas on connection (WAL, busy_timeout, foreign_keys, synchronous)
-- [ ] Implement DB file location resolution (CLI flag > env var > XDG default)
-- [ ] Auto-create parent directory if it doesn't exist
+- [x] Add `modernc.org/sqlite` and `entgo.io/ent` dependencies
+- [x] Implement `Store` struct with `Open`/`Close` (holds `*ent.Client`)
+- [x] Configure SQLite pragmas on connection (WAL, busy_timeout, foreign_keys, synchronous)
+- [ ] Implement DB file location resolution (CLI flag > env var > XDG default) — **`--db` CLI flag not implemented; only env var + XDG default**
+- [x] Auto-create parent directory if it doesn't exist
 
 ### ent Schemas
-- [ ] Create `EventMixin` with base fields (`id`, `sequence`, `timestamp`)
-- [ ] Create `Snapshot` ent schema (`sequence`, `timestamp`, `data` JSON field)
-- [ ] Run `go generate ./ent` and verify generated code
+- [x] Create `EventMixin` with base fields (`id`, `sequence`, `timestamp`)
+- [x] Create `Snapshot` ent schema (`sequence`, `timestamp`, `data` JSON field)
+- [x] Run `go generate ./ent` and verify generated code
 
 ### Repository Interfaces
-- [ ] Define `EventRepo` interface (`Append`, `QueryByType`, `QueryByTimeRange`, `QueryAfterSequence`, `NextSequence`)
-- [ ] Define `SnapshotRepo` interface (`Save`, `Latest`, `Prune`)
-- [ ] Define `QueryOpts` struct (Limit, After, Before, From, To)
+- [ ] Define `EventRepo` interface (`Append`, `QueryByType`, `QueryByTimeRange`, `QueryAfterSequence`, `NextSequence`) — **Only domain-specific append/query methods implemented; generic query methods missing**
+- [x] Define `SnapshotRepo` interface (`Save`, `Latest`, `Prune`)
+- [x] Define `QueryOpts` struct (Limit, After, Before, From, To)
 
 ### Repository Implementations
-- [ ] Implement `EventRepo` with append (assigns global sequence) and query methods
-- [ ] Implement `SnapshotRepo` with save, latest, and prune (keep N most recent)
-- [ ] Define `SnapshotData` struct (Skills, Metrics, Schedules, Gems, Version)
+- [x] Implement `EventRepo` with append (assigns global sequence) and query methods — **8 domain-specific append methods + 6 query methods; generic queries missing**
+- [x] Implement `SnapshotRepo` with save, latest, and prune (keep N most recent)
+- [x] Define `SnapshotData` struct (Skills, Metrics, Schedules, Gems, Version)
 
 ### Snapshot Lifecycle
 - [ ] Implement periodic snapshot creation (every N events, configurable)
-- [ ] Implement snapshot on graceful shutdown
+- [ ] Implement snapshot on graceful shutdown — **Snapshots saved at session end only, not on graceful shutdown**
 - [ ] Implement restore from snapshot + event replay on startup
 
 ### Auto-Migration
-- [ ] Call `client.Schema.Create(ctx)` at startup to auto-migrate
+- [x] Call `client.Schema.Create(ctx)` at startup to auto-migrate
 
 ### Testing
-- [ ] Write tests using in-memory SQLite (`file::memory:?cache=shared`)
-- [ ] Test event append assigns sequential sequence numbers
-- [ ] Test event queries filter by type, time range, and sequence
-- [ ] Test snapshot save/load round-trips correctly
-- [ ] Test snapshot prune keeps only N most recent
+- [x] Write tests using in-memory SQLite (`file::memory:?cache=shared`)
+- [x] Test event append assigns sequential sequence numbers
+- [ ] Test event queries filter by type, time range, and sequence — **No generic event query tests**
+- [x] Test snapshot save/load round-trips correctly
+- [x] Test snapshot prune keeps only N most recent
 - [ ] Test restore from snapshot + replay produces correct state
-- [ ] Test pragmas are applied on connection open
+- [x] Test pragmas are applied on connection open
+
+### Known Issues
+- `--db` CLI flag not implemented (spec requires CLI flag > env var > default priority)
+- Generic EventRepo query methods missing (QueryByType, QueryByTimeRange, QueryAfterSequence, NextSequence)
+- No snapshot creation triggers or restore logic
+- Sequence counter uses raw SQL outside ent framework (dual schema management)
 
 ---
 
 ## 3. Skill Graph (`03-skill-graph.md`)
 
 ### Data Model
-- [ ] Define `Skill` struct (ID, Name, Description, Strand, GradeLevel, etc.)
-- [ ] Define `Strand` type and constants (NumberPlace, AddSub, MultDiv, Fractions, Measurement)
-- [ ] Define `Tier` type, constants (`TierLearn`, `TierProve`), and `TierConfig` struct
-- [ ] Set default tier configurations (Learn: 8 problems/0.75 acc; Prove: 6 problems/0.85 acc/30s)
+- [x] Define `Skill` struct (ID, Name, Description, Strand, GradeLevel, etc.)
+- [x] Define `Strand` type and constants (NumberPlace, AddSub, MultDiv, Fractions, Measurement)
+- [x] Define `Tier` type, constants (`TierLearn`, `TierProve`), and `TierConfig` struct
+- [x] Set default tier configurations (Learn: 8 problems/0.75 acc; Prove: 6 problems/0.85 acc/30s)
 
 ### Seed Graph
-- [ ] Define all 52 skill nodes as Go literals in `internal/skillgraph/seed.go`
-  - [ ] Number & Place Value (8 nodes)
-  - [ ] Addition & Subtraction (10 nodes)
-  - [ ] Multiplication & Division (14 nodes)
-  - [ ] Fractions (12 nodes)
-  - [ ] Measurement (8 nodes)
+- [x] Define all 52 skill nodes as Go literals in `internal/skillgraph/seed.go`
+  - [x] Number & Place Value (8 nodes)
+  - [x] Addition & Subtraction (10 nodes)
+  - [x] Multiplication & Division (14 nodes)
+  - [x] Fractions (12 nodes)
+  - [x] Measurement (8 nodes)
 
 ### Graph Traversal API
-- [ ] Implement `GetSkill(id)` — lookup by ID
-- [ ] Implement `AllSkills()` — return all skills
-- [ ] Implement `ByStrand(strand)` — filter by strand, ordered by grade + topo
-- [ ] Implement `ByGrade(grade)` — filter by grade
-- [ ] Implement `RootSkills()` — skills with no prerequisites
-- [ ] Implement `Prerequisites(id)` — direct prerequisites
-- [ ] Implement `Dependents(id)` — skills depending on given skill
-- [ ] Implement `IsUnlocked(id, mastered)` — check all prereqs mastered
-- [ ] Implement `AvailableSkills(mastered)` — unlocked but not mastered
-- [ ] Implement `FrontierSkills(mastered)` — next-up skills for learner
-- [ ] Implement `BlockedSkills(mastered)` — skills with unmet prereqs
-- [ ] Implement `TopologicalOrder()` — valid topological sort
-- [ ] Implement `Validate()` — cycle detection, dangling refs, duplicate IDs, etc.
+- [x] Implement `GetSkill(id)` — lookup by ID
+- [x] Implement `AllSkills()` — return all skills
+- [x] Implement `ByStrand(strand)` — filter by strand, ordered by grade + topo
+- [x] Implement `ByGrade(grade)` — filter by grade
+- [x] Implement `RootSkills()` — skills with no prerequisites
+- [x] Implement `Prerequisites(id)` — direct prerequisites
+- [x] Implement `Dependents(id)` — skills depending on given skill
+- [x] Implement `IsUnlocked(id, mastered)` — check all prereqs mastered
+- [x] Implement `AvailableSkills(mastered)` — unlocked but not mastered
+- [x] Implement `FrontierSkills(mastered)` — next-up skills for learner
+- [x] Implement `BlockedSkills(mastered)` — skills with unmet prereqs
+- [x] Implement `TopologicalOrder()` — valid topological sort
+- [x] Implement `Validate()` — cycle detection, dangling refs, duplicate IDs, etc.
 
 ### Diagnostic Placement
-- [ ] Implement top-down probing algorithm (2-3 questions per skill, highest grade first)
+- [ ] Implement top-down probing algorithm (2-3 questions per skill, highest grade first) — **Skeleton only (DiagnosticResult type defined, no algorithm)**
 - [ ] Implement transitive prerequisite marking on correct probe
 - [ ] Implement skip option (start from root skills)
 - [ ] Target 10-15 total diagnostic questions
 
 ### Skill Map Screen
-- [ ] Implement Skill Map screen (grouped list by strand)
-- [ ] Render state icons per skill (locked, available, learning, proving, mastered, rusty)
-- [ ] Implement Enter on available skill → start practice session
-- [ ] Implement Enter on locked skill → show needed prerequisites
-- [ ] Implement Tab to cycle between strand headers
-- [ ] Implement q/Esc to return to Home
+- [x] Implement Skill Map screen (grouped list by strand)
+- [x] Render state icons per skill (locked, available, learning, proving, mastered, rusty) — **Icons rendered but mastered data always empty (not wired to persistence)**
+- [x] Implement Enter on available skill → start practice session — **Uses placeholder screen currently**
+- [x] Implement Enter on locked skill → show needed prerequisites
+- [x] Implement Tab to cycle between strand headers
+- [x] Implement q/Esc to return to Home
 
 ### Validation
-- [ ] Call `Validate()` at init, panic on failure
-- [ ] Test: seed graph passes validation
-- [ ] Test: cycle detection catches injected cycle
-- [ ] Test: dangling prerequisite reference caught
-- [ ] Test: `RootSkills` returns correct set
-- [ ] Test: `IsUnlocked`, `AvailableSkills`, `FrontierSkills`, `BlockedSkills` correct
-- [ ] Test: `TopologicalOrder` valid ordering
-- [ ] Test: `ByStrand` / `ByGrade` correct grouping
+- [x] Call `Validate()` at init, panic on failure
+- [x] Test: seed graph passes validation
+- [x] Test: cycle detection catches injected cycle
+- [x] Test: dangling prerequisite reference caught
+- [x] Test: `RootSkills` returns correct set
+- [x] Test: `IsUnlocked`, `AvailableSkills`, `FrontierSkills`, `BlockedSkills` correct
+- [x] Test: `TopologicalOrder` valid ordering
+- [x] Test: `ByStrand` / `ByGrade` correct grouping
+
+### Known Issues
+- SkillMapScreen `mastered` map always empty — not populated from persistence/mastery layer
+- Diagnostic placement algorithm not implemented (intentionally deferred)
 
 ---
 
 ## 4. LLM Integration (`04-llm.md`)
 
-- [ ] Define provider abstraction interface (multi-provider support)
-- [ ] Implement prompt template system
-- [ ] Implement strict JSON schema enforcement on LLM outputs
-- [ ] Implement JSON validation pipeline
-- [ ] Implement token limit management
-- [ ] Implement error handling and retries
-- [ ] Wire up at least one LLM provider
+- [x] Define provider abstraction interface (multi-provider support)
+- [x] Implement prompt template system
+- [x] Implement strict JSON schema enforcement on LLM outputs
+- [x] Implement JSON validation pipeline
+- [x] Implement token limit management
+- [x] Implement error handling and retries
+- [x] Wire up at least one LLM provider — **All three: Anthropic, OpenAI, Gemini**
+
+### Known Issues
+- **BUG**: Logging decorator records ModelID as Provider name (`logging.go:32-33`) — both Provider and Model fields set to `l.inner.ModelID()`
+- RetryAfter header not extracted from rate limit (429) responses in any adapter
 
 ---
 
 ## 5. Problem Generation (`05-problem-gen.md`)
 
-- [ ] Implement LLM-powered question generation from skill + learner context
-- [ ] Implement programmatic answer validation
-- [ ] Implement difficulty tier integration (Learn vs Prove)
-- [ ] Implement within-session deduplication
-- [ ] Generate questions using skill keywords, description, and strand for context
+- [x] Implement LLM-powered question generation from skill + learner context
+- [x] Implement programmatic answer validation
+- [x] Implement difficulty tier integration (Learn vs Prove)
+- [x] Implement within-session deduplication
+- [x] Generate questions using skill keywords, description, and strand for context
+
+### Known Issues
+- LearnerProfile field included in prompts but not tested in `prompt_test.go`
 
 ---
 
 ## 6. Session Engine (`06-session.md`)
 
 ### Session Planner
-- [ ] Implement session planning: select target skill
-- [ ] Implement session mix: 60% frontier, 30% review, 10% boosters
-- [ ] Integrate with skill graph (frontier, available, mastered skills)
+- [x] Implement session planning: select target skill
+- [x] Implement session mix: 60% frontier, 30% review, 10% boosters
+- [x] Integrate with skill graph (frontier, available, mastered skills)
 
 ### Session Lifecycle
-- [ ] Implement session start (create session, plan questions)
-- [ ] Implement question serving (serve next question based on plan)
-- [ ] Implement answer recording (capture response, latency, correctness)
-- [ ] Implement session completion (compute summary stats)
+- [x] Implement session start (create session, plan questions)
+- [x] Implement question serving (serve next question based on plan)
+- [x] Implement answer recording (capture response, latency, correctness)
+- [x] Implement session completion (compute summary stats)
 
 ### Session Screen (TUI)
-- [ ] Implement Session screen (question display, answer input, timer)
-- [ ] Implement progress indicator (question N of M)
-- [ ] Implement correct/incorrect feedback after each answer
-- [ ] Implement timer display for Prove-tier questions
+- [x] Implement Session screen (question display, answer input, timer)
+- [x] Implement progress indicator (question N of M)
+- [x] Implement correct/incorrect feedback after each answer
+- [x] Implement timer display for Prove-tier questions
 
 ### Session Summary Screen
-- [ ] Implement Session Summary screen (accuracy, speed, skills practiced)
-- [ ] Show per-skill breakdown
-- [ ] Show gems earned (wired in component 11)
-- [ ] Implement "Practice Again" / "Back to Home" options
+- [x] Implement Session Summary screen (accuracy, speed, skills practiced)
+- [x] Show per-skill breakdown
+- [x] Show gems earned (wired in component 11)
+- [x] Implement "Practice Again" / "Back to Home" options
 
 ---
 
 ## 7. Mastery & Scoring (`07-mastery.md`)
 
-- [ ] Implement per-skill metrics tracking (accuracy, speed, consistency, assist rate)
-- [ ] Implement fluency score computation (0-1 composite score)
-- [ ] Implement mastery state machine (new → learning → mastered → rusty)
-- [ ] Define configurable mastery criteria (per-tier thresholds)
-- [ ] Implement state transitions triggered by session results
-- [ ] Persist mastery state changes as events
+- [x] Implement per-skill metrics tracking (accuracy, speed, consistency, assist rate)
+- [x] Implement fluency score computation (0-1 composite score)
+- [x] Implement mastery state machine (new → learning → mastered → rusty)
+- [x] Define configurable mastery criteria (per-tier thresholds)
+- [x] Implement state transitions triggered by session results
+- [x] Persist mastery state changes as events
+
+### Known Issues
+- **BUG**: `CheckReviewPerformance()` never called in HandleAnswer — poor review performance does not transition skills to rusty
+- Planner does not prioritize rusty skills over regular frontier skills (spec requirement)
 
 ---
 
 ## 8. Spaced Repetition (`08-spaced-rep.md`)
 
-- [ ] Implement per-skill review scheduling
-- [ ] Implement next-review-date computation (based on mastery strength + recency)
-- [ ] Implement decay detection (identify skills becoming rusty)
-- [ ] Implement rusty labeling (transition mastered → rusty)
-- [ ] Integrate with session planner (feed review skills into 30% review slot)
+- [x] Implement per-skill review scheduling
+- [x] Implement next-review-date computation (based on mastery strength + recency)
+- [x] Implement decay detection (identify skills becoming rusty)
+- [x] Implement rusty labeling (transition mastered → rusty)
+- [x] Integrate with session planner (feed review skills into 30% review slot)
+
+### Known Issues
+- Skill Map screen does not display review schedule badges (Review in N days, Due, Overdue, Graduated)
+- Stats command does not show graduated/upcoming/overdue skill sections
+- No visual notification when RunDecayCheck marks skills as rusty at session start
+- Scheduler not added to `app.Options` (passed via local variable)
 
 ---
 
 ## 9. Error Diagnosis (`09-diagnosis.md`)
 
-- [ ] Implement rule-based error classifier: careless errors
-- [ ] Implement rule-based error classifier: speed-rush mistakes
-- [ ] Implement rule-based error classifier: misconceptions
-- [ ] Implement misconception tagging (link errors to specific misconceptions)
-- [ ] Implement AI-assisted diagnosis fallback (when rules are insufficient)
-- [ ] Implement intervention recommendations based on diagnosis
+- [x] Implement rule-based error classifier: careless errors
+- [x] Implement rule-based error classifier: speed-rush mistakes
+- [x] Implement rule-based error classifier: misconceptions — **LLM-based async classification**
+- [x] Implement misconception tagging (link errors to specific misconceptions)
+- [x] Implement AI-assisted diagnosis fallback (when rules are insufficient)
+- [x] Implement intervention recommendations based on diagnosis — **Misconception penalty adjusts tier completion requirements**
+
+### Known Issues
+- **BUG**: `AppendDiagnosisEvent` never called from production code — diagnosis events are never persisted to the event log
 
 ---
 
 ## 10. AI Lessons, Hints & Compression (`10-ai-lessons.md`)
 
-- [ ] Implement hint generation (progressive hints per question)
-- [ ] Implement micro-lesson generation (explanation + worked example + mini practice)
-- [ ] Implement context compression snapshots (summarize learner history for LLM context)
-- [ ] Enforce strict JSON output + programmatic validation on all AI outputs
-- [ ] Integrate hints into Session screen (available in Learn tier)
+- [x] Implement hint generation (progressive hints per question)
+- [x] Implement micro-lesson generation (explanation + worked example + mini practice)
+- [x] Implement context compression snapshots (summarize learner history for LLM context)
+- [x] Enforce strict JSON output + programmatic validation on all AI outputs
+- [x] Integrate hints into Session screen (available in Learn tier)
+
+### Known Issues
+- ProfileInput.SessionCount defined but not included in profile generation prompt
+- Profile/compression goroutines spawned without context cancellation (potential leak on shutdown)
 
 ---
 
 ## 11. Rewards — Gems (`11-rewards.md`)
 
 ### Gem System
-- [ ] Define gem types: mastery gems, retention gems, recovery gems
-- [ ] Define rarity levels for gems
-- [ ] Implement award triggers (tied to real learning milestones)
-- [ ] Persist gem awards as events
+- [x] Define gem types: mastery gems, retention gems, recovery gems
+- [x] Define rarity levels for gems
+- [x] Implement award triggers (tied to real learning milestones)
+- [x] Persist gem awards as events
 
 ### Gem Vault Screen
-- [ ] Implement Gem Vault screen (display collected gems)
-- [ ] Show gem counts by type and rarity
-- [ ] Show recent gem awards
+- [x] Implement Gem Vault screen (display collected gems)
+- [x] Show gem counts by type and rarity
+- [x] Show recent gem awards
 
 ### History Screen
-- [ ] Implement History screen (past sessions, gems, milestones)
-- [ ] Show session history with date, skill, accuracy
-- [ ] Show gem award history
+- [x] Implement History screen (past sessions, gems, milestones)
+- [x] Show session history with date, skill, accuracy
+- [x] Show gem award history
 
 ### Integration
-- [ ] Wire gem count into header display
-- [ ] Wire gem awards into Session Summary screen
+- [x] Wire gem count into header display
+- [x] Wire gem awards into Session Summary screen
+
+### Known Issues
+- Rarity colors use `theme.Secondary`/`theme.Accent` instead of spec's `theme.Info`/`theme.Warning` (those constants don't exist in theme)

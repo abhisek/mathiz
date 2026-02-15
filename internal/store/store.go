@@ -74,7 +74,7 @@ func (s *Store) SnapshotRepo() SnapshotRepo {
 
 // EventRepo returns an EventRepo backed by this store.
 func (s *Store) EventRepo() EventRepo {
-	return &eventRepo{client: s.client, seq: s.seq}
+	return &eventRepo{client: s.client, seq: s.seq, db: s.db}
 }
 
 // applyPragmas configures SQLite for optimal single-user performance.

@@ -123,6 +123,15 @@ type LLMRequestEventRecord struct {
 	ResponseBody string
 }
 
+// LLMUsageStats holds aggregated token usage for a group (purpose or total).
+type LLMUsageStats struct {
+	Purpose      string
+	Calls        int
+	InputTokens  int
+	OutputTokens int
+	AvgLatencyMs int64
+}
+
 // SessionEventData captures the data for a session lifecycle event.
 type SessionEventData struct {
 	SessionID      string
@@ -295,4 +304,7 @@ type EventRepo interface {
 
 	// GetLLMEvent returns a single LLM request event by ID, or nil if not found.
 	GetLLMEvent(ctx context.Context, id int) (*LLMRequestEventRecord, error)
+
+	// LLMUsageByPurpose returns aggregated token usage grouped by purpose.
+	LLMUsageByPurpose(ctx context.Context) ([]LLMUsageStats, error)
 }
