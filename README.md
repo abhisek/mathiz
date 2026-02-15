@@ -3,8 +3,8 @@
 AI powered math playground in the terminal. 
 Mathiz helps kids (grades 2-5) build math mastery through adaptive practice, spaced repetition, and LLM generated questions.
 Mathiz is backed by a static [skill graph](./internal/skillgraph/seed.go), [rule based adaptive
-learning](./internal/mastery/) and [positive reinforcement](./internal/gems/) to make it explainable
-and constrained.
+learning](./internal/mastery/) and [positive reinforcement](./internal/gems/) to make it
+explainable, constrained, and fun.
 
 Built with [Claude Code](https://code.claude.ai) using a spec driven development approach. See
 [specs](./specs/) and [author notes](/specs/notes.md) for details.
