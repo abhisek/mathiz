@@ -45,10 +45,10 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 	}
 
 	items := []components.MenuItem{
-		{Label: "Start Practice", Action: func() tea.Cmd {
+		{Label: "Start Game", Action: func() tea.Cmd {
 			if generator == nil || eventRepo == nil || snapRepo == nil {
 				return func() tea.Msg {
-					return router.PushScreenMsg{Screen: placeholder.New("Start Practice")}
+					return router.PushScreenMsg{Screen: placeholder.New("Start Game")}
 				}
 			}
 			return func() tea.Msg {

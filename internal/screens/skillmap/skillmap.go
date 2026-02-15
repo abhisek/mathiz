@@ -133,7 +133,7 @@ func (s *SkillMapScreen) KeyHints() []layout.KeyHint {
 		{Key: "↑↓", Description: "Navigate"},
 		{Key: "Tab", Description: "Strand"},
 		{Key: "Enter", Description: "Select"},
-		{Key: "q", Description: "Back"},
+		{Key: "Esc", Description: "Back"},
 	}
 }
 
