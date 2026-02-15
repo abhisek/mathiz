@@ -52,14 +52,19 @@ if ! curl -fsSL -o "${tmpdir}/${BINARY}" "$url"; then
   exit 1
 fi
 
-chmod +x "${tmpdir}/${BINARY}"
-
 # Install.
 if [ -w "$INSTALL_DIR" ]; then
-  mv "${tmpdir}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+  install -m 755 "${tmpdir}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
 else
   echo "Installing to ${INSTALL_DIR} (requires sudo)..."
-  sudo mv "${tmpdir}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+  sudo install -m 755 "${tmpdir}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
 fi
 
 echo "Installed mathiz ${tag} to ${INSTALL_DIR}/${BINARY}"
+
+# Verify the install directory is in PATH.
+case ":${PATH}:" in
+  *":${INSTALL_DIR}:"*) ;;
+  *) echo "Warning: ${INSTALL_DIR} is not in your PATH. Add it with:" >&2
+     echo "  export PATH=\"${INSTALL_DIR}:\$PATH\"" >&2 ;;
+esac
