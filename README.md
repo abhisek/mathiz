@@ -7,7 +7,7 @@ learning](./internal/mastery/) and [positive reinforcement](./internal/gems/) to
 and constrained.
 
 Built with [Claude Code](https://code.claude.ai) using a spec driven development approach. See
-[specs](./specs/) for more details and [notes](/specs/notes.md) for author notes.
+[specs](./specs/) for [author notes](/specs/notes.md) for details.
 
 <div align="center">
   <picture>
