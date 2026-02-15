@@ -71,6 +71,7 @@ But the system is designed to support multiple standards and curriculum.
 
 ## Guides
 
+- [Skill Preview](./docs/skill-preview.md) — browse skills and test LLM-generated questions without a database
 - [LLM Usage Auditing](./docs/llm-usage-auditing.md) — inspect LLM requests, responses, and token usage
 
 ## Build from source
