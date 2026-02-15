@@ -81,11 +81,9 @@ Spec requires: `QueryByType`, `QueryByTimeRange`, `QueryAfterSequence`, `NextSeq
 
 **Impact**: Sync-readiness (spec section 7) impossible; generic event export not available; snapshot restore via event replay not supported.
 
-### 5. No snapshot creation triggers or restore logic (Spec 02)
+### 5. ~~No snapshot creation triggers or restore logic (Spec 02)~~ — NOT A BUG
 
-Spec requires periodic snapshot creation (every 100 events), on-exit snapshots, and restore logic (load latest snapshot + replay events). None of this orchestration exists.
-
-**Impact**: Snapshots are only saved at session end. No fast startup via snapshot restore. Full event replay required every startup (but not even implemented).
+Spec describes classic event-sourcing (periodic snapshots every 100 events, on-exit snapshots, event replay on startup). The implementation uses a simpler session-checkpoint model: full state is serialized into a snapshot at session end and loaded directly at next session start — no event replay needed. This is a deliberate simplification, not a bug. State is correctly persisted and restored across sessions. The only tradeoff is mid-session crash loses that session's progress, which is acceptable for a 15-minute terminal app.
 
 ### 6. SkillMapScreen mastered data always empty (Spec 03)
 

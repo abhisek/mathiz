@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -12,11 +11,13 @@ import (
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/store"
+	"github.com/spf13/cobra"
 )
 
 // runApp opens the store, builds dependencies, and launches the TUI.
-func runApp(ctx context.Context) error {
-	dbPath, err := store.DefaultDBPath()
+func runApp(cmd *cobra.Command) error {
+	ctx := cmd.Context()
+	dbPath, err := resolveDBPath(cmd)
 	if err != nil {
 		return fmt.Errorf("resolve DB path: %w", err)
 	}

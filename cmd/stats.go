@@ -17,7 +17,7 @@ var statsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Show learning statistics",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		dbPath, err := store.DefaultDBPath()
+		dbPath, err := resolveDBPath(cmd)
 		if err != nil {
 			return fmt.Errorf("resolve database path: %w", err)
 		}

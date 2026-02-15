@@ -99,7 +99,7 @@ func applyPragmas(db *sql.DB) error {
 // 3. ~/.local/share/mathiz/mathiz.db
 func DefaultDBPath() (string, error) {
 	if p := os.Getenv("MATHIZ_DB"); p != "" {
-		return p, ensureDir(p)
+		return p, EnsureDir(p)
 	}
 
 	dataHome := os.Getenv("XDG_DATA_HOME")
@@ -112,11 +112,11 @@ func DefaultDBPath() (string, error) {
 	}
 
 	p := filepath.Join(dataHome, "mathiz", "mathiz.db")
-	return p, ensureDir(p)
+	return p, EnsureDir(p)
 }
 
-// ensureDir creates the parent directory of path if it doesn't exist.
-func ensureDir(path string) error {
+// EnsureDir creates the parent directory of path if it doesn't exist.
+func EnsureDir(path string) error {
 	dir := filepath.Dir(path)
 	return os.MkdirAll(dir, 0o755)
 }

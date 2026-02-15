@@ -22,7 +22,7 @@ var llmListCmd = &cobra.Command{
 		limit, _ := cmd.Flags().GetInt("limit")
 		purpose, _ := cmd.Flags().GetString("purpose")
 
-		dbPath, err := store.DefaultDBPath()
+		dbPath, err := resolveDBPath(cmd)
 		if err != nil {
 			return fmt.Errorf("resolve database path: %w", err)
 		}
@@ -86,7 +86,7 @@ var llmViewCmd = &cobra.Command{
 			return fmt.Errorf("invalid ID %q: %w", args[0], err)
 		}
 
-		dbPath, err := store.DefaultDBPath()
+		dbPath, err := resolveDBPath(cmd)
 		if err != nil {
 			return fmt.Errorf("resolve database path: %w", err)
 		}
@@ -147,7 +147,7 @@ var llmStatsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Show aggregated LLM token usage and estimated cost",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		dbPath, err := store.DefaultDBPath()
+		dbPath, err := resolveDBPath(cmd)
 		if err != nil {
 			return fmt.Errorf("resolve database path: %w", err)
 		}

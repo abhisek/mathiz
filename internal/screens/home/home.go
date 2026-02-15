@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/abhisek/mathiz/internal/screens/placeholder"
 	sessionscreen "github.com/abhisek/mathiz/internal/screens/session"
 	"github.com/abhisek/mathiz/internal/screens/skillmap"
+	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/abhisek/mathiz/internal/ui/components"
 	"github.com/abhisek/mathiz/internal/ui/theme"
@@ -35,14 +37,19 @@ var _ screen.Screen = (*HomeScreen)(nil)
 
 // New creates a new HomeScreen.
 func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service, lessonService *lessons.Service, compressor *lessons.Compressor, gemService *gems.Service) *HomeScreen {
-	// Load gem count from snapshot.
-	var gemCount int
+	// Load snapshot for gem count and skill states.
+	var snap *store.Snapshot
 	if snapRepo != nil {
-		snap, err := snapRepo.Latest(context.Background())
-		if err == nil && snap != nil && snap.Data.Gems != nil {
-			gemCount = snap.Data.Gems.TotalCount
-		}
+		snap, _ = snapRepo.Latest(context.Background())
 	}
+
+	var gemCount int
+	if snap != nil && snap.Data.Gems != nil {
+		gemCount = snap.Data.Gems.TotalCount
+	}
+
+	skillStates := computeSkillStates(snap)
+	reviewBadges := computeReviewBadges(snap)
 
 	items := []components.MenuItem{
 		{Label: "Start Game", Action: func() tea.Cmd {
@@ -59,7 +66,7 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 		}},
 		{Label: "Skill Map", Action: func() tea.Cmd {
 			return func() tea.Msg {
-				return router.PushScreenMsg{Screen: skillmap.New()}
+				return router.PushScreenMsg{Screen: skillmap.New(skillStates, reviewBadges)}
 			}
 		}},
 		{Label: "Gem Vault", Action: func() tea.Cmd {
@@ -154,4 +161,48 @@ func (h *HomeScreen) View(width, height int) string {
 
 func (h *HomeScreen) Title() string {
 	return "Home"
+}
+
+// computeReviewBadges extracts review schedule badges from snapshot spaced rep data.
+func computeReviewBadges(snap *store.Snapshot) map[string]skillmap.ReviewBadge {
+	badges := make(map[string]skillmap.ReviewBadge)
+	if snap == nil || snap.Data.SpacedRep == nil {
+		return badges
+	}
+	now := time.Now()
+	for id, rs := range snap.Data.SpacedRep.Reviews {
+		nextReview, err := time.Parse(time.RFC3339, rs.NextReviewDate)
+		if err != nil {
+			continue
+		}
+		badges[id] = skillmap.ReviewBadge{
+			Due:       !now.Before(nextReview),
+			Graduated: rs.Graduated,
+		}
+	}
+	return badges
+}
+
+// computeSkillStates maps snapshot mastery data to skillgraph.SkillState values.
+func computeSkillStates(snap *store.Snapshot) map[string]skillgraph.SkillState {
+	states := make(map[string]skillgraph.SkillState)
+	if snap == nil || snap.Data.Mastery == nil {
+		return states
+	}
+	for id, sm := range snap.Data.Mastery.Skills {
+		switch sm.State {
+		case "mastered":
+			states[id] = skillgraph.StateMastered
+		case "rusty":
+			states[id] = skillgraph.StateRusty
+		case "learning":
+			if sm.CurrentTier == "prove" {
+				states[id] = skillgraph.StateProving
+			} else {
+				states[id] = skillgraph.StateLearning
+			}
+		// "new" → skip, same as no entry
+		}
+	}
+	return states
 }

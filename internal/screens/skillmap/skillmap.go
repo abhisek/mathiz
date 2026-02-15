@@ -14,6 +14,12 @@ import (
 	"github.com/abhisek/mathiz/internal/ui/theme"
 )
 
+// ReviewBadge holds review schedule display info for a mastered skill.
+type ReviewBadge struct {
+	Due       bool // at or past review date
+	Graduated bool // completed all 6 review stages
+}
+
 type rowKind int
 
 const (
@@ -32,14 +38,27 @@ type SkillMapScreen struct {
 	rows         []row
 	cursor       int
 	scrollOffset int
+	skillStates  map[string]skillgraph.SkillState
 	mastered     map[string]bool
+	reviews      map[string]ReviewBadge
 }
 
 var _ screen.Screen = (*SkillMapScreen)(nil)
 
 // New creates a new SkillMapScreen.
-func New() *SkillMapScreen {
+func New(skillStates map[string]skillgraph.SkillState, reviews map[string]ReviewBadge) *SkillMapScreen {
+	if skillStates == nil {
+		skillStates = make(map[string]skillgraph.SkillState)
+	}
+
+	// Derive mastered set: both Mastered and Rusty count as "previously mastered"
+	// so dependents stay unlocked.
 	mastered := make(map[string]bool)
+	for id, state := range skillStates {
+		if state == skillgraph.StateMastered || state == skillgraph.StateRusty {
+			mastered[id] = true
+		}
+	}
 
 	var rows []row
 	for _, strand := range skillgraph.AllStrands() {
@@ -50,9 +69,15 @@ func New() *SkillMapScreen {
 		}
 	}
 
+	if reviews == nil {
+		reviews = make(map[string]ReviewBadge)
+	}
+
 	s := &SkillMapScreen{
-		rows:     rows,
-		mastered: mastered,
+		rows:        rows,
+		skillStates: skillStates,
+		mastered:    mastered,
+		reviews:     reviews,
 	}
 
 	// Set cursor to first skill row
@@ -225,8 +250,8 @@ func (s *SkillMapScreen) selectSkill() tea.Cmd {
 
 // skillState computes the display state for a skill.
 func (s *SkillMapScreen) skillState(id string) skillgraph.SkillState {
-	if s.mastered[id] {
-		return skillgraph.StateMastered
+	if state, ok := s.skillStates[id]; ok {
+		return state
 	}
 	if skillgraph.IsUnlocked(id, s.mastered) {
 		return skillgraph.StateAvailable
@@ -255,6 +280,20 @@ func (s *SkillMapScreen) renderSkillRow(r row, selected bool, width int) string 
 	state := s.skillState(r.skill.ID)
 	icon := state.Icon()
 	label := state.Label()
+
+	// Override icon/label for mastered skills with review badges.
+	if state == skillgraph.StateMastered {
+		if badge, ok := s.reviews[r.skill.ID]; ok {
+			switch {
+			case badge.Due:
+				label = "Due"
+			case badge.Graduated:
+				icon = "🎓"
+				label = "Graduated"
+			}
+		}
+	}
+
 	grade := fmt.Sprintf("Grade %d", r.skill.GradeLevel)
 
 	// Calculate column widths
@@ -286,6 +325,18 @@ func (s *SkillMapScreen) renderSkillRow(r row, selected bool, width int) string 
 			nameStyle = lipgloss.NewStyle().Foreground(theme.Success)
 			gradeStyle = lipgloss.NewStyle().Foreground(theme.TextDim)
 			labelStyle = lipgloss.NewStyle().Foreground(theme.Success)
+			// Due review badge gets attention color.
+			if badge, ok := s.reviews[r.skill.ID]; ok && badge.Due {
+				labelStyle = lipgloss.NewStyle().Foreground(theme.Accent)
+			}
+		case skillgraph.StateLearning, skillgraph.StateProving:
+			nameStyle = lipgloss.NewStyle().Foreground(theme.Text)
+			gradeStyle = lipgloss.NewStyle().Foreground(theme.TextDim)
+			labelStyle = lipgloss.NewStyle().Foreground(theme.Secondary)
+		case skillgraph.StateRusty:
+			nameStyle = lipgloss.NewStyle().Foreground(theme.Text)
+			gradeStyle = lipgloss.NewStyle().Foreground(theme.TextDim)
+			labelStyle = lipgloss.NewStyle().Foreground(theme.Accent)
 		case skillgraph.StateAvailable:
 			nameStyle = lipgloss.NewStyle().Foreground(theme.Text)
 			gradeStyle = lipgloss.NewStyle().Foreground(theme.TextDim)
