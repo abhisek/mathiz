@@ -21,6 +21,9 @@ type questionGenFailedMsg struct {
 // timerTickMsg is sent every second to update the countdown.
 type timerTickMsg time.Time
 
+// spinnerTickMsg is sent at short intervals to animate the loading spinner.
+type spinnerTickMsg time.Time
+
 // feedbackDoneMsg is sent when the feedback display period ends.
 type feedbackDoneMsg struct{}
 

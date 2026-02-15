@@ -58,6 +58,9 @@ type SessionScreen struct {
 	practiceInput   components.TextInput
 	practicePhase   practiceState
 	practiceCorrect bool
+
+	// Spinner frame for generating state.
+	spinnerFrame int
 }
 
 var _ screen.Screen = (*SessionScreen)(nil)
@@ -163,6 +166,9 @@ func (s *SessionScreen) Update(msg tea.Msg) (screen.Screen, tea.Cmd) {
 
 	case questionGenFailedMsg:
 		return s.handleQuestionFailed(msg)
+
+	case spinnerTickMsg:
+		return s.handleSpinnerTick()
 
 	case timerTickMsg:
 		return s.handleTimerTick(msg)
@@ -291,6 +297,7 @@ func (s *SessionScreen) handleInit(msg sessionInitMsg) (screen.Screen, tea.Cmd) 
 	return s, tea.Batch(
 		s.generateNextQuestion(),
 		tickCmd(),
+		spinnerTickCmd(),
 	)
 }
 
@@ -301,7 +308,7 @@ func (s *SessionScreen) handleQuestionReady(msg questionReadyMsg) (screen.Screen
 			if !sess.AdvanceSlot(s.state) {
 				return s, func() tea.Msg { return sessionEndMsg{} }
 			}
-			return s, s.generateNextQuestion()
+			return s, tea.Batch(s.generateNextQuestion(), spinnerTickCmd())
 		}
 		s.errMsg = msg.Err.Error()
 		return s, nil
@@ -330,7 +337,7 @@ func (s *SessionScreen) handleQuestionFailed(msg questionGenFailedMsg) (screen.S
 		if !sess.AdvanceSlot(s.state) {
 			return s, func() tea.Msg { return sessionEndMsg{} }
 		}
-		return s, s.generateNextQuestion()
+		return s, tea.Batch(s.generateNextQuestion(), spinnerTickCmd())
 	}
 	s.errMsg = msg.Err.Error()
 	return s, nil
@@ -399,7 +406,7 @@ func (s *SessionScreen) handleFeedbackDone() (screen.Screen, tea.Cmd) {
 		}
 	}
 
-	return s, s.generateNextQuestion()
+	return s, tea.Batch(s.generateNextQuestion(), spinnerTickCmd())
 }
 
 func (s *SessionScreen) handleSessionEnd() (screen.Screen, tea.Cmd) {
@@ -626,7 +633,7 @@ func (s *SessionScreen) advanceAfterLesson() (screen.Screen, tea.Cmd) {
 		}
 	}
 
-	return s, s.generateNextQuestion()
+	return s, tea.Batch(s.generateNextQuestion(), spinnerTickCmd())
 }
 
 // submitAnswer processes the current answer.
@@ -702,6 +709,9 @@ func (s *SessionScreen) submitAnswer() (screen.Screen, tea.Cmd) {
 	return s, nil
 }
 
+// generateTimeout is the maximum time allowed for a single question generation.
+const generateTimeout = 30 * time.Second
+
 // generateNextQuestion generates the next question asynchronously.
 func (s *SessionScreen) generateNextQuestion() tea.Cmd {
 	state := s.state
@@ -735,18 +745,10 @@ func (s *SessionScreen) generateNextQuestion() tea.Cmd {
 			}
 		}
 
-		var q *problemgen.Question
-		var err error
-		for attempt := 0; attempt < 3; attempt++ {
-			q, err = s.generator.Generate(context.Background(), input)
-			if err == nil {
-				break
-			}
-			var valErr *problemgen.ValidationError
-			if errors.As(err, &valErr) && !valErr.Retryable {
-				break
-			}
-		}
+		ctx, cancel := context.WithTimeout(context.Background(), generateTimeout)
+		defer cancel()
+
+		q, err := s.generator.Generate(ctx, input)
 		if err != nil {
 			return questionReadyMsg{Err: err}
 		}
@@ -876,5 +878,21 @@ func (s *SessionScreen) saveSnapshotWithProfile(ctx context.Context) {
 func tickCmd() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return timerTickMsg(t)
+	})
+}
+
+func (s *SessionScreen) handleSpinnerTick() (screen.Screen, tea.Cmd) {
+	s.spinnerFrame++
+	// Keep ticking only while generating (no current question).
+	if s.state == nil || s.state.CurrentQuestion != nil {
+		return s, nil
+	}
+	return s, spinnerTickCmd()
+}
+
+// spinnerTickCmd returns a fast tick for spinner animation.
+func spinnerTickCmd() tea.Cmd {
+	return tea.Tick(150*time.Millisecond, func(t time.Time) tea.Msg {
+		return spinnerTickMsg(t)
 	})
 }

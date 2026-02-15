@@ -15,15 +15,19 @@ import (
 	"github.com/abhisek/mathiz/internal/ui/theme"
 )
 
+// spinnerFrames are the animation frames for the generating spinner.
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
 // renderQuestionView renders the active question display.
 func (s *SessionScreen) renderQuestionView(width, height int) string {
 	state := s.state
 	if state == nil || state.CurrentQuestion == nil {
+		frame := spinnerFrames[s.spinnerFrame%len(spinnerFrames)]
 		return lipgloss.NewStyle().
 			Width(width).
 			Align(lipgloss.Center).
 			Foreground(theme.TextDim).
-			Render("\n\n  Generating question...")
+			Render(fmt.Sprintf("\n\n  %s Generating question...", frame))
 	}
 
 	slot := sess.CurrentSlot(state)
