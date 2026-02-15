@@ -43,6 +43,11 @@ func buildUserMessage(input GenerateInput, cfg Config) string {
 	b.WriteString("\nRecent errors by this student:\n")
 	b.WriteString(buildErrors(input.RecentErrors, cfg.MaxRecentErrors))
 
+	if input.LearnerProfile != "" {
+		b.WriteString("\n\nLearner profile:\n")
+		b.WriteString(input.LearnerProfile)
+	}
+
 	return b.String()
 }
 

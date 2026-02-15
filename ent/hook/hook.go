@@ -33,6 +33,18 @@ func (f DiagnosisEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagnosisEventMutation", m)
 }
 
+// The HintEventFunc type is an adapter to allow the use of ordinary
+// function as HintEvent mutator.
+type HintEventFunc func(context.Context, *ent.HintEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f HintEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.HintEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.HintEventMutation", m)
+}
+
 // The LLMRequestEventFunc type is an adapter to allow the use of ordinary
 // function as LLMRequestEvent mutator.
 type LLMRequestEventFunc func(context.Context, *ent.LLMRequestEventMutation) (ent.Value, error)
@@ -43,6 +55,18 @@ func (f LLMRequestEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LLMRequestEventMutation", m)
+}
+
+// The LessonEventFunc type is an adapter to allow the use of ordinary
+// function as LessonEvent mutator.
+type LessonEventFunc func(context.Context, *ent.LessonEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f LessonEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.LessonEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LessonEventMutation", m)
 }
 
 // The MasteryEventFunc type is an adapter to allow the use of ordinary

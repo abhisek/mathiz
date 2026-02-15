@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/router"
@@ -34,6 +35,12 @@ type Options struct {
 
 	// DiagnosisService classifies wrong answers. May be nil if LLM is unavailable.
 	DiagnosisService *diagnosis.Service
+
+	// LessonService generates micro-lessons. May be nil if LLM is unavailable.
+	LessonService *lessons.Service
+
+	// Compressor handles context compression. May be nil if LLM is unavailable.
+	Compressor *lessons.Compressor
 }
 
 // AppModel is the root Bubble Tea model.
@@ -46,7 +53,7 @@ type AppModel struct {
 
 // newAppModel creates a new AppModel with the home screen.
 func newAppModel(opts Options) AppModel {
-	homeScreen := home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService)
+	homeScreen := home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService, opts.LessonService, opts.Compressor)
 	return AppModel{
 		router: router.New(homeScreen),
 		opts:   opts,

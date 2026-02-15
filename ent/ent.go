@@ -14,6 +14,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/hintevent"
+	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/sessionevent"
@@ -80,7 +82,9 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			answerevent.Table:     answerevent.ValidColumn,
 			diagnosisevent.Table:  diagnosisevent.ValidColumn,
+			hintevent.Table:       hintevent.ValidColumn,
 			llmrequestevent.Table: llmrequestevent.ValidColumn,
+			lessonevent.Table:     lessonevent.ValidColumn,
 			masteryevent.Table:    masteryevent.ValidColumn,
 			sessionevent.Table:    sessionevent.ValidColumn,
 			snapshot.Table:        snapshot.ValidColumn,

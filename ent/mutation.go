@@ -13,6 +13,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/hintevent"
+	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/predicate"
@@ -32,7 +34,9 @@ const (
 	// Node types.
 	TypeAnswerEvent     = "AnswerEvent"
 	TypeDiagnosisEvent  = "DiagnosisEvent"
+	TypeHintEvent       = "HintEvent"
 	TypeLLMRequestEvent = "LLMRequestEvent"
+	TypeLessonEvent     = "LessonEvent"
 	TypeMasteryEvent    = "MasteryEvent"
 	TypeSessionEvent    = "SessionEvent"
 	TypeSnapshot        = "Snapshot"
@@ -2057,6 +2061,638 @@ func (m *DiagnosisEventMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown DiagnosisEvent edge %s", name)
 }
 
+// HintEventMutation represents an operation that mutates the HintEvent nodes in the graph.
+type HintEventMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	sequence      *int64
+	addsequence   *int64
+	timestamp     *time.Time
+	session_id    *string
+	skill_id      *string
+	question_text *string
+	hint_text     *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*HintEvent, error)
+	predicates    []predicate.HintEvent
+}
+
+var _ ent.Mutation = (*HintEventMutation)(nil)
+
+// hinteventOption allows management of the mutation configuration using functional options.
+type hinteventOption func(*HintEventMutation)
+
+// newHintEventMutation creates new mutation for the HintEvent entity.
+func newHintEventMutation(c config, op Op, opts ...hinteventOption) *HintEventMutation {
+	m := &HintEventMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeHintEvent,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withHintEventID sets the ID field of the mutation.
+func withHintEventID(id int) hinteventOption {
+	return func(m *HintEventMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *HintEvent
+		)
+		m.oldValue = func(ctx context.Context) (*HintEvent, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().HintEvent.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withHintEvent sets the old HintEvent of the mutation.
+func withHintEvent(node *HintEvent) hinteventOption {
+	return func(m *HintEventMutation) {
+		m.oldValue = func(context.Context) (*HintEvent, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m HintEventMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m HintEventMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *HintEventMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *HintEventMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().HintEvent.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSequence sets the "sequence" field.
+func (m *HintEventMutation) SetSequence(i int64) {
+	m.sequence = &i
+	m.addsequence = nil
+}
+
+// Sequence returns the value of the "sequence" field in the mutation.
+func (m *HintEventMutation) Sequence() (r int64, exists bool) {
+	v := m.sequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSequence returns the old "sequence" field's value of the HintEvent entity.
+// If the HintEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HintEventMutation) OldSequence(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSequence is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSequence requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSequence: %w", err)
+	}
+	return oldValue.Sequence, nil
+}
+
+// AddSequence adds i to the "sequence" field.
+func (m *HintEventMutation) AddSequence(i int64) {
+	if m.addsequence != nil {
+		*m.addsequence += i
+	} else {
+		m.addsequence = &i
+	}
+}
+
+// AddedSequence returns the value that was added to the "sequence" field in this mutation.
+func (m *HintEventMutation) AddedSequence() (r int64, exists bool) {
+	v := m.addsequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSequence resets all changes to the "sequence" field.
+func (m *HintEventMutation) ResetSequence() {
+	m.sequence = nil
+	m.addsequence = nil
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (m *HintEventMutation) SetTimestamp(t time.Time) {
+	m.timestamp = &t
+}
+
+// Timestamp returns the value of the "timestamp" field in the mutation.
+func (m *HintEventMutation) Timestamp() (r time.Time, exists bool) {
+	v := m.timestamp
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimestamp returns the old "timestamp" field's value of the HintEvent entity.
+// If the HintEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HintEventMutation) OldTimestamp(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimestamp is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimestamp requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimestamp: %w", err)
+	}
+	return oldValue.Timestamp, nil
+}
+
+// ResetTimestamp resets all changes to the "timestamp" field.
+func (m *HintEventMutation) ResetTimestamp() {
+	m.timestamp = nil
+}
+
+// SetSessionID sets the "session_id" field.
+func (m *HintEventMutation) SetSessionID(s string) {
+	m.session_id = &s
+}
+
+// SessionID returns the value of the "session_id" field in the mutation.
+func (m *HintEventMutation) SessionID() (r string, exists bool) {
+	v := m.session_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSessionID returns the old "session_id" field's value of the HintEvent entity.
+// If the HintEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HintEventMutation) OldSessionID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSessionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSessionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSessionID: %w", err)
+	}
+	return oldValue.SessionID, nil
+}
+
+// ResetSessionID resets all changes to the "session_id" field.
+func (m *HintEventMutation) ResetSessionID() {
+	m.session_id = nil
+}
+
+// SetSkillID sets the "skill_id" field.
+func (m *HintEventMutation) SetSkillID(s string) {
+	m.skill_id = &s
+}
+
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *HintEventMutation) SkillID() (r string, exists bool) {
+	v := m.skill_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillID returns the old "skill_id" field's value of the HintEvent entity.
+// If the HintEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HintEventMutation) OldSkillID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
+	}
+	return oldValue.SkillID, nil
+}
+
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *HintEventMutation) ResetSkillID() {
+	m.skill_id = nil
+}
+
+// SetQuestionText sets the "question_text" field.
+func (m *HintEventMutation) SetQuestionText(s string) {
+	m.question_text = &s
+}
+
+// QuestionText returns the value of the "question_text" field in the mutation.
+func (m *HintEventMutation) QuestionText() (r string, exists bool) {
+	v := m.question_text
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuestionText returns the old "question_text" field's value of the HintEvent entity.
+// If the HintEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HintEventMutation) OldQuestionText(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuestionText is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuestionText requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuestionText: %w", err)
+	}
+	return oldValue.QuestionText, nil
+}
+
+// ResetQuestionText resets all changes to the "question_text" field.
+func (m *HintEventMutation) ResetQuestionText() {
+	m.question_text = nil
+}
+
+// SetHintText sets the "hint_text" field.
+func (m *HintEventMutation) SetHintText(s string) {
+	m.hint_text = &s
+}
+
+// HintText returns the value of the "hint_text" field in the mutation.
+func (m *HintEventMutation) HintText() (r string, exists bool) {
+	v := m.hint_text
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHintText returns the old "hint_text" field's value of the HintEvent entity.
+// If the HintEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HintEventMutation) OldHintText(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHintText is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHintText requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHintText: %w", err)
+	}
+	return oldValue.HintText, nil
+}
+
+// ResetHintText resets all changes to the "hint_text" field.
+func (m *HintEventMutation) ResetHintText() {
+	m.hint_text = nil
+}
+
+// Where appends a list predicates to the HintEventMutation builder.
+func (m *HintEventMutation) Where(ps ...predicate.HintEvent) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the HintEventMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *HintEventMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.HintEvent, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *HintEventMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *HintEventMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (HintEvent).
+func (m *HintEventMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *HintEventMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.sequence != nil {
+		fields = append(fields, hintevent.FieldSequence)
+	}
+	if m.timestamp != nil {
+		fields = append(fields, hintevent.FieldTimestamp)
+	}
+	if m.session_id != nil {
+		fields = append(fields, hintevent.FieldSessionID)
+	}
+	if m.skill_id != nil {
+		fields = append(fields, hintevent.FieldSkillID)
+	}
+	if m.question_text != nil {
+		fields = append(fields, hintevent.FieldQuestionText)
+	}
+	if m.hint_text != nil {
+		fields = append(fields, hintevent.FieldHintText)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *HintEventMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case hintevent.FieldSequence:
+		return m.Sequence()
+	case hintevent.FieldTimestamp:
+		return m.Timestamp()
+	case hintevent.FieldSessionID:
+		return m.SessionID()
+	case hintevent.FieldSkillID:
+		return m.SkillID()
+	case hintevent.FieldQuestionText:
+		return m.QuestionText()
+	case hintevent.FieldHintText:
+		return m.HintText()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *HintEventMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case hintevent.FieldSequence:
+		return m.OldSequence(ctx)
+	case hintevent.FieldTimestamp:
+		return m.OldTimestamp(ctx)
+	case hintevent.FieldSessionID:
+		return m.OldSessionID(ctx)
+	case hintevent.FieldSkillID:
+		return m.OldSkillID(ctx)
+	case hintevent.FieldQuestionText:
+		return m.OldQuestionText(ctx)
+	case hintevent.FieldHintText:
+		return m.OldHintText(ctx)
+	}
+	return nil, fmt.Errorf("unknown HintEvent field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *HintEventMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case hintevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSequence(v)
+		return nil
+	case hintevent.FieldTimestamp:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimestamp(v)
+		return nil
+	case hintevent.FieldSessionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSessionID(v)
+		return nil
+	case hintevent.FieldSkillID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillID(v)
+		return nil
+	case hintevent.FieldQuestionText:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuestionText(v)
+		return nil
+	case hintevent.FieldHintText:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHintText(v)
+		return nil
+	}
+	return fmt.Errorf("unknown HintEvent field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *HintEventMutation) AddedFields() []string {
+	var fields []string
+	if m.addsequence != nil {
+		fields = append(fields, hintevent.FieldSequence)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *HintEventMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case hintevent.FieldSequence:
+		return m.AddedSequence()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *HintEventMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case hintevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSequence(v)
+		return nil
+	}
+	return fmt.Errorf("unknown HintEvent numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *HintEventMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *HintEventMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *HintEventMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown HintEvent nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *HintEventMutation) ResetField(name string) error {
+	switch name {
+	case hintevent.FieldSequence:
+		m.ResetSequence()
+		return nil
+	case hintevent.FieldTimestamp:
+		m.ResetTimestamp()
+		return nil
+	case hintevent.FieldSessionID:
+		m.ResetSessionID()
+		return nil
+	case hintevent.FieldSkillID:
+		m.ResetSkillID()
+		return nil
+	case hintevent.FieldQuestionText:
+		m.ResetQuestionText()
+		return nil
+	case hintevent.FieldHintText:
+		m.ResetHintText()
+		return nil
+	}
+	return fmt.Errorf("unknown HintEvent field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *HintEventMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *HintEventMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *HintEventMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *HintEventMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *HintEventMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *HintEventMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *HintEventMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown HintEvent unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *HintEventMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown HintEvent edge %s", name)
+}
+
 // LLMRequestEventMutation represents an operation that mutates the LLMRequestEvent nodes in the graph.
 type LLMRequestEventMutation struct {
 	config
@@ -3002,6 +3638,746 @@ func (m *LLMRequestEventMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *LLMRequestEventMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown LLMRequestEvent edge %s", name)
+}
+
+// LessonEventMutation represents an operation that mutates the LessonEvent nodes in the graph.
+type LessonEventMutation struct {
+	config
+	op                 Op
+	typ                string
+	id                 *int
+	sequence           *int64
+	addsequence        *int64
+	timestamp          *time.Time
+	session_id         *string
+	skill_id           *string
+	lesson_title       *string
+	practice_attempted *bool
+	practice_correct   *bool
+	practice_skipped   *bool
+	clearedFields      map[string]struct{}
+	done               bool
+	oldValue           func(context.Context) (*LessonEvent, error)
+	predicates         []predicate.LessonEvent
+}
+
+var _ ent.Mutation = (*LessonEventMutation)(nil)
+
+// lessoneventOption allows management of the mutation configuration using functional options.
+type lessoneventOption func(*LessonEventMutation)
+
+// newLessonEventMutation creates new mutation for the LessonEvent entity.
+func newLessonEventMutation(c config, op Op, opts ...lessoneventOption) *LessonEventMutation {
+	m := &LessonEventMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeLessonEvent,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withLessonEventID sets the ID field of the mutation.
+func withLessonEventID(id int) lessoneventOption {
+	return func(m *LessonEventMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *LessonEvent
+		)
+		m.oldValue = func(ctx context.Context) (*LessonEvent, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().LessonEvent.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withLessonEvent sets the old LessonEvent of the mutation.
+func withLessonEvent(node *LessonEvent) lessoneventOption {
+	return func(m *LessonEventMutation) {
+		m.oldValue = func(context.Context) (*LessonEvent, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m LessonEventMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m LessonEventMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *LessonEventMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *LessonEventMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().LessonEvent.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSequence sets the "sequence" field.
+func (m *LessonEventMutation) SetSequence(i int64) {
+	m.sequence = &i
+	m.addsequence = nil
+}
+
+// Sequence returns the value of the "sequence" field in the mutation.
+func (m *LessonEventMutation) Sequence() (r int64, exists bool) {
+	v := m.sequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSequence returns the old "sequence" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldSequence(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSequence is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSequence requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSequence: %w", err)
+	}
+	return oldValue.Sequence, nil
+}
+
+// AddSequence adds i to the "sequence" field.
+func (m *LessonEventMutation) AddSequence(i int64) {
+	if m.addsequence != nil {
+		*m.addsequence += i
+	} else {
+		m.addsequence = &i
+	}
+}
+
+// AddedSequence returns the value that was added to the "sequence" field in this mutation.
+func (m *LessonEventMutation) AddedSequence() (r int64, exists bool) {
+	v := m.addsequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSequence resets all changes to the "sequence" field.
+func (m *LessonEventMutation) ResetSequence() {
+	m.sequence = nil
+	m.addsequence = nil
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (m *LessonEventMutation) SetTimestamp(t time.Time) {
+	m.timestamp = &t
+}
+
+// Timestamp returns the value of the "timestamp" field in the mutation.
+func (m *LessonEventMutation) Timestamp() (r time.Time, exists bool) {
+	v := m.timestamp
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimestamp returns the old "timestamp" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldTimestamp(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimestamp is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimestamp requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimestamp: %w", err)
+	}
+	return oldValue.Timestamp, nil
+}
+
+// ResetTimestamp resets all changes to the "timestamp" field.
+func (m *LessonEventMutation) ResetTimestamp() {
+	m.timestamp = nil
+}
+
+// SetSessionID sets the "session_id" field.
+func (m *LessonEventMutation) SetSessionID(s string) {
+	m.session_id = &s
+}
+
+// SessionID returns the value of the "session_id" field in the mutation.
+func (m *LessonEventMutation) SessionID() (r string, exists bool) {
+	v := m.session_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSessionID returns the old "session_id" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldSessionID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSessionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSessionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSessionID: %w", err)
+	}
+	return oldValue.SessionID, nil
+}
+
+// ResetSessionID resets all changes to the "session_id" field.
+func (m *LessonEventMutation) ResetSessionID() {
+	m.session_id = nil
+}
+
+// SetSkillID sets the "skill_id" field.
+func (m *LessonEventMutation) SetSkillID(s string) {
+	m.skill_id = &s
+}
+
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *LessonEventMutation) SkillID() (r string, exists bool) {
+	v := m.skill_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillID returns the old "skill_id" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldSkillID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
+	}
+	return oldValue.SkillID, nil
+}
+
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *LessonEventMutation) ResetSkillID() {
+	m.skill_id = nil
+}
+
+// SetLessonTitle sets the "lesson_title" field.
+func (m *LessonEventMutation) SetLessonTitle(s string) {
+	m.lesson_title = &s
+}
+
+// LessonTitle returns the value of the "lesson_title" field in the mutation.
+func (m *LessonEventMutation) LessonTitle() (r string, exists bool) {
+	v := m.lesson_title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLessonTitle returns the old "lesson_title" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldLessonTitle(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLessonTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLessonTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLessonTitle: %w", err)
+	}
+	return oldValue.LessonTitle, nil
+}
+
+// ResetLessonTitle resets all changes to the "lesson_title" field.
+func (m *LessonEventMutation) ResetLessonTitle() {
+	m.lesson_title = nil
+}
+
+// SetPracticeAttempted sets the "practice_attempted" field.
+func (m *LessonEventMutation) SetPracticeAttempted(b bool) {
+	m.practice_attempted = &b
+}
+
+// PracticeAttempted returns the value of the "practice_attempted" field in the mutation.
+func (m *LessonEventMutation) PracticeAttempted() (r bool, exists bool) {
+	v := m.practice_attempted
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPracticeAttempted returns the old "practice_attempted" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldPracticeAttempted(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPracticeAttempted is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPracticeAttempted requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPracticeAttempted: %w", err)
+	}
+	return oldValue.PracticeAttempted, nil
+}
+
+// ResetPracticeAttempted resets all changes to the "practice_attempted" field.
+func (m *LessonEventMutation) ResetPracticeAttempted() {
+	m.practice_attempted = nil
+}
+
+// SetPracticeCorrect sets the "practice_correct" field.
+func (m *LessonEventMutation) SetPracticeCorrect(b bool) {
+	m.practice_correct = &b
+}
+
+// PracticeCorrect returns the value of the "practice_correct" field in the mutation.
+func (m *LessonEventMutation) PracticeCorrect() (r bool, exists bool) {
+	v := m.practice_correct
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPracticeCorrect returns the old "practice_correct" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldPracticeCorrect(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPracticeCorrect is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPracticeCorrect requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPracticeCorrect: %w", err)
+	}
+	return oldValue.PracticeCorrect, nil
+}
+
+// ResetPracticeCorrect resets all changes to the "practice_correct" field.
+func (m *LessonEventMutation) ResetPracticeCorrect() {
+	m.practice_correct = nil
+}
+
+// SetPracticeSkipped sets the "practice_skipped" field.
+func (m *LessonEventMutation) SetPracticeSkipped(b bool) {
+	m.practice_skipped = &b
+}
+
+// PracticeSkipped returns the value of the "practice_skipped" field in the mutation.
+func (m *LessonEventMutation) PracticeSkipped() (r bool, exists bool) {
+	v := m.practice_skipped
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPracticeSkipped returns the old "practice_skipped" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldPracticeSkipped(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPracticeSkipped is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPracticeSkipped requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPracticeSkipped: %w", err)
+	}
+	return oldValue.PracticeSkipped, nil
+}
+
+// ResetPracticeSkipped resets all changes to the "practice_skipped" field.
+func (m *LessonEventMutation) ResetPracticeSkipped() {
+	m.practice_skipped = nil
+}
+
+// Where appends a list predicates to the LessonEventMutation builder.
+func (m *LessonEventMutation) Where(ps ...predicate.LessonEvent) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the LessonEventMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *LessonEventMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.LessonEvent, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *LessonEventMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *LessonEventMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (LessonEvent).
+func (m *LessonEventMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *LessonEventMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.sequence != nil {
+		fields = append(fields, lessonevent.FieldSequence)
+	}
+	if m.timestamp != nil {
+		fields = append(fields, lessonevent.FieldTimestamp)
+	}
+	if m.session_id != nil {
+		fields = append(fields, lessonevent.FieldSessionID)
+	}
+	if m.skill_id != nil {
+		fields = append(fields, lessonevent.FieldSkillID)
+	}
+	if m.lesson_title != nil {
+		fields = append(fields, lessonevent.FieldLessonTitle)
+	}
+	if m.practice_attempted != nil {
+		fields = append(fields, lessonevent.FieldPracticeAttempted)
+	}
+	if m.practice_correct != nil {
+		fields = append(fields, lessonevent.FieldPracticeCorrect)
+	}
+	if m.practice_skipped != nil {
+		fields = append(fields, lessonevent.FieldPracticeSkipped)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *LessonEventMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case lessonevent.FieldSequence:
+		return m.Sequence()
+	case lessonevent.FieldTimestamp:
+		return m.Timestamp()
+	case lessonevent.FieldSessionID:
+		return m.SessionID()
+	case lessonevent.FieldSkillID:
+		return m.SkillID()
+	case lessonevent.FieldLessonTitle:
+		return m.LessonTitle()
+	case lessonevent.FieldPracticeAttempted:
+		return m.PracticeAttempted()
+	case lessonevent.FieldPracticeCorrect:
+		return m.PracticeCorrect()
+	case lessonevent.FieldPracticeSkipped:
+		return m.PracticeSkipped()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *LessonEventMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case lessonevent.FieldSequence:
+		return m.OldSequence(ctx)
+	case lessonevent.FieldTimestamp:
+		return m.OldTimestamp(ctx)
+	case lessonevent.FieldSessionID:
+		return m.OldSessionID(ctx)
+	case lessonevent.FieldSkillID:
+		return m.OldSkillID(ctx)
+	case lessonevent.FieldLessonTitle:
+		return m.OldLessonTitle(ctx)
+	case lessonevent.FieldPracticeAttempted:
+		return m.OldPracticeAttempted(ctx)
+	case lessonevent.FieldPracticeCorrect:
+		return m.OldPracticeCorrect(ctx)
+	case lessonevent.FieldPracticeSkipped:
+		return m.OldPracticeSkipped(ctx)
+	}
+	return nil, fmt.Errorf("unknown LessonEvent field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LessonEventMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case lessonevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSequence(v)
+		return nil
+	case lessonevent.FieldTimestamp:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimestamp(v)
+		return nil
+	case lessonevent.FieldSessionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSessionID(v)
+		return nil
+	case lessonevent.FieldSkillID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillID(v)
+		return nil
+	case lessonevent.FieldLessonTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLessonTitle(v)
+		return nil
+	case lessonevent.FieldPracticeAttempted:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPracticeAttempted(v)
+		return nil
+	case lessonevent.FieldPracticeCorrect:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPracticeCorrect(v)
+		return nil
+	case lessonevent.FieldPracticeSkipped:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPracticeSkipped(v)
+		return nil
+	}
+	return fmt.Errorf("unknown LessonEvent field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *LessonEventMutation) AddedFields() []string {
+	var fields []string
+	if m.addsequence != nil {
+		fields = append(fields, lessonevent.FieldSequence)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *LessonEventMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case lessonevent.FieldSequence:
+		return m.AddedSequence()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LessonEventMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case lessonevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSequence(v)
+		return nil
+	}
+	return fmt.Errorf("unknown LessonEvent numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *LessonEventMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *LessonEventMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *LessonEventMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown LessonEvent nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *LessonEventMutation) ResetField(name string) error {
+	switch name {
+	case lessonevent.FieldSequence:
+		m.ResetSequence()
+		return nil
+	case lessonevent.FieldTimestamp:
+		m.ResetTimestamp()
+		return nil
+	case lessonevent.FieldSessionID:
+		m.ResetSessionID()
+		return nil
+	case lessonevent.FieldSkillID:
+		m.ResetSkillID()
+		return nil
+	case lessonevent.FieldLessonTitle:
+		m.ResetLessonTitle()
+		return nil
+	case lessonevent.FieldPracticeAttempted:
+		m.ResetPracticeAttempted()
+		return nil
+	case lessonevent.FieldPracticeCorrect:
+		m.ResetPracticeCorrect()
+		return nil
+	case lessonevent.FieldPracticeSkipped:
+		m.ResetPracticeSkipped()
+		return nil
+	}
+	return fmt.Errorf("unknown LessonEvent field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *LessonEventMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *LessonEventMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *LessonEventMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *LessonEventMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *LessonEventMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *LessonEventMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *LessonEventMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown LessonEvent unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *LessonEventMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown LessonEvent edge %s", name)
 }
 
 // MasteryEventMutation represents an operation that mutates the MasteryEvent nodes in the graph.

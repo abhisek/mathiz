@@ -19,7 +19,8 @@ type QueryOpts struct {
 type SnapshotData struct {
 	Version   int                    `json:"version"`
 	Mastery   *MasterySnapshotData   `json:"mastery,omitempty"`
-	SpacedRep *SpacedRepSnapshotData `json:"spaced_rep,omitempty"`
+	SpacedRep      *SpacedRepSnapshotData `json:"spaced_rep,omitempty"`
+	LearnerProfile *LearnerProfileData   `json:"learner_profile,omitempty"`
 
 	// Deprecated: kept for migration only. New snapshots use Mastery field.
 	TierProgress map[string]*TierProgressData `json:"tier_progress,omitempty"`
@@ -143,6 +144,33 @@ type MasteryEventData struct {
 	SessionID    string
 }
 
+// HintEventData records that a hint was shown to the learner.
+type HintEventData struct {
+	SessionID    string
+	SkillID      string
+	QuestionText string
+	HintText     string
+}
+
+// LessonEventData records that a micro-lesson was generated and shown.
+type LessonEventData struct {
+	SessionID         string
+	SkillID           string
+	LessonTitle       string
+	PracticeAttempted bool
+	PracticeCorrect   bool
+	PracticeSkipped   bool
+}
+
+// LearnerProfileData is the serializable form of LearnerProfile.
+type LearnerProfileData struct {
+	Summary     string   `json:"summary"`
+	Strengths   []string `json:"strengths"`
+	Weaknesses  []string `json:"weaknesses"`
+	Patterns    []string `json:"patterns"`
+	GeneratedAt string   `json:"generated_at"`
+}
+
 // DiagnosisEventData captures a diagnosis result for persistence.
 type DiagnosisEventData struct {
 	SessionID       string
@@ -185,4 +213,10 @@ type EventRepo interface {
 
 	// AppendDiagnosisEvent records a diagnosis result for a wrong answer.
 	AppendDiagnosisEvent(ctx context.Context, data DiagnosisEventData) error
+
+	// AppendHintEvent records that a hint was shown.
+	AppendHintEvent(ctx context.Context, data HintEventData) error
+
+	// AppendLessonEvent records that a micro-lesson was shown.
+	AppendLessonEvent(ctx context.Context, data LessonEventData) error
 }

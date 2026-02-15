@@ -78,4 +78,8 @@ type GenerateInput struct {
 	// on this skill (e.g. "answered 623 for 345 + 289, correct was 634").
 	// Up to 5 most recent errors. Empty slice if no history.
 	RecentErrors []string
+
+	// LearnerProfile is an optional AI-generated summary of the learner.
+	// Included in the prompt when available for better personalization.
+	LearnerProfile string
 }

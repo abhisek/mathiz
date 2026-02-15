@@ -16,6 +16,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/hintevent"
+	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/sessionevent"
@@ -31,8 +33,12 @@ type Client struct {
 	AnswerEvent *AnswerEventClient
 	// DiagnosisEvent is the client for interacting with the DiagnosisEvent builders.
 	DiagnosisEvent *DiagnosisEventClient
+	// HintEvent is the client for interacting with the HintEvent builders.
+	HintEvent *HintEventClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
 	LLMRequestEvent *LLMRequestEventClient
+	// LessonEvent is the client for interacting with the LessonEvent builders.
+	LessonEvent *LessonEventClient
 	// MasteryEvent is the client for interacting with the MasteryEvent builders.
 	MasteryEvent *MasteryEventClient
 	// SessionEvent is the client for interacting with the SessionEvent builders.
@@ -52,7 +58,9 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.AnswerEvent = NewAnswerEventClient(c.config)
 	c.DiagnosisEvent = NewDiagnosisEventClient(c.config)
+	c.HintEvent = NewHintEventClient(c.config)
 	c.LLMRequestEvent = NewLLMRequestEventClient(c.config)
+	c.LessonEvent = NewLessonEventClient(c.config)
 	c.MasteryEvent = NewMasteryEventClient(c.config)
 	c.SessionEvent = NewSessionEventClient(c.config)
 	c.Snapshot = NewSnapshotClient(c.config)
@@ -150,7 +158,9 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:          cfg,
 		AnswerEvent:     NewAnswerEventClient(cfg),
 		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
+		HintEvent:       NewHintEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
+		LessonEvent:     NewLessonEventClient(cfg),
 		MasteryEvent:    NewMasteryEventClient(cfg),
 		SessionEvent:    NewSessionEventClient(cfg),
 		Snapshot:        NewSnapshotClient(cfg),
@@ -175,7 +185,9 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:          cfg,
 		AnswerEvent:     NewAnswerEventClient(cfg),
 		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
+		HintEvent:       NewHintEventClient(cfg),
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
+		LessonEvent:     NewLessonEventClient(cfg),
 		MasteryEvent:    NewMasteryEventClient(cfg),
 		SessionEvent:    NewSessionEventClient(cfg),
 		Snapshot:        NewSnapshotClient(cfg),
@@ -208,8 +220,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.AnswerEvent, c.DiagnosisEvent, c.LLMRequestEvent, c.MasteryEvent,
-		c.SessionEvent, c.Snapshot,
+		c.AnswerEvent, c.DiagnosisEvent, c.HintEvent, c.LLMRequestEvent, c.LessonEvent,
+		c.MasteryEvent, c.SessionEvent, c.Snapshot,
 	} {
 		n.Use(hooks...)
 	}
@@ -219,8 +231,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.AnswerEvent, c.DiagnosisEvent, c.LLMRequestEvent, c.MasteryEvent,
-		c.SessionEvent, c.Snapshot,
+		c.AnswerEvent, c.DiagnosisEvent, c.HintEvent, c.LLMRequestEvent, c.LessonEvent,
+		c.MasteryEvent, c.SessionEvent, c.Snapshot,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -233,8 +245,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.AnswerEvent.mutate(ctx, m)
 	case *DiagnosisEventMutation:
 		return c.DiagnosisEvent.mutate(ctx, m)
+	case *HintEventMutation:
+		return c.HintEvent.mutate(ctx, m)
 	case *LLMRequestEventMutation:
 		return c.LLMRequestEvent.mutate(ctx, m)
+	case *LessonEventMutation:
+		return c.LessonEvent.mutate(ctx, m)
 	case *MasteryEventMutation:
 		return c.MasteryEvent.mutate(ctx, m)
 	case *SessionEventMutation:
@@ -512,6 +528,139 @@ func (c *DiagnosisEventClient) mutate(ctx context.Context, m *DiagnosisEventMuta
 	}
 }
 
+// HintEventClient is a client for the HintEvent schema.
+type HintEventClient struct {
+	config
+}
+
+// NewHintEventClient returns a client for the HintEvent from the given config.
+func NewHintEventClient(c config) *HintEventClient {
+	return &HintEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `hintevent.Hooks(f(g(h())))`.
+func (c *HintEventClient) Use(hooks ...Hook) {
+	c.hooks.HintEvent = append(c.hooks.HintEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `hintevent.Intercept(f(g(h())))`.
+func (c *HintEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.HintEvent = append(c.inters.HintEvent, interceptors...)
+}
+
+// Create returns a builder for creating a HintEvent entity.
+func (c *HintEventClient) Create() *HintEventCreate {
+	mutation := newHintEventMutation(c.config, OpCreate)
+	return &HintEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of HintEvent entities.
+func (c *HintEventClient) CreateBulk(builders ...*HintEventCreate) *HintEventCreateBulk {
+	return &HintEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *HintEventClient) MapCreateBulk(slice any, setFunc func(*HintEventCreate, int)) *HintEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &HintEventCreateBulk{err: fmt.Errorf("calling to HintEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*HintEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &HintEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for HintEvent.
+func (c *HintEventClient) Update() *HintEventUpdate {
+	mutation := newHintEventMutation(c.config, OpUpdate)
+	return &HintEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *HintEventClient) UpdateOne(_m *HintEvent) *HintEventUpdateOne {
+	mutation := newHintEventMutation(c.config, OpUpdateOne, withHintEvent(_m))
+	return &HintEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *HintEventClient) UpdateOneID(id int) *HintEventUpdateOne {
+	mutation := newHintEventMutation(c.config, OpUpdateOne, withHintEventID(id))
+	return &HintEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for HintEvent.
+func (c *HintEventClient) Delete() *HintEventDelete {
+	mutation := newHintEventMutation(c.config, OpDelete)
+	return &HintEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *HintEventClient) DeleteOne(_m *HintEvent) *HintEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *HintEventClient) DeleteOneID(id int) *HintEventDeleteOne {
+	builder := c.Delete().Where(hintevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &HintEventDeleteOne{builder}
+}
+
+// Query returns a query builder for HintEvent.
+func (c *HintEventClient) Query() *HintEventQuery {
+	return &HintEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeHintEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a HintEvent entity by its id.
+func (c *HintEventClient) Get(ctx context.Context, id int) (*HintEvent, error) {
+	return c.Query().Where(hintevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *HintEventClient) GetX(ctx context.Context, id int) *HintEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *HintEventClient) Hooks() []Hook {
+	return c.hooks.HintEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *HintEventClient) Interceptors() []Interceptor {
+	return c.inters.HintEvent
+}
+
+func (c *HintEventClient) mutate(ctx context.Context, m *HintEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&HintEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&HintEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&HintEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&HintEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown HintEvent mutation op: %q", m.Op())
+	}
+}
+
 // LLMRequestEventClient is a client for the LLMRequestEvent schema.
 type LLMRequestEventClient struct {
 	config
@@ -642,6 +791,139 @@ func (c *LLMRequestEventClient) mutate(ctx context.Context, m *LLMRequestEventMu
 		return (&LLMRequestEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown LLMRequestEvent mutation op: %q", m.Op())
+	}
+}
+
+// LessonEventClient is a client for the LessonEvent schema.
+type LessonEventClient struct {
+	config
+}
+
+// NewLessonEventClient returns a client for the LessonEvent from the given config.
+func NewLessonEventClient(c config) *LessonEventClient {
+	return &LessonEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `lessonevent.Hooks(f(g(h())))`.
+func (c *LessonEventClient) Use(hooks ...Hook) {
+	c.hooks.LessonEvent = append(c.hooks.LessonEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `lessonevent.Intercept(f(g(h())))`.
+func (c *LessonEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.LessonEvent = append(c.inters.LessonEvent, interceptors...)
+}
+
+// Create returns a builder for creating a LessonEvent entity.
+func (c *LessonEventClient) Create() *LessonEventCreate {
+	mutation := newLessonEventMutation(c.config, OpCreate)
+	return &LessonEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of LessonEvent entities.
+func (c *LessonEventClient) CreateBulk(builders ...*LessonEventCreate) *LessonEventCreateBulk {
+	return &LessonEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *LessonEventClient) MapCreateBulk(slice any, setFunc func(*LessonEventCreate, int)) *LessonEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &LessonEventCreateBulk{err: fmt.Errorf("calling to LessonEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*LessonEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &LessonEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for LessonEvent.
+func (c *LessonEventClient) Update() *LessonEventUpdate {
+	mutation := newLessonEventMutation(c.config, OpUpdate)
+	return &LessonEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *LessonEventClient) UpdateOne(_m *LessonEvent) *LessonEventUpdateOne {
+	mutation := newLessonEventMutation(c.config, OpUpdateOne, withLessonEvent(_m))
+	return &LessonEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *LessonEventClient) UpdateOneID(id int) *LessonEventUpdateOne {
+	mutation := newLessonEventMutation(c.config, OpUpdateOne, withLessonEventID(id))
+	return &LessonEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for LessonEvent.
+func (c *LessonEventClient) Delete() *LessonEventDelete {
+	mutation := newLessonEventMutation(c.config, OpDelete)
+	return &LessonEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *LessonEventClient) DeleteOne(_m *LessonEvent) *LessonEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *LessonEventClient) DeleteOneID(id int) *LessonEventDeleteOne {
+	builder := c.Delete().Where(lessonevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &LessonEventDeleteOne{builder}
+}
+
+// Query returns a query builder for LessonEvent.
+func (c *LessonEventClient) Query() *LessonEventQuery {
+	return &LessonEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeLessonEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a LessonEvent entity by its id.
+func (c *LessonEventClient) Get(ctx context.Context, id int) (*LessonEvent, error) {
+	return c.Query().Where(lessonevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *LessonEventClient) GetX(ctx context.Context, id int) *LessonEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *LessonEventClient) Hooks() []Hook {
+	return c.hooks.LessonEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *LessonEventClient) Interceptors() []Interceptor {
+	return c.inters.LessonEvent
+}
+
+func (c *LessonEventClient) mutate(ctx context.Context, m *LessonEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&LessonEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&LessonEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&LessonEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&LessonEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown LessonEvent mutation op: %q", m.Op())
 	}
 }
 
@@ -1047,11 +1329,11 @@ func (c *SnapshotClient) mutate(ctx context.Context, m *SnapshotMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		AnswerEvent, DiagnosisEvent, LLMRequestEvent, MasteryEvent, SessionEvent,
-		Snapshot []ent.Hook
+		AnswerEvent, DiagnosisEvent, HintEvent, LLMRequestEvent, LessonEvent,
+		MasteryEvent, SessionEvent, Snapshot []ent.Hook
 	}
 	inters struct {
-		AnswerEvent, DiagnosisEvent, LLMRequestEvent, MasteryEvent, SessionEvent,
-		Snapshot []ent.Interceptor
+		AnswerEvent, DiagnosisEvent, HintEvent, LLMRequestEvent, LessonEvent,
+		MasteryEvent, SessionEvent, Snapshot []ent.Interceptor
 	}
 )

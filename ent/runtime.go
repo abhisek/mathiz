@@ -7,6 +7,8 @@ import (
 
 	"github.com/abhisek/mathiz/ent/answerevent"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/hintevent"
+	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/schema"
@@ -100,6 +102,31 @@ func init() {
 	diagnosiseventDescReasoning := diagnosiseventFields[9].Descriptor()
 	// diagnosisevent.DefaultReasoning holds the default value on creation for the reasoning field.
 	diagnosisevent.DefaultReasoning = diagnosiseventDescReasoning.Default.(string)
+	hinteventMixin := schema.HintEvent{}.Mixin()
+	hinteventMixinFields0 := hinteventMixin[0].Fields()
+	_ = hinteventMixinFields0
+	hinteventFields := schema.HintEvent{}.Fields()
+	_ = hinteventFields
+	// hinteventDescTimestamp is the schema descriptor for timestamp field.
+	hinteventDescTimestamp := hinteventMixinFields0[1].Descriptor()
+	// hintevent.DefaultTimestamp holds the default value on creation for the timestamp field.
+	hintevent.DefaultTimestamp = hinteventDescTimestamp.Default.(func() time.Time)
+	// hinteventDescSessionID is the schema descriptor for session_id field.
+	hinteventDescSessionID := hinteventFields[0].Descriptor()
+	// hintevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
+	hintevent.SessionIDValidator = hinteventDescSessionID.Validators[0].(func(string) error)
+	// hinteventDescSkillID is the schema descriptor for skill_id field.
+	hinteventDescSkillID := hinteventFields[1].Descriptor()
+	// hintevent.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
+	hintevent.SkillIDValidator = hinteventDescSkillID.Validators[0].(func(string) error)
+	// hinteventDescQuestionText is the schema descriptor for question_text field.
+	hinteventDescQuestionText := hinteventFields[2].Descriptor()
+	// hintevent.QuestionTextValidator is a validator for the "question_text" field. It is called by the builders before save.
+	hintevent.QuestionTextValidator = hinteventDescQuestionText.Validators[0].(func(string) error)
+	// hinteventDescHintText is the schema descriptor for hint_text field.
+	hinteventDescHintText := hinteventFields[3].Descriptor()
+	// hintevent.HintTextValidator is a validator for the "hint_text" field. It is called by the builders before save.
+	hintevent.HintTextValidator = hinteventDescHintText.Validators[0].(func(string) error)
 	llmrequesteventMixin := schema.LLMRequestEvent{}.Mixin()
 	llmrequesteventMixinFields0 := llmrequesteventMixin[0].Fields()
 	_ = llmrequesteventMixinFields0
@@ -125,6 +152,27 @@ func init() {
 	llmrequesteventDescErrorMessage := llmrequesteventFields[7].Descriptor()
 	// llmrequestevent.DefaultErrorMessage holds the default value on creation for the error_message field.
 	llmrequestevent.DefaultErrorMessage = llmrequesteventDescErrorMessage.Default.(string)
+	lessoneventMixin := schema.LessonEvent{}.Mixin()
+	lessoneventMixinFields0 := lessoneventMixin[0].Fields()
+	_ = lessoneventMixinFields0
+	lessoneventFields := schema.LessonEvent{}.Fields()
+	_ = lessoneventFields
+	// lessoneventDescTimestamp is the schema descriptor for timestamp field.
+	lessoneventDescTimestamp := lessoneventMixinFields0[1].Descriptor()
+	// lessonevent.DefaultTimestamp holds the default value on creation for the timestamp field.
+	lessonevent.DefaultTimestamp = lessoneventDescTimestamp.Default.(func() time.Time)
+	// lessoneventDescSessionID is the schema descriptor for session_id field.
+	lessoneventDescSessionID := lessoneventFields[0].Descriptor()
+	// lessonevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
+	lessonevent.SessionIDValidator = lessoneventDescSessionID.Validators[0].(func(string) error)
+	// lessoneventDescSkillID is the schema descriptor for skill_id field.
+	lessoneventDescSkillID := lessoneventFields[1].Descriptor()
+	// lessonevent.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
+	lessonevent.SkillIDValidator = lessoneventDescSkillID.Validators[0].(func(string) error)
+	// lessoneventDescLessonTitle is the schema descriptor for lesson_title field.
+	lessoneventDescLessonTitle := lessoneventFields[2].Descriptor()
+	// lessonevent.LessonTitleValidator is a validator for the "lesson_title" field. It is called by the builders before save.
+	lessonevent.LessonTitleValidator = lessoneventDescLessonTitle.Validators[0].(func(string) error)
 	masteryeventMixin := schema.MasteryEvent{}.Mixin()
 	masteryeventMixinFields0 := masteryeventMixin[0].Fields()
 	_ = masteryeventMixinFields0

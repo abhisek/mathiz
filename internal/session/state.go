@@ -1,9 +1,11 @@
 package session
 
 import (
+	"sync"
 	"time"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
@@ -113,6 +115,27 @@ type SessionState struct {
 
 	// EventRepo is used for querying historical accuracy for diagnosis.
 	EventRepo store.EventRepo
+
+	// LessonService generates micro-lessons (nil if lessons disabled).
+	LessonService *lessons.Service
+
+	// Compressor handles context compression (nil if compression disabled).
+	Compressor *lessons.Compressor
+
+	// HintShown is true if the hint was shown for the current question.
+	HintShown bool
+
+	// HintAvailable is true if a hint can be shown (wrong answer + hint exists).
+	HintAvailable bool
+
+	// WrongCountBySkill tracks per-skill wrong answer count in this session.
+	WrongCountBySkill map[string]int
+
+	// PendingLesson is true when a lesson has been requested but not yet consumed.
+	PendingLesson bool
+
+	// ErrorMu protects RecentErrors during async compression callbacks.
+	ErrorMu sync.Mutex
 }
 
 // SkillResult tracks per-skill performance within a single session.
@@ -166,15 +189,16 @@ func NewSessionState(plan *Plan, sessionID string, mastered map[string]bool, tie
 	}
 
 	return &SessionState{
-		Plan:            plan,
-		SessionID:       sessionID,
-		Mastered:        mastered,
-		TierProgress:    tierProgress,
-		PerSkillResults: perSkill,
-		PriorQuestions:  make(map[string][]string),
-		RecentErrors:    make(map[string][]string),
-		StartTime:       time.Now(),
-		Phase:           PhaseActive,
-		CompletedSlots:  make(map[int]bool),
+		Plan:              plan,
+		SessionID:         sessionID,
+		Mastered:          mastered,
+		TierProgress:      tierProgress,
+		PerSkillResults:   perSkill,
+		PriorQuestions:    make(map[string][]string),
+		RecentErrors:      make(map[string][]string),
+		StartTime:         time.Now(),
+		Phase:             PhaseActive,
+		CompletedSlots:    make(map[int]bool),
+		WrongCountBySkill: make(map[string]int),
 	}
 }

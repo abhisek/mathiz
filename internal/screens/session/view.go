@@ -313,6 +313,159 @@ func renderError(width, height int, errMsg string) string {
 		Render(fmt.Sprintf("\n\n\n  Error: %s\n\n  Press any key to go back.", errMsg))
 }
 
+// renderHintOverlay renders the hint text in a bordered box.
+func (s *SessionScreen) renderHintOverlay(width, height int) string {
+	q := s.state.CurrentQuestion
+	if q == nil || q.Hint == "" {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("\n\n")
+
+	contentWidth := min(width-8, 60)
+
+	// Title.
+	b.WriteString(lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(theme.Accent).
+		Bold(true).
+		Render("Hint"))
+	b.WriteString("\n\n")
+
+	// Hint text.
+	hintStyle := lipgloss.NewStyle().
+		Width(contentWidth).
+		Foreground(theme.Text)
+	hintBlock := hintStyle.Render(q.Hint)
+	b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center, hintBlock))
+	b.WriteString("\n\n")
+
+	// Question context.
+	b.WriteString(lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(theme.TextDim).
+		Render(q.Text))
+	b.WriteString("\n\n")
+
+	b.WriteString(lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(theme.TextDim).
+		Render("Press any key to close..."))
+
+	return b.String()
+}
+
+// renderLessonView renders the micro-lesson with practice question.
+func (s *SessionScreen) renderLessonView(width, height int) string {
+	if s.currentLesson == nil {
+		return ""
+	}
+
+	lesson := s.currentLesson
+	contentWidth := min(width-8, 70)
+
+	var b strings.Builder
+	b.WriteString("\n")
+
+	// Title.
+	b.WriteString(lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(theme.Accent).
+		Bold(true).
+		Render(fmt.Sprintf("Lesson: %s", lesson.Title)))
+	b.WriteString("\n\n")
+
+	// Explanation.
+	expStyle := lipgloss.NewStyle().
+		Width(contentWidth).
+		Foreground(theme.Text)
+	b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center, expStyle.Render(lesson.Explanation)))
+	b.WriteString("\n\n")
+
+	// Worked example header.
+	b.WriteString(lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(theme.Secondary).
+		Bold(true).
+		Render("Worked Example"))
+	b.WriteString("\n\n")
+
+	// Worked example.
+	exStyle := lipgloss.NewStyle().
+		Width(contentWidth).
+		Foreground(theme.Text)
+	b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center, exStyle.Render(lesson.WorkedExample)))
+	b.WriteString("\n\n")
+
+	// Practice question header.
+	b.WriteString(lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(theme.Secondary).
+		Bold(true).
+		Render("Your Turn"))
+	b.WriteString("\n\n")
+
+	// Practice question.
+	b.WriteString(lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(theme.Text).
+		Bold(true).
+		Render(lesson.PracticeQuestion.Text))
+	b.WriteString("\n\n")
+
+	if s.practicePhase == practiceShowingResult {
+		if s.practiceCorrect {
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.Success).
+				Bold(true).
+				Render("Correct!"))
+		} else {
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.Error).
+				Bold(true).
+				Render("Not quite"))
+			b.WriteString("\n")
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.TextDim).
+				Render(fmt.Sprintf("Correct answer: %s", lesson.PracticeQuestion.Answer)))
+		}
+		b.WriteString("\n")
+		b.WriteString(lipgloss.NewStyle().
+			Width(contentWidth).
+			Foreground(theme.Text).
+			Render(lesson.PracticeQuestion.Explanation))
+		b.WriteString("\n\n")
+		b.WriteString(lipgloss.NewStyle().
+			Width(width).
+			Align(lipgloss.Center).
+			Foreground(theme.TextDim).
+			Render("Press any key to continue..."))
+	} else {
+		// Show answer input.
+		answerLine := lipgloss.NewStyle().
+			Width(width).
+			Align(lipgloss.Center).
+			Render("Answer: " + s.practiceInput.View())
+		b.WriteString(answerLine)
+	}
+
+	return b.String()
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
@@ -13,6 +14,9 @@ import (
 
 // MaxRecentErrors is the maximum number of recent errors tracked per skill.
 const MaxRecentErrors = 5
+
+// compressionThreshold is the character count triggering session-level compression.
+const compressionThreshold = lessons.SessionCompressionThreshold
 
 // HandleAnswer processes a learner's answer, updating session state and tier progress.
 // Returns a TierAdvancement if the answer caused a tier transition, nil otherwise.
@@ -46,6 +50,9 @@ func HandleAnswer(state *SessionState, learnerAnswer string) *TierAdvancement {
 	// Track errors for LLM context and run diagnosis.
 	state.LastDiagnosis = nil
 	if !correct {
+		// Track per-skill wrong count.
+		state.WrongCountBySkill[q.SkillID]++
+
 		var diag *diagnosis.DiagnosisResult
 		if state.DiagnosisService != nil {
 			responseTimeMs := int(time.Since(state.QuestionStartTime).Milliseconds())
@@ -76,12 +83,58 @@ func HandleAnswer(state *SessionState, learnerAnswer string) *TierAdvancement {
 		}
 
 		errCtx := BuildErrorContext(q, learnerAnswer, diag)
+		state.ErrorMu.Lock()
 		errors := state.RecentErrors[q.SkillID]
 		errors = append(errors, errCtx)
 		if len(errors) > MaxRecentErrors {
 			errors = errors[len(errors)-MaxRecentErrors:]
 		}
 		state.RecentErrors[q.SkillID] = errors
+		state.ErrorMu.Unlock()
+
+		// Mark hint available (if question has a hint and not already shown).
+		if q.Hint != "" && !state.HintShown {
+			state.HintAvailable = true
+		}
+
+		// Trigger micro-lesson if 2+ wrong on this skill.
+		if state.WrongCountBySkill[q.SkillID] >= 2 && state.LessonService != nil {
+			state.PendingLesson = true
+			skill, skillErr := skillgraph.GetSkill(q.SkillID)
+			if skillErr == nil {
+				var accuracy float64
+				if state.EventRepo != nil {
+					accuracy, _ = state.EventRepo.SkillAccuracy(context.Background(), q.SkillID)
+				}
+				state.LessonService.RequestLesson(context.Background(), lessons.LessonInput{
+					Skill:         skill,
+					Tier:          q.Tier,
+					RecentErrors:  state.RecentErrors[q.SkillID],
+					LastDiagnosis: state.LastDiagnosis,
+					Accuracy:      accuracy,
+				})
+			}
+		}
+
+		// Check compression threshold.
+		totalLen := 0
+		for _, e := range state.RecentErrors[q.SkillID] {
+			totalLen += len(e)
+		}
+		if totalLen > compressionThreshold && state.Compressor != nil {
+			errorsCopy := make([]string, len(state.RecentErrors[q.SkillID]))
+			copy(errorsCopy, state.RecentErrors[q.SkillID])
+			state.Compressor.CompressErrors(
+				context.Background(),
+				q.SkillID,
+				errorsCopy,
+				func(skillID string, summary string) {
+					state.ErrorMu.Lock()
+					defer state.ErrorMu.Unlock()
+					state.RecentErrors[skillID] = []string{"[compressed] " + summary}
+				},
+			)
+		}
 	}
 
 	// Delegate to mastery service if available.

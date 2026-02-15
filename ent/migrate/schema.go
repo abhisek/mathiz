@@ -101,6 +101,44 @@ var (
 			},
 		},
 	}
+	// HintEventsColumns holds the columns for the "hint_events" table.
+	HintEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "session_id", Type: field.TypeString},
+		{Name: "skill_id", Type: field.TypeString},
+		{Name: "question_text", Type: field.TypeString},
+		{Name: "hint_text", Type: field.TypeString},
+	}
+	// HintEventsTable holds the schema information for the "hint_events" table.
+	HintEventsTable = &schema.Table{
+		Name:       "hint_events",
+		Columns:    HintEventsColumns,
+		PrimaryKey: []*schema.Column{HintEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "hintevent_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{HintEventsColumns[1]},
+			},
+			{
+				Name:    "hintevent_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{HintEventsColumns[2]},
+			},
+			{
+				Name:    "hintevent_session_id",
+				Unique:  false,
+				Columns: []*schema.Column{HintEventsColumns[3]},
+			},
+			{
+				Name:    "hintevent_skill_id",
+				Unique:  false,
+				Columns: []*schema.Column{HintEventsColumns[4]},
+			},
+		},
+	}
 	// LlmRequestEventsColumns holds the columns for the "llm_request_events" table.
 	LlmRequestEventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -145,6 +183,46 @@ var (
 				Name:    "llmrequestevent_success",
 				Unique:  false,
 				Columns: []*schema.Column{LlmRequestEventsColumns[9]},
+			},
+		},
+	}
+	// LessonEventsColumns holds the columns for the "lesson_events" table.
+	LessonEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "session_id", Type: field.TypeString},
+		{Name: "skill_id", Type: field.TypeString},
+		{Name: "lesson_title", Type: field.TypeString},
+		{Name: "practice_attempted", Type: field.TypeBool},
+		{Name: "practice_correct", Type: field.TypeBool},
+		{Name: "practice_skipped", Type: field.TypeBool},
+	}
+	// LessonEventsTable holds the schema information for the "lesson_events" table.
+	LessonEventsTable = &schema.Table{
+		Name:       "lesson_events",
+		Columns:    LessonEventsColumns,
+		PrimaryKey: []*schema.Column{LessonEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "lessonevent_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{LessonEventsColumns[1]},
+			},
+			{
+				Name:    "lessonevent_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{LessonEventsColumns[2]},
+			},
+			{
+				Name:    "lessonevent_session_id",
+				Unique:  false,
+				Columns: []*schema.Column{LessonEventsColumns[3]},
+			},
+			{
+				Name:    "lessonevent_skill_id",
+				Unique:  false,
+				Columns: []*schema.Column{LessonEventsColumns[4]},
 			},
 		},
 	}
@@ -252,7 +330,9 @@ var (
 	Tables = []*schema.Table{
 		AnswerEventsTable,
 		DiagnosisEventsTable,
+		HintEventsTable,
 		LlmRequestEventsTable,
+		LessonEventsTable,
 		MasteryEventsTable,
 		SessionEventsTable,
 		SnapshotsTable,

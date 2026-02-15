@@ -12,8 +12,14 @@ type AnswerEvent func(*sql.Selector)
 // DiagnosisEvent is the predicate function for diagnosisevent builders.
 type DiagnosisEvent func(*sql.Selector)
 
+// HintEvent is the predicate function for hintevent builders.
+type HintEvent func(*sql.Selector)
+
 // LLMRequestEvent is the predicate function for llmrequestevent builders.
 type LLMRequestEvent func(*sql.Selector)
+
+// LessonEvent is the predicate function for lessonevent builders.
+type LessonEvent func(*sql.Selector)
 
 // MasteryEvent is the predicate function for masteryevent builders.
 type MasteryEvent func(*sql.Selector)

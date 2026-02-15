@@ -7,6 +7,7 @@ import (
 
 	"github.com/abhisek/mathiz/internal/app"
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/store"
@@ -45,6 +46,8 @@ var playCmd = &cobra.Command{
 			diagService := diagnosis.NewService(provider)
 			defer diagService.Close()
 			opts.DiagnosisService = diagService
+			opts.LessonService = lessons.NewService(provider, lessons.DefaultConfig())
+			opts.Compressor = lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
 		}
 
 		return app.Run(opts)

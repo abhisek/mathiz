@@ -39,6 +39,12 @@ func (m *mockEventRepo) RecentReviewAccuracy(_ context.Context, _ string, _ int)
 func (m *mockEventRepo) AppendDiagnosisEvent(_ context.Context, _ store.DiagnosisEventData) error {
 	return nil
 }
+func (m *mockEventRepo) AppendHintEvent(_ context.Context, _ store.HintEventData) error {
+	return nil
+}
+func (m *mockEventRepo) AppendLessonEvent(_ context.Context, _ store.LessonEventData) error {
+	return nil
+}
 
 func newTestScheduler(reviews map[string]*ReviewState, masterySvc *mastery.Service, eventRepo store.EventRepo) *Scheduler {
 	if reviews == nil {

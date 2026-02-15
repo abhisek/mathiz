@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
+	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/router"
@@ -21,33 +22,57 @@ import (
 	"github.com/google/uuid"
 )
 
+// practiceState tracks the mini-practice question state within a lesson.
+type practiceState int
+
+const (
+	practiceIdle          practiceState = iota
+	practiceAnswering
+	practiceShowingResult
+)
+
 // SessionScreen implements screen.Screen for the active session.
 type SessionScreen struct {
-	state        *sess.SessionState
-	generator    problemgen.Generator
-	eventRepo    store.EventRepo
-	snapRepo     store.SnapshotRepo
-	diagService  *diagnosis.Service
-	planner      sess.Planner
-	scheduler    *spacedrep.Scheduler
-	input        components.TextInput
-	mcActive     bool // true when showing multiple choice
-	mcSelected   int
-	errMsg       string
+	state         *sess.SessionState
+	generator     problemgen.Generator
+	eventRepo     store.EventRepo
+	snapRepo      store.SnapshotRepo
+	diagService   *diagnosis.Service
+	lessonService *lessons.Service
+	compressor    *lessons.Compressor
+	planner       sess.Planner
+	scheduler     *spacedrep.Scheduler
+	input         components.TextInput
+	mcActive      bool // true when showing multiple choice
+	mcSelected    int
+	errMsg        string
+
+	// Hint overlay.
+	showingHint bool
+
+	// Lesson view.
+	showingLesson   bool
+	currentLesson   *lessons.Lesson
+	practiceInput   components.TextInput
+	practicePhase   practiceState
+	practiceCorrect bool
 }
 
 var _ screen.Screen = (*SessionScreen)(nil)
 var _ screen.KeyHintProvider = (*SessionScreen)(nil)
 
 // New creates a new SessionScreen with injected dependencies.
-func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service) *SessionScreen {
+func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service, lessonService *lessons.Service, compressor *lessons.Compressor) *SessionScreen {
 	return &SessionScreen{
-		generator:   generator,
-		eventRepo:   eventRepo,
-		snapRepo:    snapRepo,
-		diagService: diagService,
-		planner:     sess.NewPlanner(context.Background(), eventRepo),
-		input:       components.NewTextInput("Type your answer...", false, 20),
+		generator:     generator,
+		eventRepo:     eventRepo,
+		snapRepo:      snapRepo,
+		diagService:   diagService,
+		lessonService: lessonService,
+		compressor:    compressor,
+		planner:       sess.NewPlanner(context.Background(), eventRepo),
+		input:         components.NewTextInput("Type your answer...", false, 20),
+		practiceInput: components.NewTextInput("Type your answer...", false, 20),
 	}
 }
 
@@ -72,15 +97,35 @@ func (s *SessionScreen) KeyHints() []layout.KeyHint {
 			{Key: "N", Description: "Keep going"},
 		}
 	}
+	if s.showingHint {
+		return []layout.KeyHint{
+			{Key: "any key", Description: "Close hint"},
+		}
+	}
+	if s.showingLesson {
+		if s.practicePhase == practiceShowingResult {
+			return []layout.KeyHint{
+				{Key: "any key", Description: "Continue"},
+			}
+		}
+		return []layout.KeyHint{
+			{Key: "Enter", Description: "Submit"},
+			{Key: "q", Description: "Skip"},
+		}
+	}
 	if s.state.ShowingFeedback {
 		return []layout.KeyHint{
 			{Key: "any key", Description: "Continue"},
 		}
 	}
-	return []layout.KeyHint{
+	hints := []layout.KeyHint{
 		{Key: "Enter", Description: "Submit"},
-		{Key: "Esc", Description: "Quit"},
 	}
+	if s.state.HintAvailable && !s.state.HintShown {
+		hints = append(hints, layout.KeyHint{Key: "h", Description: "Hint"})
+	}
+	hints = append(hints, layout.KeyHint{Key: "Esc", Description: "Quit"})
+	return hints
 }
 
 func (s *SessionScreen) View(width, height int) string {
@@ -89,6 +134,12 @@ func (s *SessionScreen) View(width, height int) string {
 	}
 	if s.state == nil {
 		return renderLoading(width, height)
+	}
+	if s.showingHint {
+		return s.renderHintOverlay(width, height)
+	}
+	if s.showingLesson {
+		return s.renderLessonView(width, height)
 	}
 	if s.state.ShowingQuitConfirm {
 		return renderQuitConfirm(width, height)
@@ -121,6 +172,13 @@ func (s *SessionScreen) Update(msg tea.Msg) (screen.Screen, tea.Cmd) {
 
 	case tea.KeyMsg:
 		return s.handleKey(msg)
+	}
+
+	// Forward to practice input if in lesson mode.
+	if s.showingLesson && s.practicePhase == practiceAnswering {
+		var cmd tea.Cmd
+		s.practiceInput, cmd = s.practiceInput.Update(msg)
+		return s, cmd
 	}
 
 	// Forward to input if active.
@@ -192,6 +250,8 @@ func (s *SessionScreen) initSession() tea.Cmd {
 		state.SpacedRepSched = scheduler
 		state.DiagnosisService = s.diagService
 		state.EventRepo = s.eventRepo
+		state.LessonService = s.lessonService
+		state.Compressor = s.compressor
 
 		// Persist session start event.
 		var planSummary []store.PlanSlotSummaryData
@@ -243,6 +303,8 @@ func (s *SessionScreen) handleQuestionReady(msg questionReadyMsg) (screen.Screen
 	s.state.CurrentQuestion = msg.Question
 	s.state.QuestionsInSlot++
 	s.state.QuestionStartTime = time.Now()
+	s.state.HintShown = false
+	s.state.HintAvailable = false
 
 	// Setup input based on question format.
 	if msg.Question.Format == problemgen.FormatMultipleChoice {
@@ -314,6 +376,20 @@ func (s *SessionScreen) handleFeedbackDone() (screen.Screen, tea.Cmd) {
 		}
 	}
 
+	// Check if a lesson is ready.
+	if s.state.PendingLesson && s.lessonService != nil {
+		if lesson, ok := s.lessonService.ConsumeLesson(); ok {
+			s.currentLesson = lesson
+			s.showingLesson = true
+			s.practicePhase = practiceAnswering
+			s.practiceInput = components.NewTextInput("Type your answer...", false, 20)
+			s.state.PendingLesson = false
+			return s, s.practiceInput.Init()
+		}
+		// Lesson not ready yet — don't block, proceed to next question.
+		s.state.PendingLesson = false
+	}
+
 	// Advance to next question or slot.
 	if sess.ShouldAdvanceSlot(s.state) {
 		if !sess.AdvanceSlot(s.state) {
@@ -342,8 +418,8 @@ func (s *SessionScreen) handleSessionEnd() (screen.Screen, tea.Cmd) {
 		DurationSecs:    durationSecs,
 	})
 
-	// Save updated state to snapshot.
-	s.saveSnapshot(ctx)
+	// Generate learner profile asynchronously and save snapshot.
+	s.saveSnapshotWithProfile(ctx)
 
 	// Build summary and navigate.
 	summary := sess.BuildSummary(s.state)
@@ -365,6 +441,17 @@ func (s *SessionScreen) handleKey(msg tea.KeyMsg) (screen.Screen, tea.Cmd) {
 
 	if s.state == nil {
 		return s, nil
+	}
+
+	// Hint overlay — any key dismisses.
+	if s.showingHint {
+		s.showingHint = false
+		return s, nil
+	}
+
+	// Lesson view.
+	if s.showingLesson {
+		return s.handleLessonKey(key, msg)
 	}
 
 	// Quit confirmation dialog.
@@ -393,6 +480,22 @@ func (s *SessionScreen) handleKey(msg tea.KeyMsg) (screen.Screen, tea.Cmd) {
 			return s, nil
 		case "enter":
 			return s.submitAnswer()
+		case "h":
+			if s.state.HintAvailable && !s.state.HintShown {
+				s.state.HintShown = true
+				s.state.HintAvailable = false
+				s.showingHint = true
+				// Persist hint event.
+				if s.state.CurrentQuestion != nil {
+					_ = s.eventRepo.AppendHintEvent(context.Background(), store.HintEventData{
+						SessionID:    s.state.SessionID,
+						SkillID:      s.state.CurrentQuestion.SkillID,
+						QuestionText: s.state.CurrentQuestion.Text,
+						HintText:     s.state.CurrentQuestion.Hint,
+					})
+				}
+				return s, nil
+			}
 		}
 
 		// Multiple choice: number keys and arrows.
@@ -438,6 +541,81 @@ func (s *SessionScreen) handleKey(msg tea.KeyMsg) (screen.Screen, tea.Cmd) {
 	}
 
 	return s, nil
+}
+
+// handleLessonKey processes key presses during lesson view.
+func (s *SessionScreen) handleLessonKey(key string, msg tea.KeyMsg) (screen.Screen, tea.Cmd) {
+	if s.practicePhase == practiceShowingResult {
+		// Any key exits lesson and resumes session.
+		s.finishLesson()
+		return s.advanceAfterLesson()
+	}
+
+	// In practice answering mode.
+	switch key {
+	case "q":
+		// Skip practice.
+		s.practiceCorrect = false
+		s.persistLessonEvent(false, false, true)
+		s.finishLesson()
+		return s.advanceAfterLesson()
+	case "enter":
+		answer := s.practiceInput.Value()
+		if answer == "" {
+			return s, nil
+		}
+		// Check the practice answer.
+		pq := s.currentLesson.PracticeQuestion
+		tmpQ := &problemgen.Question{
+			Answer:     pq.Answer,
+			AnswerType: problemgen.AnswerType(pq.AnswerType),
+			Format:     problemgen.FormatNumeric,
+		}
+		s.practiceCorrect = problemgen.CheckAnswer(answer, tmpQ)
+		s.practicePhase = practiceShowingResult
+		s.persistLessonEvent(true, s.practiceCorrect, false)
+		return s, nil
+	default:
+		var cmd tea.Cmd
+		s.practiceInput, cmd = s.practiceInput.Update(msg)
+		return s, cmd
+	}
+}
+
+func (s *SessionScreen) persistLessonEvent(attempted, correct, skipped bool) {
+	if s.currentLesson == nil {
+		return
+	}
+	_ = s.eventRepo.AppendLessonEvent(context.Background(), store.LessonEventData{
+		SessionID:         s.state.SessionID,
+		SkillID:           s.currentLesson.SkillID,
+		LessonTitle:       s.currentLesson.Title,
+		PracticeAttempted: attempted,
+		PracticeCorrect:   correct,
+		PracticeSkipped:   skipped,
+	})
+}
+
+func (s *SessionScreen) finishLesson() {
+	s.showingLesson = false
+	s.currentLesson = nil
+	s.practicePhase = practiceIdle
+}
+
+func (s *SessionScreen) advanceAfterLesson() (screen.Screen, tea.Cmd) {
+	// If time expired, end the session.
+	if s.state.TimeExpired {
+		return s, func() tea.Msg { return sessionEndMsg{} }
+	}
+
+	// Check if slot should advance.
+	if sess.ShouldAdvanceSlot(s.state) {
+		if !sess.AdvanceSlot(s.state) {
+			return s, func() tea.Msg { return sessionEndMsg{} }
+		}
+	}
+
+	return s, s.generateNextQuestion()
 }
 
 // submitAnswer processes the current answer.
@@ -529,6 +707,14 @@ func (s *SessionScreen) generateNextQuestion() tea.Cmd {
 			RecentErrors:   state.RecentErrors[slot.Skill.ID],
 		}
 
+		// Include learner profile if available from snapshot.
+		if s.snapRepo != nil {
+			snap, err := s.snapRepo.Latest(context.Background())
+			if err == nil && snap != nil && snap.Data.LearnerProfile != nil {
+				input.LearnerProfile = snap.Data.LearnerProfile.Summary
+			}
+		}
+
 		var q *problemgen.Question
 		var err error
 		for attempt := 0; attempt < 3; attempt++ {
@@ -549,7 +735,7 @@ func (s *SessionScreen) generateNextQuestion() tea.Cmd {
 }
 
 // saveSnapshot persists the current mastery state.
-func (s *SessionScreen) saveSnapshot(ctx context.Context) {
+func (s *SessionScreen) saveSnapshot(ctx context.Context) *store.SnapshotData {
 	snapData := store.SnapshotData{
 		Version: 3,
 	}
@@ -560,6 +746,12 @@ func (s *SessionScreen) saveSnapshot(ctx context.Context) {
 
 	if s.scheduler != nil {
 		snapData.SpacedRep = s.scheduler.SnapshotData()
+	}
+
+	// Preserve existing learner profile from previous snapshot.
+	prevSnap, err := s.snapRepo.Latest(ctx)
+	if err == nil && prevSnap != nil && prevSnap.Data.LearnerProfile != nil {
+		snapData.LearnerProfile = prevSnap.Data.LearnerProfile
 	}
 
 	if s.state.MasteryService == nil {
@@ -586,6 +778,74 @@ func (s *SessionScreen) saveSnapshot(ctx context.Context) {
 		Data:      snapData,
 	}
 	_ = s.snapRepo.Save(ctx, snap)
+	return &snapData
+}
+
+// saveSnapshotWithProfile saves the snapshot and triggers async profile generation.
+func (s *SessionScreen) saveSnapshotWithProfile(ctx context.Context) {
+	snapData := s.saveSnapshot(ctx)
+
+	// Generate learner profile asynchronously if compressor is available.
+	if s.compressor == nil {
+		return
+	}
+
+	// Build profile input from session state.
+	perSkillResults := make(map[string]lessons.SkillResultSummary)
+	for id, sr := range s.state.PerSkillResults {
+		perSkillResults[id] = lessons.SkillResultSummary{
+			Attempted: sr.Attempted,
+			Correct:   sr.Correct,
+		}
+	}
+
+	masteryData := make(map[string]lessons.MasteryDataSummary)
+	if snapData.Mastery != nil {
+		for id, sm := range snapData.Mastery.Skills {
+			masteryData[id] = lessons.MasteryDataSummary{
+				State:        sm.State,
+				FluencyScore: 0, // Simplified — fluency is derived, not stored directly.
+			}
+		}
+	}
+
+	var prevProfile *lessons.LearnerProfile
+	if snapData.LearnerProfile != nil {
+		prevProfile = &lessons.LearnerProfile{
+			Summary:    snapData.LearnerProfile.Summary,
+			Strengths:  snapData.LearnerProfile.Strengths,
+			Weaknesses: snapData.LearnerProfile.Weaknesses,
+			Patterns:   snapData.LearnerProfile.Patterns,
+		}
+	}
+
+	input := lessons.ProfileInput{
+		PerSkillResults: perSkillResults,
+		MasteryData:     masteryData,
+		ErrorHistory:    s.state.RecentErrors,
+		PreviousProfile: prevProfile,
+	}
+
+	go func() {
+		profile, err := s.compressor.GenerateProfile(ctx, input)
+		if err != nil || profile == nil {
+			return
+		}
+		profileData := &store.LearnerProfileData{
+			Summary:     profile.Summary,
+			Strengths:   profile.Strengths,
+			Weaknesses:  profile.Weaknesses,
+			Patterns:    profile.Patterns,
+			GeneratedAt: profile.GeneratedAt.Format(time.RFC3339),
+		}
+		// Re-load and update snapshot with profile.
+		latestSnap, err := s.snapRepo.Latest(ctx)
+		if err != nil || latestSnap == nil {
+			return
+		}
+		latestSnap.Data.LearnerProfile = profileData
+		_ = s.snapRepo.Save(ctx, latestSnap)
+	}()
 }
 
 // tickCmd returns a 1-second tick command.
