@@ -26,6 +26,8 @@ func init() {
 	rootCmd.AddCommand(statsCmd)
 	rootCmd.AddCommand(llmCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(previewCmd)
+	rootCmd.AddCommand(skillCmd)
 }
 
 // resolveDBPath returns the database path using --db flag (highest priority),

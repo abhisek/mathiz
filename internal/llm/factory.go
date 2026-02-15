@@ -32,8 +32,12 @@ func NewProvider(ctx context.Context, cfg Config, eventRepo store.EventRepo) (Pr
 	}
 
 	// Wrap with middleware: caller → retry → logging → base
-	logged := WithLogging(base, eventRepo, cfg.Provider)
-	retried := WithRetry(logged, cfg.Retry)
+	// Skip logging when no EventRepo is provided (e.g. stateless preview mode).
+	var wrapped Provider = base
+	if eventRepo != nil {
+		wrapped = WithLogging(base, eventRepo, cfg.Provider)
+	}
+	retried := WithRetry(wrapped, cfg.Retry)
 
 	return retried, nil
 }
