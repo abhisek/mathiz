@@ -16,6 +16,10 @@ var (
 	BgDark    = lipgloss.Color("#0F172A") // Deep Navy
 	BgCard    = lipgloss.Color("#1E293B") // Dark Slate
 	Border    = lipgloss.Color("#334155") // Slate
+
+	// Arcade cabinet palette
+	ArcadeYellow = lipgloss.Color("#FFD700") // Gold — titles, selected menu
+	ArcadeCyan   = lipgloss.Color("#00FFFF") // Cyan — stats
 )
 
 // Typography

@@ -6,18 +6,56 @@ import (
 	"github.com/abhisek/mathiz/internal/ui/theme"
 )
 
-const mascotArt = `  ╭───────────╮
-  │  ┌─────┐  │
-  │  │ ◉ ◉ │  │
-  │  │  ▽  │  │
-  │  ├─────┤  │
-  │  │ ±×÷ │  │
-  │  └─────┘  │
-  ╰───────────╯`
+// MascotVariant selects which mascot art to display.
+type MascotVariant int
 
-// RenderMascot returns the mascot ASCII art styled in the primary color.
-func RenderMascot() string {
+const (
+	MascotIdle        MascotVariant = iota // Default purple
+	MascotCelebrating                      // Gold, star eyes — recent mastery
+	MascotAlert                            // Orange, exclamation — reviews due
+)
+
+const mascotIdle = `┌─────┐
+│ ◉ ◉ │
+│  ▽  │
+│ ±×÷ │
+└─────┘`
+
+const mascotCelebrating = `┌─────┐
+│ ★ ★ │
+│  ▿  │
+│ ±×÷ │
+└─╥═╥─┘
+  ╚═╝`
+
+const mascotAlert = `┌─────┐
+│ ◉ ◉ │ !
+│  ▽  │
+│ ±×÷ │
+└─────┘`
+
+// RenderMascot returns the mascot ASCII art for the given variant.
+func RenderMascot(variant ...MascotVariant) string {
+	v := MascotIdle
+	if len(variant) > 0 {
+		v = variant[0]
+	}
+
+	var art string
+	var fg = theme.Primary
+
+	switch v {
+	case MascotCelebrating:
+		art = mascotCelebrating
+		fg = theme.ArcadeYellow
+	case MascotAlert:
+		art = mascotAlert
+		fg = theme.Accent
+	default:
+		art = mascotIdle
+	}
+
 	return lipgloss.NewStyle().
-		Foreground(theme.Primary).
-		Render(mascotArt)
+		Foreground(fg).
+		Render(art)
 }

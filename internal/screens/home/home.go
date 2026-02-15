@@ -2,11 +2,8 @@ package home
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
-
-	"charm.land/lipgloss/v2"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -24,13 +21,16 @@ import (
 	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/abhisek/mathiz/internal/ui/components"
-	"github.com/abhisek/mathiz/internal/ui/theme"
 )
 
 // HomeScreen is the main home screen of the application.
 type HomeScreen struct {
-	menu     components.Menu
-	gemCount int
+	menu          components.Menu
+	menuLabels    []string
+	gemCount      int
+	masteredCount int
+	reviewsDue    int
+	mascotVariant MascotVariant
 }
 
 var _ screen.Screen = (*HomeScreen)(nil)
@@ -48,11 +48,51 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 		gemCount = snap.Data.Gems.TotalCount
 	}
 
+	// Compute mastered count, reviews due, and mascot variant from snapshot.
+	var masteredCount, reviewsDue int
+	var recentMastery bool
+	now := time.Now()
+
+	if snap != nil && snap.Data.Mastery != nil {
+		for _, sm := range snap.Data.Mastery.Skills {
+			if sm.State == "mastered" {
+				masteredCount++
+				if sm.MasteredAt != nil {
+					if t, err := time.Parse(time.RFC3339, *sm.MasteredAt); err == nil {
+						if now.Sub(t) < 24*time.Hour {
+							recentMastery = true
+						}
+					}
+				}
+			}
+		}
+	}
+	if snap != nil && snap.Data.SpacedRep != nil {
+		for _, rs := range snap.Data.SpacedRep.Reviews {
+			nextReview, err := time.Parse(time.RFC3339, rs.NextReviewDate)
+			if err != nil {
+				continue
+			}
+			if !now.Before(nextReview) {
+				reviewsDue++
+			}
+		}
+	}
+
+	mascotVariant := MascotIdle
+	if reviewsDue >= 3 {
+		mascotVariant = MascotAlert
+	} else if recentMastery {
+		mascotVariant = MascotCelebrating
+	}
+
 	skillStates := computeSkillStates(snap)
 	reviewBadges := computeReviewBadges(snap)
 
+	menuLabels := []string{"START GAME", "SKILL MAP", "GEM VAULT", "HISTORY", "EXIT GAME"}
+
 	items := []components.MenuItem{
-		{Label: "Start Game", Action: func() tea.Cmd {
+		{Label: menuLabels[0], Action: func() tea.Cmd {
 			if generator == nil || eventRepo == nil || snapRepo == nil {
 				return func() tea.Msg {
 					return router.PushScreenMsg{Screen: placeholder.New("Start Game")}
@@ -64,12 +104,12 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 				}
 			}
 		}},
-		{Label: "Skill Map", Action: func() tea.Cmd {
+		{Label: menuLabels[1], Action: func() tea.Cmd {
 			return func() tea.Msg {
 				return router.PushScreenMsg{Screen: skillmap.New(skillStates, reviewBadges)}
 			}
 		}},
-		{Label: "Gem Vault", Action: func() tea.Cmd {
+		{Label: menuLabels[2], Action: func() tea.Cmd {
 			if eventRepo == nil {
 				return func() tea.Msg {
 					return router.PushScreenMsg{Screen: placeholder.New("Gem Vault")}
@@ -79,7 +119,7 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 				return router.PushScreenMsg{Screen: gemvault.New(eventRepo)}
 			}
 		}},
-		{Label: "History", Action: func() tea.Cmd {
+		{Label: menuLabels[3], Action: func() tea.Cmd {
 			if eventRepo == nil {
 				return func() tea.Msg {
 					return router.PushScreenMsg{Screen: placeholder.New("History")}
@@ -89,14 +129,18 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 				return router.PushScreenMsg{Screen: history.New(eventRepo)}
 			}
 		}},
-		{Label: "Exit Game", Action: func() tea.Cmd {
+		{Label: menuLabels[4], Action: func() tea.Cmd {
 			return tea.Quit
 		}},
 	}
 
 	return &HomeScreen{
-		menu:     components.NewMenu(items),
-		gemCount: gemCount,
+		menu:          components.NewMenu(items),
+		menuLabels:    menuLabels,
+		gemCount:      gemCount,
+		masteredCount: masteredCount,
+		reviewsDue:    reviewsDue,
+		mascotVariant: mascotVariant,
 	}
 }
 
@@ -116,47 +160,31 @@ func (h *HomeScreen) View(width, height int) string {
 	termHeight := height + 8
 	compact := termHeight < 30 || width < 100
 
+	// All sections share a uniform content width so they line up.
+	cw := contentWidth(width)
+
 	var sections []string
 
+	// 1. Title
+	sections = append(sections, renderTitle(cw, compact))
+
+	// 2. Mascot (full mode only)
 	if !compact {
-		mascot := lipgloss.PlaceHorizontal(width, lipgloss.Center, RenderMascot())
-		sections = append(sections, mascot)
+		sections = append(sections, renderMascotBox(h.mascotVariant, cw))
 	}
 
-	var greetingText string
-	if compact {
-		greetingText = "Hey there, math explorer! ✦"
-	} else {
-		greetingText = "Hey there, math explorer!\nReady to level up today? ✦"
-	}
+	// 3. Stats bar (double-bordered, same width)
+	sections = append(sections, renderStatsBar(
+		h.masteredCount, h.gemCount, h.reviewsDue, cw, compact))
 
-	greeting := lipgloss.NewStyle().
-		Width(width).
-		Foreground(theme.Text).
-		Align(lipgloss.Center).
-		Render(greetingText)
-	sections = append(sections, greeting)
+	// 4. Menu (same width box)
+	sections = append(sections, renderArcadeMenu(
+		h.menuLabels, h.menu.Selected, cw))
 
-	// Gem count display.
-	if h.gemCount > 0 {
-		gemLine := fmt.Sprintf("✦ %d gems", h.gemCount)
-		gemDisplay := lipgloss.NewStyle().
-			Width(width).
-			Foreground(theme.Accent).
-			Align(lipgloss.Center).
-			Render(gemLine)
-		sections = append(sections, gemDisplay)
-	}
+	content := strings.Join(sections, "\n\n")
 
-	// Render the menu as a left-aligned block, then center the whole block
-	menuBlock := h.menu.View()
-	centeredMenu := lipgloss.PlaceHorizontal(width, lipgloss.Center, menuBlock)
-	sections = append(sections, centeredMenu)
-
-	content := "\n" + strings.Join(sections, "\n\n")
-
-	// Fill the full width×height to prevent artifacts from previous screens.
-	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+	// Wrap in cabinet frame, centered in the full area
+	return renderCabinetFrame(content, width, height)
 }
 
 func (h *HomeScreen) Title() string {

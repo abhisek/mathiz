@@ -19,14 +19,11 @@ const (
 	totalDur     = 4500 * time.Millisecond
 )
 
-const mascotArt = `  ╭───────────╮
-  │  ┌─────┐  │
-  │  │ ◉ ◉ │  │
-  │  │  ▽  │  │
-  │  ├─────┤  │
-  │  │ ±×÷ │  │
-  │  └─────┘  │
-  ╰───────────╯`
+const mascotArt = `┌─────┐
+│ ◉ ◉ │
+│  ▽  │
+│ ±×÷ │
+└─────┘`
 
 // sparkle frames cycle around the mascot
 var sparkleFrames = []string{"★", "✦"}
@@ -90,7 +87,22 @@ func (w *WelcomeScreen) transition() tea.Cmd {
 	}
 }
 
+// welcomeContentWidth mirrors the home screen's content width logic.
+func welcomeContentWidth(frameWidth int) int {
+	cw := frameWidth - 6
+	if cw > 60 {
+		cw = 60
+	}
+	if cw < 20 {
+		cw = 20
+	}
+	return cw
+}
+
 func (w *WelcomeScreen) View(width, height int) string {
+	cw := welcomeContentWidth(width)
+	centerBox := lipgloss.NewStyle().Width(cw).Align(lipgloss.Center)
+
 	var sections []string
 
 	mascotStyle := lipgloss.NewStyle().Foreground(theme.Primary)
@@ -111,44 +123,53 @@ func (w *WelcomeScreen) View(width, height int) string {
 
 		// Place sparkles on sides of mascot
 		lines := strings.Split(rendered, "\n")
-		if len(lines) > 1 {
+		if len(lines) > 0 {
 			lines[0] = s1 + "  " + lines[0] + "  " + s2
 		}
-		if len(lines) > 3 {
-			lines[3] = s2 + "  " + lines[3] + "  " + s1
+		if len(lines) > 2 {
+			lines[2] = s2 + "  " + lines[2] + "  " + s1
 		}
-		if len(lines) > 6 {
-			lines[6] = s1 + "  " + lines[6] + "  " + s2
+		if len(lines) > 4 {
+			lines[4] = s1 + "  " + lines[4] + "  " + s2
 		}
 		rendered = strings.Join(lines, "\n")
 	}
 
-	sections = append(sections, rendered)
+	sections = append(sections, centerBox.Render(rendered))
 
 	// Phase 3+: banner + tagline
 	if w.elapsed >= phase2End {
-		sections = append(sections, "")
-		sections = append(sections, RenderBanner(width))
-		sections = append(sections, "")
+		sections = append(sections, centerBox.Render(RenderBanner(cw)))
 
 		tagline := lipgloss.NewStyle().
 			Foreground(theme.Text).
 			Bold(true).
 			Render("Let's make math fun!")
-		sections = append(sections, tagline)
+		sections = append(sections, centerBox.Render(tagline))
 	}
 
-	// "press any key" hint
+	// "press any key" hint — styled as a button to match home screen
 	if w.elapsed >= phase2End {
-		sections = append(sections, "")
 		hint := lipgloss.NewStyle().
+			Width(22).
+			Align(lipgloss.Center).
 			Foreground(theme.TextDim).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(theme.Border).
+			Padding(0, 1).
 			Italic(true).
-			Render("press any key to continue")
-		sections = append(sections, hint)
+			Render("press any key")
+		sections = append(sections, centerBox.Render(hint))
 	}
 
-	content := strings.Join(sections, "\n")
+	content := strings.Join(sections, "\n\n")
 
-	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, content)
+	// Cabinet frame matching the home screen
+	return lipgloss.NewStyle().
+		Border(lipgloss.DoubleBorder()).
+		BorderForeground(theme.Primary).
+		Width(width - 2).
+		Height(height - 2).
+		Align(lipgloss.Center, lipgloss.Center).
+		Render(content)
 }

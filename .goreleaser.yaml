@@ -5,7 +5,7 @@ before:
     - go mod tidy
 
 builds:
-  - main: ./cmd/mathiz
+  - main: .
     env:
       - CGO_ENABLED=0
     goos:
