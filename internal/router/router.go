@@ -14,6 +14,11 @@ type PushScreenMsg struct {
 // PopScreenMsg requests the router to pop the current screen off the stack.
 type PopScreenMsg struct{}
 
+// ReplaceScreenMsg requests the router to replace the top screen with a new one.
+type ReplaceScreenMsg struct {
+	Screen screen.Screen
+}
+
 // Router manages a stack of screens.
 type Router struct {
 	stack []screen.Screen
@@ -29,6 +34,16 @@ func New(initial screen.Screen) *Router {
 // Push adds a screen on top of the stack and calls its Init().
 func (r *Router) Push(s screen.Screen) tea.Cmd {
 	r.stack = append(r.stack, s)
+	return s.Init()
+}
+
+// Replace swaps the top screen with a new one and calls Init().
+func (r *Router) Replace(s screen.Screen) tea.Cmd {
+	if len(r.stack) == 0 {
+		r.stack = append(r.stack, s)
+	} else {
+		r.stack[len(r.stack)-1] = s
+	}
 	return s.Init()
 }
 
@@ -61,6 +76,8 @@ func (r *Router) Update(msg tea.Msg) tea.Cmd {
 		return r.Push(msg.Screen)
 	case PopScreenMsg:
 		return r.Pop()
+	case ReplaceScreenMsg:
+		return r.Replace(msg.Screen)
 	}
 
 	active := r.Active()

@@ -15,6 +15,7 @@ import (
 	"github.com/abhisek/mathiz/internal/router"
 	"github.com/abhisek/mathiz/internal/screen"
 	"github.com/abhisek/mathiz/internal/screens/home"
+	"github.com/abhisek/mathiz/internal/screens/welcome"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/abhisek/mathiz/internal/ui/layout"
 )
@@ -55,17 +56,19 @@ type AppModel struct {
 	height int
 }
 
-// newAppModel creates a new AppModel with the home screen.
+// newAppModel creates a new AppModel with the welcome screen.
 func newAppModel(opts Options) AppModel {
-	homeScreen := home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService, opts.LessonService, opts.Compressor, opts.GemService)
+	homeFactory := func() screen.Screen {
+		return home.New(opts.Generator, opts.EventRepo, opts.SnapshotRepo, opts.DiagnosisService, opts.LessonService, opts.Compressor, opts.GemService)
+	}
 	return AppModel{
-		router: router.New(homeScreen),
+		router: router.New(welcome.New(homeFactory)),
 		opts:   opts,
 	}
 }
 
 func (m AppModel) Init() tea.Cmd {
-	return nil
+	return m.router.Active().Init()
 }
 
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -105,6 +108,13 @@ func (m AppModel) View() tea.View {
 	}
 
 	active := m.router.Active()
+
+	// Render welcome screen fullscreen (no header/footer frame).
+	if _, ok := active.(*welcome.WelcomeScreen); ok {
+		v.SetContent(active.View(m.width, m.height))
+		return v
+	}
+
 	title := ""
 	if active != nil {
 		title = active.Title()

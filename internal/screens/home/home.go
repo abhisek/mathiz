@@ -82,10 +82,8 @@ func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo sto
 				return router.PushScreenMsg{Screen: history.New(eventRepo)}
 			}
 		}},
-		{Label: "Settings", Action: func() tea.Cmd {
-			return func() tea.Msg {
-				return router.PushScreenMsg{Screen: placeholder.New("Settings")}
-			}
+		{Label: "Exit Game", Action: func() tea.Cmd {
+			return tea.Quit
 		}},
 	}
 
