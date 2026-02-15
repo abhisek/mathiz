@@ -82,24 +82,36 @@ func (s *SessionScreen) renderQuestionView(width, height int) string {
 
 	q := state.CurrentQuestion
 
-	// Question text (centered).
+	// Question text — large and prominent.
+	contentWidth := min(width-8, 60)
 	questionStyle := lipgloss.NewStyle().
-		Width(width).
+		Width(contentWidth).
 		Align(lipgloss.Center).
 		Foreground(theme.Text).
-		Bold(true)
-	b.WriteString(questionStyle.Render(q.Text))
-	b.WriteString("\n\n")
+		Bold(true).
+		Padding(1, 2)
+	questionBlock := questionStyle.Render(q.Text)
+	b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center, questionBlock))
+	b.WriteString("\n")
 
 	// Input area.
 	if s.mcActive {
 		b.WriteString(s.renderMultipleChoice(width))
 	} else {
-		answerLine := lipgloss.NewStyle().
-			Width(width).
-			Align(lipgloss.Center).
-			Render("Answer: " + s.input.View())
-		b.WriteString(answerLine)
+		// Framed answer input — fixed width.
+		boxWidth := min(width-12, 40)
+		inputLabel := lipgloss.NewStyle().
+			Foreground(theme.TextDim).
+			Render("Your Answer")
+		inputView := s.input.View()
+		inputLine := inputLabel + "  " + inputView
+		inputBox := lipgloss.NewStyle().
+			Width(boxWidth).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(theme.Primary).
+			Padding(0, 2).
+			Render(inputLine)
+		b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center, inputBox))
 	}
 
 	return b.String()
@@ -180,30 +192,42 @@ func (s *SessionScreen) renderMultipleChoice(width int) string {
 		return ""
 	}
 
+	optionWidth := min(width-12, 50)
+
 	var b strings.Builder
 	for i, choice := range q.Choices {
-		prefix := "  "
-		if i == s.mcSelected {
-			prefix = "> "
-		}
-		line := fmt.Sprintf("%s%d) %s", prefix, i+1, choice)
+		label := fmt.Sprintf(" %d)  %s ", i+1, choice)
 
-		style := lipgloss.NewStyle().
-			Width(width).
-			Align(lipgloss.Center)
+		var option string
 		if i == s.mcSelected {
-			b.WriteString(style.Foreground(theme.Primary).Bold(true).Render(line))
+			option = lipgloss.NewStyle().
+				Width(optionWidth).
+				Background(theme.BgCard).
+				Foreground(theme.Primary).
+				Bold(true).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(theme.Primary).
+				Padding(0, 1).
+				Render(label)
 		} else {
-			b.WriteString(style.Foreground(theme.Text).Render(line))
+			option = lipgloss.NewStyle().
+				Width(optionWidth).
+				Foreground(theme.Text).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(theme.Border).
+				Padding(0, 1).
+				Render(label)
 		}
+		b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center, option))
 		b.WriteString("\n")
 	}
 
-	b.WriteString(lipgloss.NewStyle().
-		Width(width).
-		Align(lipgloss.Center).
+	hint := lipgloss.NewStyle().
 		Foreground(theme.TextDim).
-		Render("\nSelect (1-4) or use arrows + Enter"))
+		Italic(true).
+		Render("Select (1-4) or use arrows + Enter")
+	b.WriteString("\n")
+	b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center, hint))
 
 	return b.String()
 }

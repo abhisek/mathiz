@@ -18,6 +18,7 @@ import (
 	"github.com/abhisek/mathiz/internal/screens/welcome"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/abhisek/mathiz/internal/ui/layout"
+	"github.com/abhisek/mathiz/internal/ui/theme"
 )
 
 // Options holds dependencies injected into the app.
@@ -68,11 +69,15 @@ func newAppModel(opts Options) AppModel {
 }
 
 func (m AppModel) Init() tea.Cmd {
-	return m.router.Active().Init()
+	return tea.Batch(m.router.Active().Init(), tea.RequestBackgroundColor)
 }
 
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		theme.SetDark(msg.IsDark())
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
