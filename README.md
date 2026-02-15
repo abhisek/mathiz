@@ -1,10 +1,16 @@
 # Mathiz
 
-AI-powered math tutor in the terminal. 
+AI powered math tutor in the terminal. 
 Mathiz helps kids (grades 3-5) build math mastery through adaptive practice, spaced repetition, and LLM generated questions.
 
 Built with [Claude Code](https://code.claude.ai) using a spec driven development approach. See
 [specs](./specs/) for more details and [notes](/specs/notes.md) for author notes.
+
+<div align="center">
+  <picture>
+    <img src="docs/assets/banner.png" alt="Mathiz - AI powered math tutor" width="90%">
+  </picture>
+</div>
 
 ## Install
 
