@@ -111,6 +111,31 @@ func (r *eventRepo) LLMUsageByPurpose(ctx context.Context) ([]LLMUsageStats, err
 	return stats, rows.Err()
 }
 
+func (r *eventRepo) LLMUsageByModel(ctx context.Context) ([]LLMModelUsage, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT model,
+		       COUNT(*) as calls,
+		       COALESCE(SUM(input_tokens), 0) as input_tokens,
+		       COALESCE(SUM(output_tokens), 0) as output_tokens
+		FROM llm_request_events
+		GROUP BY model
+		ORDER BY calls DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("query LLM usage by model: %w", err)
+	}
+	defer rows.Close()
+
+	var usage []LLMModelUsage
+	for rows.Next() {
+		var u LLMModelUsage
+		if err := rows.Scan(&u.Model, &u.Calls, &u.InputTokens, &u.OutputTokens); err != nil {
+			return nil, fmt.Errorf("scan LLM model usage row: %w", err)
+		}
+		usage = append(usage, u)
+	}
+	return usage, rows.Err()
+}
+
 func llmEventToRecord(row *ent.LLMRequestEvent) LLMRequestEventRecord {
 	return LLMRequestEventRecord{
 		ID:           row.ID,

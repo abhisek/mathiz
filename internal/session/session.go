@@ -12,6 +12,7 @@ import (
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/spacedrep"
+	"github.com/abhisek/mathiz/internal/store"
 )
 
 // MaxRecentErrors is the maximum number of recent errors tracked per skill.
@@ -73,9 +74,20 @@ func HandleAnswer(state *SessionState, learnerAnswer string) *TierAdvancement {
 						sm := state.MasteryService.GetMastery(q.SkillID)
 						sm.MisconceptionPenalty++
 					}
+					// Persist async (LLM) diagnosis result.
+					if state.EventRepo != nil {
+						_ = state.EventRepo.AppendDiagnosisEvent(context.Background(),
+							diagnosisEventData(state.SessionID, q, learnerAnswer, asyncResult))
+					}
 				},
 			)
 			state.LastDiagnosis = diag
+
+			// Persist synchronous diagnosis result.
+			if state.EventRepo != nil {
+				_ = state.EventRepo.AppendDiagnosisEvent(context.Background(),
+					diagnosisEventData(state.SessionID, q, learnerAnswer, diag))
+			}
 
 			// Apply synchronous misconception penalty.
 			if diag.Category == diagnosis.CategoryMisconception && state.MasteryService != nil {
@@ -192,6 +204,11 @@ func handleAnswerWithMastery(state *SessionState, q *problemgen.Question, correc
 						state.PendingGemAward = award
 					}
 				}
+			}
+
+			// Check if poor review performance should mark skill as rusty.
+			if t := state.MasteryService.CheckReviewPerformance(context.Background(), q.SkillID); t != nil {
+				transition = t
 			}
 		}
 	}
@@ -386,4 +403,23 @@ func BuildErrorContext(question *problemgen.Question, learnerAnswer string, diag
 	}
 	enriched += "]"
 	return enriched
+}
+
+// diagnosisEventData converts a DiagnosisResult into the store event data.
+func diagnosisEventData(sessionID string, q *problemgen.Question, learnerAnswer string, diag *diagnosis.DiagnosisResult) store.DiagnosisEventData {
+	data := store.DiagnosisEventData{
+		SessionID:      sessionID,
+		SkillID:        q.SkillID,
+		QuestionText:   q.Text,
+		CorrectAnswer:  q.Answer,
+		LearnerAnswer:  learnerAnswer,
+		Category:       string(diag.Category),
+		Confidence:     diag.Confidence,
+		ClassifierName: diag.ClassifierName,
+		Reasoning:      diag.Reasoning,
+	}
+	if diag.MisconceptionID != "" {
+		data.MisconceptionID = &diag.MisconceptionID
+	}
+	return data
 }

@@ -71,6 +71,9 @@ func (m *mockEventRepo) GetLLMEvent(_ context.Context, _ int) (*store.LLMRequest
 func (m *mockEventRepo) LLMUsageByPurpose(_ context.Context) ([]store.LLMUsageStats, error) {
 	return nil, nil
 }
+func (m *mockEventRepo) LLMUsageByModel(_ context.Context) ([]store.LLMModelUsage, error) {
+	return nil, nil
+}
 
 func testSkillID() string {
 	skills := skillgraph.AllSkills()

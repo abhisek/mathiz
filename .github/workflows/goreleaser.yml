@@ -40,8 +40,6 @@ jobs:
           distribution: goreleaser
           version: "~> v2"
           args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
       - name: Upload dist Folder
         uses: actions/upload-artifact@7d27270e0cfd253e666c44abac0711308d2d042f # v6.0.0

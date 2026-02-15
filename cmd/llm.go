@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -144,7 +145,7 @@ var llmViewCmd = &cobra.Command{
 
 var llmStatsCmd = &cobra.Command{
 	Use:   "stats",
-	Short: "Show aggregated LLM token usage",
+	Short: "Show aggregated LLM token usage and estimated cost",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dbPath, err := store.DefaultDBPath()
 		if err != nil {
@@ -168,7 +169,8 @@ var llmStatsCmd = &cobra.Command{
 			return nil
 		}
 
-		fmt.Println("LLM Token Usage")
+		// Usage by purpose.
+		fmt.Println("Usage by Purpose")
 		fmt.Println(strings.Repeat("\u2500", 72))
 		fmt.Printf("%-16s  %6s  %10s  %10s  %10s  %8s\n",
 			"Purpose", "Calls", "Input", "Output", "Total", "Avg Ms")
@@ -188,8 +190,65 @@ var llmStatsCmd = &cobra.Command{
 		fmt.Printf("%-16s  %6d  %10d  %10d  %10d\n",
 			"TOTAL", totalCalls, totalIn, totalOut, totalIn+totalOut)
 
+		// Cost by model.
+		modelUsage, err := s.EventRepo().LLMUsageByModel(ctx)
+		if err != nil {
+			return fmt.Errorf("query model usage: %w", err)
+		}
+
+		if len(modelUsage) > 0 {
+			fmt.Println()
+			fmt.Println("Estimated Cost (USD)")
+			fmt.Println(strings.Repeat("\u2500", 72))
+			fmt.Printf("%-32s  %6s  %10s  %10s  %10s\n",
+				"Model", "Calls", "Input", "Output", "Cost")
+			fmt.Println(strings.Repeat("\u2500", 72))
+
+			var totalCost float64
+			var unknownModels []string
+			for _, mu := range modelUsage {
+				cost := llm.LookupCost(mu.Model)
+				if cost == nil {
+					unknownModels = append(unknownModels, mu.Model)
+					fmt.Printf("%-32s  %6d  %10d  %10d  %10s\n",
+						truncate(mu.Model, 32), mu.Calls, mu.InputTokens, mu.OutputTokens, "?")
+					continue
+				}
+				c := cost.Cost(mu.InputTokens, mu.OutputTokens)
+				totalCost += c
+				fmt.Printf("%-32s  %6d  %10d  %10d  %9s\n",
+					truncate(mu.Model, 32), mu.Calls, mu.InputTokens, mu.OutputTokens, formatCost(c))
+			}
+
+			fmt.Println(strings.Repeat("\u2500", 72))
+			label := "TOTAL"
+			if len(unknownModels) > 0 {
+				label = "TOTAL (partial)"
+			}
+			fmt.Printf("%-32s  %6s  %10s  %10s  %9s\n",
+				label, "", "", "", formatCost(totalCost))
+
+			if len(unknownModels) > 0 {
+				fmt.Printf("\nPricing unavailable for: %s\n", strings.Join(unknownModels, ", "))
+			}
+		}
+
 		return nil
 	},
+}
+
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max]
+}
+
+func formatCost(usd float64) string {
+	if usd < 0.01 {
+		return fmt.Sprintf("$%.4f", usd)
+	}
+	return fmt.Sprintf("$%.2f", usd)
 }
 
 func init() {

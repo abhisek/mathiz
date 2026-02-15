@@ -132,6 +132,14 @@ type LLMUsageStats struct {
 	AvgLatencyMs int64
 }
 
+// LLMModelUsage holds aggregated token usage for a specific model.
+type LLMModelUsage struct {
+	Model        string
+	Calls        int
+	InputTokens  int
+	OutputTokens int
+}
+
 // SessionEventData captures the data for a session lifecycle event.
 type SessionEventData struct {
 	SessionID      string
@@ -307,4 +315,7 @@ type EventRepo interface {
 
 	// LLMUsageByPurpose returns aggregated token usage grouped by purpose.
 	LLMUsageByPurpose(ctx context.Context) ([]LLMUsageStats, error)
+
+	// LLMUsageByModel returns aggregated token usage grouped by model.
+	LLMUsageByModel(ctx context.Context) ([]LLMModelUsage, error)
 }
