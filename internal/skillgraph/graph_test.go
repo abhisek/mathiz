@@ -29,8 +29,8 @@ func TestGetSkill_NotFound(t *testing.T) {
 
 func TestAllSkills_Count(t *testing.T) {
 	all := AllSkills()
-	if len(all) != 53 {
-		t.Errorf("got %d skills, want 53", len(all))
+	if len(all) != 54 {
+		t.Errorf("got %d skills, want 54", len(all))
 	}
 }
 
@@ -40,7 +40,7 @@ func TestByStrand(t *testing.T) {
 		want   int
 	}{
 		{StrandNumberPlace, 8},
-		{StrandAddSub, 11},
+		{StrandAddSub, 12},
 		{StrandMultDiv, 14},
 		{StrandFractions, 12},
 		{StrandMeasurement, 8},
@@ -72,8 +72,8 @@ func TestByGrade(t *testing.T) {
 	grade6 := ByGrade(6)
 
 	total := len(grade3) + len(grade4) + len(grade5)
-	if total != 53 {
-		t.Errorf("grade 3+4+5 total: got %d, want 53", total)
+	if total != 54 {
+		t.Errorf("grade 3+4+5 total: got %d, want 54", total)
 	}
 	if len(grade6) != 0 {
 		t.Errorf("ByGrade(6): got %d skills, want 0", len(grade6))
@@ -275,7 +275,7 @@ func TestBlockedSkills_EmptyMastered(t *testing.T) {
 	roots := RootSkills()
 
 	// Everything except roots should be blocked
-	expectedBlocked := 53 - len(roots)
+	expectedBlocked := 54 - len(roots)
 	if len(blocked) != expectedBlocked {
 		t.Errorf("got %d blocked skills, want %d", len(blocked), expectedBlocked)
 	}
@@ -296,8 +296,8 @@ func TestBlockedSkills_AllMastered(t *testing.T) {
 
 func TestTopologicalOrder(t *testing.T) {
 	topo := TopologicalOrder()
-	if len(topo) != 53 {
-		t.Fatalf("got %d skills in topo order, want 53", len(topo))
+	if len(topo) != 54 {
+		t.Fatalf("got %d skills in topo order, want 54", len(topo))
 	}
 
 	// Verify topological property: every skill appears after all its prerequisites

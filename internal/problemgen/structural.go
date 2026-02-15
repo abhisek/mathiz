@@ -49,10 +49,17 @@ func (v *StructuralValidator) Validate(q *Question, _ GenerateInput) *Validation
 			Retryable: true,
 		}
 	}
-	if q.AnswerType != AnswerTypeInteger && q.AnswerType != AnswerTypeDecimal && q.AnswerType != AnswerTypeFraction {
+	if q.AnswerType != AnswerTypeInteger && q.AnswerType != AnswerTypeDecimal && q.AnswerType != AnswerTypeFraction && q.AnswerType != AnswerTypeText {
 		return &ValidationError{
 			Validator: v.Name(),
-			Message:   "answer_type must be \"integer\", \"decimal\", or \"fraction\"",
+			Message:   "answer_type must be \"integer\", \"decimal\", \"fraction\", or \"text\"",
+			Retryable: true,
+		}
+	}
+	if q.AnswerType == AnswerTypeText && q.Format != FormatMultipleChoice {
+		return &ValidationError{
+			Validator: v.Name(),
+			Message:   "answer_type \"text\" must use \"multiple_choice\" format",
 			Retryable: true,
 		}
 	}

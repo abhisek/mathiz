@@ -49,6 +49,7 @@ const (
 	AnswerTypeInteger  AnswerType = "integer"  // e.g. "623", "-15"
 	AnswerTypeDecimal  AnswerType = "decimal"  // e.g. "3.75", "0.5"
 	AnswerTypeFraction AnswerType = "fraction" // e.g. "3/4", "7/2"
+	AnswerTypeText     AnswerType = "text"     // e.g. conceptual reasoning explanations
 )
 
 // AnswerFormat describes how the learner provides their answer.

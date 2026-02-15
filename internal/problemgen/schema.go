@@ -24,8 +24,8 @@ var QuestionSchema = &llm.Schema{
 			},
 			"answer_type": map[string]any{
 				"type":        "string",
-				"enum":        []any{"integer", "decimal", "fraction"},
-				"description": "The numeric type of the answer",
+				"enum":        []any{"integer", "decimal", "fraction", "text"},
+				"description": "The type of the answer: numeric types for computation, or text for conceptual reasoning",
 			},
 			"choices": map[string]any{
 				"type": "array",

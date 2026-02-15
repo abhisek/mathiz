@@ -127,3 +127,34 @@ func TestCheckAnswer_MultipleChoice_CaseInsensitive(t *testing.T) {
 		t.Error("expected case-insensitive match")
 	}
 }
+
+func TestCheckAnswer_TextMultipleChoice(t *testing.T) {
+	q := &Question{
+		Format:     FormatMultipleChoice,
+		Answer:     "Because 7 + 5 = 12, and the 1 in 12 means 1 ten",
+		AnswerType: AnswerTypeText,
+		Choices: []string{
+			"Because 7 + 5 = 12, and the 1 in 12 means 1 ten",
+			"Because you always carry a 1 when adding",
+			"Because the 1 is too big for the ones place",
+			"Because you need to subtract 10",
+		},
+	}
+
+	// Match by text
+	if !CheckAnswer("Because 7 + 5 = 12, and the 1 in 12 means 1 ten", q) {
+		t.Error("expected text match for correct answer")
+	}
+	// Match by 1-based index
+	if !CheckAnswer("1", q) {
+		t.Error("expected index 1 to match correct choice")
+	}
+	// Wrong index
+	if CheckAnswer("2", q) {
+		t.Error("expected index 2 not to match")
+	}
+	// Wrong text
+	if CheckAnswer("Because you always carry a 1 when adding", q) {
+		t.Error("expected wrong text not to match")
+	}
+}

@@ -117,3 +117,30 @@ func TestStructural_UnknownAnswerType(t *testing.T) {
 		t.Fatal("expected error for unknown answer_type")
 	}
 }
+
+func TestStructural_TextAnswerType_MultipleChoice(t *testing.T) {
+	v := &StructuralValidator{}
+	q := validQuestion()
+	q.AnswerType = AnswerTypeText
+	q.Format = FormatMultipleChoice
+	q.Choices = []string{"Option A", "Option B", "Option C", "Option D"}
+	q.Answer = "Option A"
+	err := v.Validate(q, GenerateInput{})
+	if err != nil {
+		t.Fatalf("expected nil for text+multiple_choice, got %v", err)
+	}
+}
+
+func TestStructural_TextAnswerType_NumericFails(t *testing.T) {
+	v := &StructuralValidator{}
+	q := validQuestion()
+	q.AnswerType = AnswerTypeText
+	q.Format = FormatNumeric
+	err := v.Validate(q, GenerateInput{})
+	if err == nil {
+		t.Fatal("expected error for text answer_type with numeric format")
+	}
+	if err.Validator != "structural" {
+		t.Errorf("expected validator %q, got %q", "structural", err.Validator)
+	}
+}
