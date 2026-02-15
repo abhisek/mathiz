@@ -49,6 +49,7 @@ mathiz          # launch the TUI (welcome → home → session)
 mathiz play     # jump straight into a practice session
 mathiz stats    # view learning stats
 mathiz llm      # inspect LLM usage
+mathiz update   # update to the latest version
 mathiz reset    # reset all progress
 ```
 
@@ -83,6 +84,10 @@ git clone https://github.com/abhisek/mathiz.git
 cd mathiz
 make
 ```
+
+## Limitations
+
+- Windows self-update using `mathiz update` fails due to platform restrictions.
 
 ## License
 
