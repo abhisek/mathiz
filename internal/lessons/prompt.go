@@ -70,6 +70,10 @@ const profileSystemPrompt = `You are creating a learner profile for a math tutor
 func buildProfileUserMessage(input ProfileInput) string {
 	var b strings.Builder
 
+	if input.SessionCount > 0 {
+		b.WriteString(fmt.Sprintf("Session Number: %d\n\n", input.SessionCount))
+	}
+
 	b.WriteString("Session Results:\n")
 	for skillID, result := range input.PerSkillResults {
 		var pct float64

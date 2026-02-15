@@ -17,8 +17,19 @@ import (
 	"sync"
 )
 
-// sequenceCounter manages the global monotonic sequence number
-// shared across all event types.
+// sequenceCounter manages the global monotonic sequence number shared across
+// all event types. Each event type lives in its own ent-managed table, so
+// per-table auto-increment IDs can't establish cross-type ordering. This
+// shared counter assigns a single increasing sequence to every event
+// regardless of type, enabling:
+//
+//   - Cross-type ordering (e.g. did the hint come before or after the answer?)
+//   - Snapshot consistency (query all tables for sequence > snapshot.sequence)
+//   - Append-only guarantees (events are never reordered)
+//
+// Uses raw SQL outside ent because ent doesn't support database-level atomic
+// counters. The mutex serializes within the process; the RETURNING clause
+// makes the increment atomic at the database level.
 type sequenceCounter struct {
 	mu sync.Mutex
 	db *sql.DB

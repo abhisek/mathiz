@@ -41,6 +41,18 @@ mathiz llm      # inspect LLM usage
 mathiz reset    # reset all progress
 ```
 
+## Multiple Profiles
+
+All progress is stored in a single SQLite file. Use the `--db` flag to maintain separate profiles for different learners:
+
+```sh
+mathiz --db ~/mathiz-alice.db       # Alice's profile
+mathiz --db ~/mathiz-bob.db         # Bob's profile
+mathiz stats --db ~/mathiz-alice.db # Alice's stats
+```
+
+You can also set the `MATHIZ_DB` environment variable instead. The `--db` flag takes priority over the env var.
+
 ## Guides
 
 - [LLM Usage Auditing](./docs/llm-usage-auditing.md) — inspect LLM requests, responses, and token usage

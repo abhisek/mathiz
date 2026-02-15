@@ -30,7 +30,7 @@ func NewProvider(ctx context.Context, cfg Config, eventRepo store.EventRepo) (Pr
 	}
 
 	// Wrap with middleware: caller → retry → logging → base
-	logged := WithLogging(base, eventRepo)
+	logged := WithLogging(base, eventRepo, cfg.Provider)
 	retried := WithRetry(logged, cfg.Retry)
 
 	return retried, nil

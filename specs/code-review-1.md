@@ -152,11 +152,13 @@ Spec references `theme.Info` (Rare) and `theme.Warning` (Legendary), but these c
 
 Profile generation and compression goroutines spawned at session end don't respect context cancellation. Could leak if app shuts down during generation.
 
-### 16. Planner doesn't prioritize rusty skills (Spec 07)
+### 16. Planner doesn't prioritize rusty skills (Spec 07) — DEFERRED
 
 **Location**: `internal/session/planner.go`
 
 Spec Section 6.3 says "Rusty skills take priority over regular frontier skills." The planner doesn't distinguish rusty skills from regular frontier skills.
+
+**Analysis**: Behavioral gap, not a correctness bug. Rusty skills still get practiced — they appear in frontier slots via `AvailableSkills()` since they're unlocked but not mastered. They just aren't explicitly prioritized over new/learning skills. With only 3 frontier slots and few candidates at any given time, the rusty skill almost always lands in a slot anyway. A proper fix requires adding a `CategoryRecovery` slot type, passing rusty skill IDs into `BuildPlan`, and using `RecoveryTierConfig()` — a medium-complexity change that touches the planner signature, session wiring, and needs new tests. Deferring since current behavior is functionally acceptable.
 
 ### 17. Sequence counter uses raw SQL outside ent (Spec 02)
 

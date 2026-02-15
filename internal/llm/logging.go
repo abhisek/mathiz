@@ -13,13 +13,14 @@ import (
 
 // LoggingProvider is a decorator that records every LLM request as an event.
 type LoggingProvider struct {
-	inner     Provider
-	eventRepo store.EventRepo
+	inner        Provider
+	eventRepo    store.EventRepo
+	providerName string
 }
 
 // WithLogging wraps a Provider with event logging.
-func WithLogging(p Provider, repo store.EventRepo) Provider {
-	return &LoggingProvider{inner: p, eventRepo: repo}
+func WithLogging(p Provider, repo store.EventRepo, providerName string) Provider {
+	return &LoggingProvider{inner: p, eventRepo: repo, providerName: providerName}
 }
 
 func (l *LoggingProvider) Generate(ctx context.Context, req Request) (*Response, error) {
@@ -31,7 +32,7 @@ func (l *LoggingProvider) Generate(ctx context.Context, req Request) (*Response,
 	latencyMs := time.Since(start).Milliseconds()
 
 	data := store.LLMRequestEventData{
-		Provider:    l.inner.ModelID(),
+		Provider:    l.providerName,
 		Model:       l.inner.ModelID(),
 		Purpose:     purpose,
 		LatencyMs:   latencyMs,
