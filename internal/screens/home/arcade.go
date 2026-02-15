@@ -136,6 +136,33 @@ func renderArcadeMenu(items []string, selected int, cw int) string {
 		Render(block)
 }
 
+// renderArcadeMenuCompact renders menu items as simple text lines (no borders)
+// for very small terminals where bordered buttons would overflow.
+func renderArcadeMenuCompact(items []string, selected int, cw int) string {
+	var lines []string
+	for i, label := range items {
+		var line string
+		if i == selected {
+			line = lipgloss.NewStyle().
+				Foreground(theme.BgDark).
+				Background(theme.ArcadeYellow).
+				Bold(true).
+				Render(" ▸ " + label + " ")
+		} else {
+			line = lipgloss.NewStyle().
+				Foreground(theme.Text).
+				Render("   " + label)
+		}
+		lines = append(lines, line)
+	}
+	block := strings.Join(lines, "\n")
+
+	return lipgloss.NewStyle().
+		Width(cw).
+		Align(lipgloss.Center).
+		Render(block)
+}
+
 // renderMascotBox renders the mascot centered in a box matching content width.
 func renderMascotBox(variant MascotVariant, cw int) string {
 	return lipgloss.NewStyle().

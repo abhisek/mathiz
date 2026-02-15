@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/abhisek/mathiz/internal/diagnosis"
 	"github.com/abhisek/mathiz/internal/gems"
@@ -155,35 +156,110 @@ func (h *HomeScreen) Update(msg tea.Msg) (screen.Screen, tea.Cmd) {
 }
 
 func (h *HomeScreen) View(width, height int) string {
-	// height is the content area; estimate full terminal height
-	// by adding back header (3) + footer (3) + frame gaps
-	termHeight := height + 8
-	compact := termHeight < 30 || width < 100
-
-	// All sections share a uniform content width so they line up.
+	// Available vertical space inside the cabinet frame (2 for border).
+	available := height - 2
 	cw := contentWidth(width)
+	compact := width < 100
 
-	var sections []string
+	// Pre-render candidates and measure heights.
+	menuBordered := renderArcadeMenu(h.menuLabels, h.menu.Selected, cw)
+	menuCompact := renderArcadeMenuCompact(h.menuLabels, h.menu.Selected, cw)
+	statsBar := renderStatsBar(h.masteredCount, h.gemCount, h.reviewsDue, cw, compact)
+	titleCompact := renderTitle(cw, true)
+	titleFull := renderTitle(cw, false)
+	mascot := renderMascotBox(h.mascotVariant, cw)
 
-	// 1. Title
-	sections = append(sections, renderTitle(cw, compact))
+	hMenu := lipgloss.Height(menuBordered)
+	hMenuCompact := lipgloss.Height(menuCompact)
+	hStats := lipgloss.Height(statsBar)
+	hTitleCompact := lipgloss.Height(titleCompact)
+	hTitleFull := lipgloss.Height(titleFull)
+	hMascot := lipgloss.Height(mascot)
 
-	// 2. Mascot (full mode only)
-	if !compact {
-		sections = append(sections, renderMascotBox(h.mascotVariant, cw))
+	// 1. Start with bordered menu (highest priority).
+	menu := menuBordered
+	used := hMenu
+
+	// 2. Try adding stats bar (sep = 2 for "\n\n", 1 for "\n").
+	canStats := used+2+hStats <= available
+	if canStats {
+		used += 2 + hStats
 	}
 
-	// 3. Stats bar (double-bordered, same width)
-	sections = append(sections, renderStatsBar(
-		h.masteredCount, h.gemCount, h.reviewsDue, cw, compact))
+	// 3. Try adding compact title.
+	canTitle := canStats && used+2+hTitleCompact <= available
+	if canTitle {
+		used += 2 + hTitleCompact
+	}
 
-	// 4. Menu (same width box)
-	sections = append(sections, renderArcadeMenu(
-		h.menuLabels, h.menu.Selected, cw))
+	// If base elements overflow, switch to compact (borderless) menu.
+	if used > available {
+		menu = menuCompact
+		used = hMenuCompact
 
-	content := strings.Join(sections, "\n\n")
+		canStats = used+1+hStats <= available
+		if canStats {
+			used += 1 + hStats
+		}
+		canTitle = canStats && used+1+hTitleCompact <= available
+		if canTitle {
+			used += 1 + hTitleCompact
+		}
+	}
 
-	// Wrap in cabinet frame, centered in the full area
+	// Determine separator based on how tight space is.
+	tight := !canTitle || (available-used) < 4
+	sep := "\n\n"
+	if tight {
+		sep = "\n"
+		// Recalculate used with single-line separators.
+		used = lipgloss.Height(menu)
+		if canStats {
+			used += 1 + hStats
+		}
+		if canTitle {
+			used += 1 + hTitleCompact
+		}
+	}
+
+	// 4. Upgrade: try full ASCII title if space allows.
+	useFullTitle := false
+	if canTitle && !compact {
+		extra := hTitleFull - hTitleCompact
+		if used+extra <= available {
+			useFullTitle = true
+			used += extra
+		}
+	}
+
+	// 5. Upgrade: try mascot if space allows.
+	canMascot := false
+	if !compact && used+2+hMascot <= available {
+		canMascot = true
+	}
+
+	// Assemble sections in display order: title, mascot, stats, menu.
+	var sections []string
+
+	if canTitle {
+		if useFullTitle {
+			sections = append(sections, titleFull)
+		} else {
+			sections = append(sections, titleCompact)
+		}
+	}
+
+	if canMascot {
+		sections = append(sections, mascot)
+	}
+
+	if canStats {
+		sections = append(sections, statsBar)
+	}
+
+	sections = append(sections, menu)
+
+	content := strings.Join(sections, sep)
 	return renderCabinetFrame(content, width, height)
 }
 

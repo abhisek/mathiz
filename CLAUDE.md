@@ -58,6 +58,18 @@ These libraries use v2 APIs that differ significantly from v1:
 - `charm.land/bubbles/v2/textinput`: No `CursorStyle`/`TextStyle`/`PlaceholderStyle` fields. Use `Focus()` method.
 - `charm.land/lipgloss/v2`: Pinned to specific beta commit.
 
+## Responsive Screen Layout
+
+Screens receive `(width, height int)` in `View()`. Use **measure-then-render** instead of hardcoded breakpoints:
+
+1. Pre-render each element, measure its height with `lipgloss.Height()`.
+2. Greedily include elements from highest to lowest priority based on available space.
+3. When an element doesn't fit, try a cheaper variant (e.g. borderless menu instead of bordered).
+4. Only upgrade to decorative elements (mascots, ASCII art) when there is surplus space.
+5. Use `width < N` for horizontal/text concerns (compact labels), **not** for deciding what to show vertically.
+
+See `internal/screens/home/home.go` `View()` for the reference implementation.
+
 ## Environment Variables
 
 - `MATHIZ_LLM_PROVIDER` — `anthropic`, `openai`, or `gemini`

@@ -188,23 +188,24 @@ func (s *SessionScreen) renderMultipleChoice(width int) string {
 		}
 		line := fmt.Sprintf("%s%d) %s", prefix, i+1, choice)
 
+		style := lipgloss.NewStyle().
+			Width(width).
+			Align(lipgloss.Center)
 		if i == s.mcSelected {
-			b.WriteString(lipgloss.NewStyle().Foreground(theme.Primary).Bold(true).Render(line))
+			b.WriteString(style.Foreground(theme.Primary).Bold(true).Render(line))
 		} else {
-			b.WriteString(lipgloss.NewStyle().Foreground(theme.Text).Render(line))
+			b.WriteString(style.Foreground(theme.Text).Render(line))
 		}
 		b.WriteString("\n")
 	}
 
-	selectLine := lipgloss.NewStyle().
+	b.WriteString(lipgloss.NewStyle().
 		Width(width).
 		Align(lipgloss.Center).
 		Foreground(theme.TextDim).
-		Render("\nSelect (1-4) or use arrows + Enter")
-	b.WriteString(selectLine)
+		Render("\nSelect (1-4) or use arrows + Enter"))
 
-	// Center the whole block.
-	return lipgloss.PlaceHorizontal(width, lipgloss.Center, b.String())
+	return b.String()
 }
 
 // renderFeedback renders the feedback overlay.
