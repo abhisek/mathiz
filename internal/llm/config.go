@@ -26,7 +26,7 @@ type Config struct {
 // AnthropicConfig holds Anthropic-specific configuration.
 type AnthropicConfig struct {
 	APIKey string
-	Model  string // Default: "claude-sonnet"
+	Model  string // Default: "claude-haiku"
 }
 
 // OpenAIConfig holds OpenAI-specific configuration.
@@ -62,7 +62,7 @@ func DefaultConfig() Config {
 	return Config{
 		Provider: "anthropic",
 		Anthropic: AnthropicConfig{
-			Model: "claude-sonnet",
+			Model: "claude-haiku",
 		},
 		OpenAI: OpenAIConfig{
 			Model: "gpt-4o-mini",

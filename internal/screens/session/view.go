@@ -23,11 +23,23 @@ func (s *SessionScreen) renderQuestionView(width, height int) string {
 	state := s.state
 	if state == nil || state.CurrentQuestion == nil {
 		frame := spinnerFrames[s.spinnerFrame%len(spinnerFrames)]
-		return lipgloss.NewStyle().
+		var b strings.Builder
+		if s.genErrMsg != "" {
+			b.WriteString(lipgloss.NewStyle().
+				Width(width).
+				Align(lipgloss.Center).
+				Foreground(theme.Error).
+				Render(fmt.Sprintf("\n  %s", s.genErrMsg)))
+			b.WriteString("\n")
+		} else {
+			b.WriteString("\n")
+		}
+		b.WriteString(lipgloss.NewStyle().
 			Width(width).
 			Align(lipgloss.Center).
 			Foreground(theme.TextDim).
-			Render(fmt.Sprintf("\n\n  %s Generating question...", frame))
+			Render(fmt.Sprintf("\n  %s Generating question...", frame)))
+		return b.String()
 	}
 
 	slot := sess.CurrentSlot(state)
@@ -461,6 +473,41 @@ func renderError(width, height int, errMsg string) string {
 		Align(lipgloss.Center).
 		Foreground(theme.Error).
 		Render(fmt.Sprintf("\n\n\n  Error: %s\n\n  Press any key to go back.", errMsg))
+}
+
+// renderLLMFatalError renders the fatal LLM error screen when consecutive
+// generation failures exceed the limit.
+func renderLLMFatalError(width, height int) string {
+	var b strings.Builder
+	b.WriteString("\n\n\n")
+
+	b.WriteString(lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(theme.Error).
+		Bold(true).
+		Render("Unable to Generate Problems"))
+	b.WriteString("\n\n")
+
+	contentWidth := min(width-8, 60)
+	msg := "Multiple attempts to generate a question have failed. " +
+		"This is likely due to an issue with the LLM provider. " +
+		"Your progress has been saved."
+	b.WriteString(lipgloss.PlaceHorizontal(width, lipgloss.Center,
+		lipgloss.NewStyle().
+			Width(contentWidth).
+			Align(lipgloss.Center).
+			Foreground(theme.TextDim).
+			Render(msg)))
+	b.WriteString("\n\n")
+
+	b.WriteString(lipgloss.NewStyle().
+		Width(width).
+		Align(lipgloss.Center).
+		Foreground(theme.TextDim).
+		Render("Press any key to end the session."))
+
+	return b.String()
 }
 
 // renderHintOverlay renders the hint text in a bordered box.

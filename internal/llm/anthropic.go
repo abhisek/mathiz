@@ -13,7 +13,7 @@ import (
 
 // anthropicModels maps friendly names to Anthropic model IDs.
 var anthropicModels = map[string]string{
-	"claude-sonnet": "claude-sonnet-4-20250514",
+	"claude-sonnet": "claude-sonnet-4-5-20250929",
 	"claude-haiku":  "claude-haiku-4-5-20251001",
 }
 
@@ -63,7 +63,7 @@ func (p *AnthropicProvider) Generate(ctx context.Context, req Request) (*Respons
 	if req.Schema != nil {
 		params.OutputConfig = anthropic.OutputConfigParam{
 			Format: anthropic.JSONOutputFormatParam{
-				Schema: req.Schema.Definition,
+				Schema: sanitizeAnthropicSchema(req.Schema.Definition),
 			},
 		}
 	}
@@ -155,6 +155,59 @@ func mapAnthropicError(err error) error {
 		}
 	}
 	return &ErrProviderUnavailable{Err: err}
+}
+
+// anthropicUnsupportedNumericKeys lists JSON Schema keywords that Anthropic's
+// structured output API does not support on integer/number types.
+var anthropicUnsupportedNumericKeys = map[string]bool{
+	"minimum":          true,
+	"maximum":          true,
+	"exclusiveMinimum": true,
+	"exclusiveMaximum": true,
+	"multipleOf":       true,
+}
+
+// sanitizeAnthropicSchema returns a deep copy of the schema definition with
+// unsupported properties stripped so the Anthropic API accepts it.
+func sanitizeAnthropicSchema(def map[string]any) map[string]any {
+	return sanitizeSchemaNode(def)
+}
+
+func sanitizeSchemaNode(node map[string]any) map[string]any {
+	out := make(map[string]any, len(node))
+	for k, v := range node {
+		out[k] = v
+	}
+
+	// Strip unsupported numeric constraints.
+	if typ, ok := out["type"]; ok {
+		ts, isStr := typ.(string)
+		if isStr && (ts == "integer" || ts == "number") {
+			for key := range anthropicUnsupportedNumericKeys {
+				delete(out, key)
+			}
+		}
+	}
+
+	// Recurse into properties.
+	if props, ok := out["properties"].(map[string]any); ok {
+		cleaned := make(map[string]any, len(props))
+		for k, v := range props {
+			if m, ok := v.(map[string]any); ok {
+				cleaned[k] = sanitizeSchemaNode(m)
+			} else {
+				cleaned[k] = v
+			}
+		}
+		out["properties"] = cleaned
+	}
+
+	// Recurse into array items.
+	if items, ok := out["items"].(map[string]any); ok {
+		out["items"] = sanitizeSchemaNode(items)
+	}
+
+	return out
 }
 
 // resolveModel maps a friendly model name to a provider model ID.

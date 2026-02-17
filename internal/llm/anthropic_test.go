@@ -23,7 +23,7 @@ func newTestAnthropicProvider(t *testing.T, handler http.HandlerFunc) *Anthropic
 	)
 	return &AnthropicProvider{
 		client: &client,
-		model:  "claude-sonnet-4-20250514",
+		model:  "claude-sonnet-4-5-20250929",
 	}
 }
 
@@ -37,7 +37,7 @@ func TestAnthropicProvider_HappyPath(t *testing.T) {
 			"content": []map[string]any{
 				{"type": "text", "text": `{"question":"What is 2+3?","answer":"5"}`},
 			},
-			"model":       "claude-sonnet-4-20250514",
+			"model":       "claude-sonnet-4-5-20250929",
 			"stop_reason": "end_turn",
 			"usage": map[string]any{
 				"input_tokens":  50,
@@ -118,9 +118,9 @@ func TestAnthropicProvider_ServerError(t *testing.T) {
 }
 
 func TestAnthropicProvider_ModelID(t *testing.T) {
-	p := &AnthropicProvider{model: "claude-sonnet-4-20250514"}
-	if p.ModelID() != "claude-sonnet-4-20250514" {
-		t.Fatalf("expected 'claude-sonnet-4-20250514', got %q", p.ModelID())
+	p := &AnthropicProvider{model: "claude-sonnet-4-5-20250929"}
+	if p.ModelID() != "claude-sonnet-4-5-20250929" {
+		t.Fatalf("expected 'claude-sonnet-4-5-20250929', got %q", p.ModelID())
 	}
 }
 
@@ -129,9 +129,9 @@ func TestAnthropicModelMapping(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"claude-sonnet", "claude-sonnet-4-20250514"},
+		{"claude-sonnet", "claude-sonnet-4-5-20250929"},
 		{"claude-haiku", "claude-haiku-4-5-20251001"},
-		{"claude-sonnet-4-20250514", "claude-sonnet-4-20250514"}, // Pass-through
+		{"claude-sonnet-4-5-20250929", "claude-sonnet-4-5-20250929"}, // Pass-through
 	}
 	for _, tt := range tests {
 		got := resolveModel(tt.input, anthropicModels)

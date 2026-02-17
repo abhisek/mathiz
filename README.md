@@ -31,7 +31,7 @@ Mathiz requires an LLM API key. It automatically discovers keys from standard en
 |---------|----------|---------------|
 | `GEMINI_API_KEY` | Gemini | gemini-2.0-flash |
 | `OPENAI_API_KEY` | OpenAI | gpt-4o-mini |
-| `ANTHROPIC_API_KEY` | Anthropic | claude-sonnet-4 |
+| `ANTHROPIC_API_KEY` | Anthropic | claude-haiku-4.5 |
 | `OPENROUTER_API_KEY` | OpenRouter | google/gemini-2.0-flash-exp |
 
 If you already have one of these set, Mathiz will just work. To override the auto-detected provider or use a custom model:

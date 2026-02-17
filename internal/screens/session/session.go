@@ -61,6 +61,15 @@ type SessionScreen struct {
 
 	// Spinner frame for generating state.
 	spinnerFrame int
+
+	// consecutiveGenErrors tracks how many question generations have failed in a row.
+	consecutiveGenErrors int
+
+	// genErrMsg is an inline error shown while retrying after a generation failure.
+	genErrMsg string
+
+	// llmFatalError is set when consecutive generation errors exceed the limit.
+	llmFatalError bool
 }
 
 var _ screen.Screen = (*SessionScreen)(nil)
@@ -94,6 +103,11 @@ func (s *SessionScreen) Title() string {
 }
 
 func (s *SessionScreen) KeyHints() []layout.KeyHint {
+	if s.llmFatalError {
+		return []layout.KeyHint{
+			{Key: "any key", Description: "End session"},
+		}
+	}
 	if s.state == nil {
 		return nil
 	}
@@ -135,6 +149,9 @@ func (s *SessionScreen) KeyHints() []layout.KeyHint {
 }
 
 func (s *SessionScreen) View(width, height int) string {
+	if s.llmFatalError {
+		return renderLLMFatalError(width, height)
+	}
 	if s.errMsg != "" {
 		return renderError(width, height, s.errMsg)
 	}
@@ -200,10 +217,14 @@ func (s *SessionScreen) Update(msg tea.Msg) (screen.Screen, tea.Cmd) {
 	return s, nil
 }
 
+// initTimeout is the maximum time allowed for session initialization.
+const initTimeout = 15 * time.Second
+
 // initSession loads state from snapshot and builds the plan.
 func (s *SessionScreen) initSession() tea.Cmd {
 	return func() tea.Msg {
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), initTimeout)
+		defer cancel()
 
 		// Load learner state from latest snapshot.
 		var snapData *store.SnapshotData
@@ -303,7 +324,16 @@ func (s *SessionScreen) handleInit(msg sessionInitMsg) (screen.Screen, tea.Cmd) 
 
 func (s *SessionScreen) handleQuestionReady(msg questionReadyMsg) (screen.Screen, tea.Cmd) {
 	if msg.Err != nil {
-		// Skip to next slot on error.
+		s.consecutiveGenErrors++
+
+		if s.consecutiveGenErrors >= maxConsecutiveGenErrors {
+			s.llmFatalError = true
+			s.genErrMsg = ""
+			return s, nil
+		}
+
+		// Show inline error and skip to next slot.
+		s.genErrMsg = "Could not generate question, trying next skill..."
 		if s.state != nil {
 			if !sess.AdvanceSlot(s.state) {
 				return s, func() tea.Msg { return sessionEndMsg{} }
@@ -313,6 +343,10 @@ func (s *SessionScreen) handleQuestionReady(msg questionReadyMsg) (screen.Screen
 		s.errMsg = msg.Err.Error()
 		return s, nil
 	}
+
+	// Reset consecutive error count on success.
+	s.consecutiveGenErrors = 0
+	s.genErrMsg = ""
 
 	s.state.CurrentQuestion = msg.Question
 	s.state.QuestionsInSlot++
@@ -333,6 +367,15 @@ func (s *SessionScreen) handleQuestionReady(msg questionReadyMsg) (screen.Screen
 }
 
 func (s *SessionScreen) handleQuestionFailed(msg questionGenFailedMsg) (screen.Screen, tea.Cmd) {
+	s.consecutiveGenErrors++
+
+	if s.consecutiveGenErrors >= maxConsecutiveGenErrors {
+		s.llmFatalError = true
+		s.genErrMsg = ""
+		return s, nil
+	}
+
+	s.genErrMsg = "Could not generate question, trying next skill..."
 	if s.state != nil {
 		if !sess.AdvanceSlot(s.state) {
 			return s, func() tea.Msg { return sessionEndMsg{} }
@@ -451,6 +494,15 @@ func (s *SessionScreen) handleSessionEnd() (screen.Screen, tea.Cmd) {
 
 func (s *SessionScreen) handleKey(msg tea.KeyMsg) (screen.Screen, tea.Cmd) {
 	key := msg.String()
+
+	// LLM fatal error — any key ends session.
+	if s.llmFatalError {
+		s.llmFatalError = false
+		if s.state != nil {
+			return s, func() tea.Msg { return sessionEndMsg{} }
+		}
+		return s, func() tea.Msg { return router.PopScreenMsg{} }
+	}
 
 	// Error state — any key goes back.
 	if s.errMsg != "" {
@@ -711,6 +763,10 @@ func (s *SessionScreen) submitAnswer() (screen.Screen, tea.Cmd) {
 
 // generateTimeout is the maximum time allowed for a single question generation.
 const generateTimeout = 30 * time.Second
+
+// maxConsecutiveGenErrors is the maximum number of consecutive question generation
+// failures before showing a fatal error and ending the session.
+const maxConsecutiveGenErrors = 3
 
 // generateNextQuestion generates the next question asynchronously.
 func (s *SessionScreen) generateNextQuestion() tea.Cmd {
