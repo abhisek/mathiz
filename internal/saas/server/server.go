@@ -9,6 +9,7 @@ import (
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/family"
+	"github.com/abhisek/mathiz/internal/saas/game"
 	"github.com/abhisek/mathiz/internal/store"
 )
 
@@ -24,14 +25,16 @@ type Server struct {
 	terminal http.Handler
 	// webui serves the embedded SPA. Optional.
 	webui http.Handler
+	// game is the treasure-map play manager. Optional.
+	game *game.Manager
 
 	joinLimiter *ipLimiter
 	handler     http.Handler
 }
 
-// New builds a Server around a shared family service. terminal and webui
-// may be nil (their routes 404 / fall through).
-func New(cfg *Config, st *store.Store, svc *family.Service, verifier *auth.SupabaseVerifier, terminal, webui http.Handler) *Server {
+// New builds a Server around a shared family service. terminal, webui, and
+// gameMgr may be nil (their routes 404 / fall through).
+func New(cfg *Config, st *store.Store, svc *family.Service, verifier *auth.SupabaseVerifier, terminal, webui http.Handler, gameMgr *game.Manager) *Server {
 	s := &Server{
 		cfg:      cfg,
 		st:       st,
@@ -40,6 +43,7 @@ func New(cfg *Config, st *store.Store, svc *family.Service, verifier *auth.Supab
 		verifier: verifier,
 		terminal: terminal,
 		webui:    webui,
+		game:     gameMgr,
 		// Join endpoints are unauthenticated: keep brute force slow.
 		joinLimiter: newIPLimiter(1, 10),
 	}
@@ -73,6 +77,16 @@ func (s *Server) routes() http.Handler {
 
 	// Child (device token).
 	mux.Handle("GET /api/v1/child/me", s.withChild(s.handleChildMe))
+
+	// Treasure-map game.
+	if s.game != nil {
+		mux.Handle("GET /api/v1/game/map", s.withChild(s.handleGameMap))
+		mux.Handle("POST /api/v1/game/expeditions", s.withChild(s.handleExpeditionStart))
+		mux.Handle("POST /api/v1/game/expeditions/{id}/question", s.withChild(s.handleExpeditionQuestion))
+		mux.Handle("POST /api/v1/game/expeditions/{id}/answer", s.withChild(s.handleExpeditionAnswer))
+		mux.Handle("POST /api/v1/game/expeditions/{id}/hint", s.withChild(s.handleExpeditionHint))
+		mux.Handle("POST /api/v1/game/expeditions/{id}/end", s.withChild(s.handleExpeditionEnd))
+	}
 
 	// Terminal WebSocket (authenticates in-protocol via first message).
 	if s.terminal != nil {
