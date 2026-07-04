@@ -164,6 +164,29 @@ func TestRejectsMissingAuth(t *testing.T) {
 	}
 }
 
+func TestPerChildExclusivity(t *testing.T) {
+	w := newTestWorld(t)
+
+	// First session for the child goes live.
+	first := dial(t, w)
+	if err := first.WriteMessage(websocket.TextMessage, authMsg(w.token)); err != nil {
+		t.Fatalf("auth 1: %v", err)
+	}
+	if msg := readControl(t, first, 5*time.Second); msg.Type != "ready" {
+		t.Fatalf("first session: %+v", msg)
+	}
+
+	// A second session for the same child (another tab/device) is refused —
+	// it would load a stale snapshot and clobber the first session's save.
+	second := dial(t, w)
+	if err := second.WriteMessage(websocket.TextMessage, authMsg(w.token)); err != nil {
+		t.Fatalf("auth 2: %v", err)
+	}
+	if msg := readControl(t, second, 5*time.Second); msg.Type != "error" {
+		t.Fatalf("expected error for concurrent same-child session, got %+v", msg)
+	}
+}
+
 func TestSessionCap(t *testing.T) {
 	// A bridge with MaxSessions=1: the first session occupies the slot,
 	// the second is turned away.

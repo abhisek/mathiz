@@ -19,7 +19,7 @@ type FamilySpace struct {
 	ID int `json:"id,omitempty"`
 	// Family space ID (UUID)
 	UID string `json:"uid,omitempty"`
-	// Account UID of the parent who owns this space
+	// Account UID of the parent who owns this space (one space per account)
 	OwnerAccountID string `json:"owner_account_id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`

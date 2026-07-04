@@ -109,25 +109,22 @@ func (s *Service) EnsureAccount(ctx context.Context, supabaseUserID, email, disp
 
 // ---- Family spaces ----
 
-// CreateSpace creates the account's family space. V1 allows one per account.
+// CreateSpace creates the account's family space. V1 allows one per account,
+// enforced by a unique constraint on owner_account_id so concurrent creates
+// can't produce duplicates.
 func (s *Service) CreateSpace(ctx context.Context, ownerAccountUID, name string) (*ent.FamilySpace, error) {
 	if name == "" {
 		return nil, ErrBadName
 	}
-	exists, err := s.client.FamilySpace.Query().
-		Where(familyspace.OwnerAccountID(ownerAccountUID)).
-		Exist(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("check existing space: %w", err)
-	}
-	if exists {
-		return nil, ErrSpaceExists
-	}
-	return s.client.FamilySpace.Create().
+	sp, err := s.client.FamilySpace.Create().
 		SetUID(uuid.NewString()).
 		SetOwnerAccountID(ownerAccountUID).
 		SetName(name).
 		Save(ctx)
+	if ent.IsConstraintError(err) {
+		return nil, ErrSpaceExists
+	}
+	return sp, err
 }
 
 // SpaceByOwner returns the space owned by the account, or nil if none exists.

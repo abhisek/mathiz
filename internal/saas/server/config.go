@@ -29,6 +29,11 @@ type Config struct {
 	// CORSOrigins optionally allows cross-origin SPA deployments.
 	CORSOrigins []string
 
+	// TrustProxy trusts the last X-Forwarded-For hop for client IPs (set it
+	// when running behind a reverse proxy, or rate limiting keys on the
+	// proxy's address and throttles everyone together).
+	TrustProxy bool
+
 	// MaxSessions caps concurrent terminal sessions.
 	MaxSessions int
 
@@ -46,6 +51,7 @@ func ConfigFromEnv() (*Config, error) {
 		SupabaseJWTSecret:  os.Getenv("MATHIZ_SUPABASE_JWT_SECRET"),
 		MaxSessions:        envIntOr("MATHIZ_MAX_SESSIONS", 100),
 		SessionIdleTimeout: time.Duration(envIntOr("MATHIZ_SESSION_IDLE_MINUTES", 30)) * time.Minute,
+		TrustProxy:         os.Getenv("MATHIZ_TRUST_PROXY") == "true",
 	}
 	if origins := os.Getenv("MATHIZ_CORS_ORIGINS"); origins != "" {
 		for _, o := range strings.Split(origins, ",") {

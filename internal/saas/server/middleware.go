@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -61,12 +62,7 @@ func (s *Server) withChild(h childHandler) http.Handler {
 			writeError(w, http.StatusUnauthorized, "invalid credentials")
 			return
 		}
-		p := authz.Principal{
-			Kind:           authz.KindChild,
-			ChildProfileID: child.UID,
-			FamilySpaceID:  child.FamilySpaceID,
-		}
-		h(w, r, p, child)
+		h(w, r, authz.ChildPrincipal(child), child)
 	})
 }
 
@@ -170,14 +166,29 @@ func (l *ipLimiter) allow(ip string) bool {
 
 func (s *Server) rateLimited(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			ip = r.RemoteAddr
-		}
-		if !s.joinLimiter.allow(ip) {
+		if !s.joinLimiter.allow(s.clientIP(r)) {
 			writeError(w, http.StatusTooManyRequests, "slow down")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// clientIP identifies the caller for rate limiting. Behind a trusted proxy
+// the last X-Forwarded-For hop (appended by our own proxy) is the client;
+// otherwise trusting the header would let anyone spoof their bucket.
+func (s *Server) clientIP(r *http.Request) string {
+	if s.cfg.TrustProxy {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			parts := strings.Split(xff, ",")
+			if ip := strings.TrimSpace(parts[len(parts)-1]); ip != "" {
+				return ip
+			}
+		}
+	}
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }

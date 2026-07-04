@@ -46,40 +46,49 @@ type deviceJSON struct {
 	LastUsedAt *string `json:"lastUsedAt"`
 }
 
+// rfc3339 is the single timestamp format the API speaks.
+func rfc3339(t time.Time) string {
+	return t.UTC().Format(time.RFC3339)
+}
+
+func rfc3339Ptr(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := rfc3339(*t)
+	return &s
+}
+
 func toAccountJSON(a *ent.Account) accountJSON {
 	return accountJSON{ID: a.UID, Email: a.Email, DisplayName: a.DisplayName}
 }
 
 func toSpaceJSON(sp *ent.FamilySpace) spaceJSON {
-	return spaceJSON{ID: sp.UID, Name: sp.Name, CreatedAt: sp.CreatedAt.UTC().Format(time.RFC3339)}
+	return spaceJSON{ID: sp.UID, Name: sp.Name, CreatedAt: rfc3339(sp.CreatedAt)}
 }
 
 func toChildJSON(c *ent.ChildProfile) childJSON {
 	return childJSON{
 		ID: c.UID, Name: c.Name, Grade: c.Grade,
 		HasPIN: c.PinHash != "", Archived: c.Archived,
-		CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339),
+		CreatedAt: rfc3339(c.CreatedAt),
 	}
 }
 
 func toInviteJSON(inv *ent.Invite) inviteJSON {
 	return inviteJSON{
 		ID: inv.UID, Code: inv.Code,
-		ExpiresAt: inv.ExpiresAt.UTC().Format(time.RFC3339),
-		CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339),
+		ExpiresAt: rfc3339(inv.ExpiresAt),
+		CreatedAt: rfc3339(inv.CreatedAt),
 	}
 }
 
 func toDeviceJSON(dt *ent.DeviceToken) deviceJSON {
-	d := deviceJSON{
+	return deviceJSON{
 		ID: dt.UID, Label: dt.DeviceLabel,
-		CreatedAt: dt.CreatedAt.UTC().Format(time.RFC3339),
+		CreatedAt:  rfc3339(dt.CreatedAt),
+		LastUsedAt: rfc3339Ptr(dt.LastUsedAt),
 	}
-	if dt.LastUsedAt != nil {
-		s := dt.LastUsedAt.UTC().Format(time.RFC3339)
-		d.LastUsedAt = &s
-	}
-	return d
 }
 
 // ---- Public ----

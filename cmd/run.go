@@ -5,11 +5,7 @@ import (
 	"os"
 
 	"github.com/abhisek/mathiz/internal/app"
-	"github.com/abhisek/mathiz/internal/diagnosis"
-	"github.com/abhisek/mathiz/internal/gems"
-	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/llm"
-	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/selfupdate"
 	"github.com/abhisek/mathiz/internal/store"
 	"github.com/spf13/cobra"
@@ -33,13 +29,6 @@ func runApp(cmd *cobra.Command) error {
 	updateCh := checker.CheckAsync(ctx, &selfupdate.CheckInput{Version: version})
 
 	eventRepo := st.EventRepo()
-	opts := app.Options{
-		EventRepo:    eventRepo,
-		SnapshotRepo: st.SnapshotRepo(),
-		GemService:   gems.NewService(eventRepo),
-		UpdateCh:     updateCh,
-	}
-
 	provider, err := llm.NewProviderFromEnv(ctx, eventRepo)
 	if err != nil {
 		if isDirectSession(cmd) {
@@ -47,16 +36,12 @@ func runApp(cmd *cobra.Command) error {
 		}
 		fmt.Fprintln(os.Stderr, "LLM provider not configured:", err)
 		fmt.Fprintln(os.Stderr, "AI features will be unavailable.")
-	} else {
-		opts.LLMProvider = provider
-		opts.Generator = problemgen.New(provider, problemgen.DefaultConfig())
-		diagService := diagnosis.NewService(provider)
-		defer diagService.Close()
-		opts.DiagnosisService = diagService
-		opts.LessonService = lessons.NewService(provider, lessons.DefaultConfig())
-		opts.Compressor = lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
+		provider = nil
 	}
 
+	opts, cleanup := app.BuildOptions(eventRepo, st.SnapshotRepo(), provider)
+	defer cleanup()
+	opts.UpdateCh = updateCh
 	opts.DirectSession = isDirectSession(cmd)
 
 	return app.Run(opts)

@@ -31,10 +31,14 @@ func init() {
 	rootCmd.AddCommand(skillCmd)
 }
 
-// resolveDBPath returns the database path using --db flag (highest priority),
-// then MATHIZ_DB env var, then the default XDG path.
+// resolveDBPath returns the database DSN using --db flag (highest priority),
+// then MATHIZ_DB env var, then the default XDG path. Directory creation only
+// applies to SQLite file paths — a postgres:// DSN is passed through as-is.
 func resolveDBPath(cmd *cobra.Command) (string, error) {
 	if p, _ := cmd.Flags().GetString("db"); p != "" {
+		if store.IsPostgresDSN(p) {
+			return p, nil
+		}
 		return p, store.EnsureDir(p)
 	}
 	return store.DefaultDBPath()

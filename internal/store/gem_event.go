@@ -80,19 +80,27 @@ func (r *eventRepo) QueryGemEvents(ctx context.Context, opts QueryOpts) ([]GemEv
 }
 
 func (r *eventRepo) GemCounts(ctx context.Context) (map[string]int, int, error) {
-	events, err := r.client.GemEvent.Query().
+	// Aggregate in SQL: loading every gem row just to count grows without
+	// bound as a learner accumulates history.
+	var rows []struct {
+		GemType string `json:"gem_type"`
+		Count   int    `json:"count"`
+	}
+	err := r.client.GemEvent.Query().
 		Where(gemevent.OwnerID(r.owner)).
-		All(ctx)
+		GroupBy(gemevent.FieldGemType).
+		Aggregate(ent.Count()).
+		Scan(ctx, &rows)
 	if err != nil {
 		return nil, 0, fmt.Errorf("query gem counts: %w", err)
 	}
 
-	byType := make(map[string]int)
-	for _, e := range events {
-		byType[e.GemType]++
+	byType := make(map[string]int, len(rows))
+	total := 0
+	for _, row := range rows {
+		byType[row.GemType] = row.Count
+		total += row.Count
 	}
-
-	total := len(events)
 	return byType, total, nil
 }
 
@@ -109,21 +117,41 @@ func (r *eventRepo) QuerySessionSummaries(ctx context.Context, opts QueryOpts) (
 	if err != nil {
 		return nil, fmt.Errorf("query session summaries: %w", err)
 	}
+	if len(events) == 0 {
+		return nil, nil
+	}
+
+	// One grouped query for all sessions' gem counts instead of N counts.
+	sessionIDs := make([]string, len(events))
+	for i, e := range events {
+		sessionIDs[i] = e.SessionID
+	}
+	var gemRows []struct {
+		SessionID string `json:"session_id"`
+		Count     int    `json:"count"`
+	}
+	err = r.client.GemEvent.Query().
+		Where(gemevent.OwnerID(r.owner), gemevent.SessionIDIn(sessionIDs...)).
+		GroupBy(gemevent.FieldSessionID).
+		Aggregate(ent.Count()).
+		Scan(ctx, &gemRows)
+	if err != nil {
+		return nil, fmt.Errorf("count session gems: %w", err)
+	}
+	gemsBySession := make(map[string]int, len(gemRows))
+	for _, row := range gemRows {
+		gemsBySession[row.SessionID] = row.Count
+	}
 
 	records := make([]SessionSummaryRecord, len(events))
 	for i, e := range events {
-		// Count gems for this session.
-		gemCount, _ := r.client.GemEvent.Query().
-			Where(gemevent.OwnerID(r.owner), gemevent.SessionID(e.SessionID)).
-			Count(ctx)
-
 		records[i] = SessionSummaryRecord{
 			SessionID:       e.SessionID,
 			Timestamp:       e.Timestamp,
 			QuestionsServed: e.QuestionsServed,
 			CorrectAnswers:  e.CorrectAnswers,
 			DurationSecs:    e.DurationSecs,
-			GemCount:        gemCount,
+			GemCount:        gemsBySession[e.SessionID],
 		}
 	}
 	return records, nil

@@ -2,30 +2,46 @@ package server
 
 import (
 	"context"
-	"time"
 
 	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/store"
 )
+
+// masteryTally counts skills by mastery state in a snapshot. Both the
+// dashboard card and the detail view derive their numbers from this one
+// function so they can never disagree.
+type masteryTally struct {
+	mastered, learning, rusty int
+}
+
+func tallyMastery(snap *store.Snapshot) masteryTally {
+	var t masteryTally
+	if snap == nil || snap.Data.Mastery == nil {
+		return t
+	}
+	for _, sk := range snap.Data.Mastery.Skills {
+		switch sk.State {
+		case "mastered":
+			t.mastered++
+		case "learning":
+			t.learning++
+		case "rusty":
+			t.rusty++
+		}
+	}
+	return t
+}
 
 // childSummary is the compact per-child card on the dashboard.
 func (s *Server) childSummary(ctx context.Context, childUID string) (map[string]any, error) {
 	snapRepo := s.st.SnapshotRepoFor(childUID)
 	eventRepo := s.st.EventRepoFor(childUID)
 
-	mastered, learning := 0, 0
-	if snap, err := snapRepo.Latest(ctx); err != nil {
+	snap, err := snapRepo.Latest(ctx)
+	if err != nil {
 		return nil, err
-	} else if snap != nil && snap.Data.Mastery != nil {
-		for _, sk := range snap.Data.Mastery.Skills {
-			switch sk.State {
-			case "mastered":
-				mastered++
-			case "learning":
-				learning++
-			}
-		}
 	}
+	tally := tallyMastery(snap)
 
 	_, gemTotal, err := eventRepo.GemCounts(ctx)
 	if err != nil {
@@ -38,13 +54,12 @@ func (s *Server) childSummary(ctx context.Context, childUID string) (map[string]
 	}
 	var lastSessionAt *string
 	if len(sessions) > 0 {
-		t := sessions[0].Timestamp.UTC().Format(time.RFC3339)
-		lastSessionAt = &t
+		lastSessionAt = rfc3339Ptr(&sessions[0].Timestamp)
 	}
 
 	return map[string]any{
-		"masteredSkills": mastered,
-		"learningSkills": learning,
+		"masteredSkills": tally.mastered,
+		"learningSkills": tally.learning,
 		"totalSkills":    len(skillgraph.AllSkills()),
 		"gems":           gemTotal,
 		"lastSessionAt":  lastSessionAt,
@@ -67,12 +82,12 @@ func (s *Server) childStats(ctx context.Context, childUID string) (map[string]an
 		Attempts int     `json:"attempts"`
 	}
 	var skills []skillStat
-	mastered, learning, rusty := 0, 0, 0
 
 	snap, err := snapRepo.Latest(ctx)
 	if err != nil {
 		return nil, err
 	}
+	tally := tallyMastery(snap)
 	if snap != nil && snap.Data.Mastery != nil {
 		for id, sk := range snap.Data.Mastery.Skills {
 			meta, err := skillgraph.GetSkill(id)
@@ -88,14 +103,6 @@ func (s *Server) childStats(ctx context.Context, childUID string) (map[string]an
 				Grade: meta.GradeLevel, State: sk.State,
 				Accuracy: acc, Attempts: sk.TotalAttempts,
 			})
-			switch sk.State {
-			case "mastered":
-				mastered++
-			case "learning":
-				learning++
-			case "rusty":
-				rusty++
-			}
 		}
 	}
 
@@ -126,7 +133,7 @@ func (s *Server) childStats(ctx context.Context, childUID string) (map[string]an
 	recent := make([]sessionStat, len(sessions))
 	for i, sess := range sessions {
 		recent[i] = sessionStat{
-			At:        sess.Timestamp.UTC().Format(time.RFC3339),
+			At:        rfc3339(sess.Timestamp),
 			Questions: sess.QuestionsServed, Correct: sess.CorrectAnswers,
 			DurationSecs: sess.DurationSecs, Gems: sess.GemCount,
 		}
@@ -139,9 +146,9 @@ func (s *Server) childStats(ctx context.Context, childUID string) (map[string]an
 
 	return map[string]any{
 		"mastery": map[string]any{
-			"mastered": mastered,
-			"learning": learning,
-			"rusty":    rusty,
+			"mastered": tally.mastered,
+			"learning": tally.learning,
+			"rusty":    tally.rusty,
 			"total":    len(skillgraph.AllSkills()),
 			"skills":   skills,
 		},
