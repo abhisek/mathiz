@@ -21,6 +21,8 @@ type DiagnosisEvent struct {
 	Sequence int64 `json:"sequence,omitempty"`
 	// UTC wall-clock time of the event
 	Timestamp time.Time `json:"timestamp,omitempty"`
+	// Owning learner (child profile ID in SaaS mode, empty for local single-user)
+	OwnerID string `json:"owner_id,omitempty"`
 	// SessionID holds the value of the "session_id" field.
 	SessionID string `json:"session_id,omitempty"`
 	// SkillID holds the value of the "skill_id" field.
@@ -53,7 +55,7 @@ func (*DiagnosisEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case diagnosisevent.FieldID, diagnosisevent.FieldSequence:
 			values[i] = new(sql.NullInt64)
-		case diagnosisevent.FieldSessionID, diagnosisevent.FieldSkillID, diagnosisevent.FieldQuestionText, diagnosisevent.FieldCorrectAnswer, diagnosisevent.FieldLearnerAnswer, diagnosisevent.FieldCategory, diagnosisevent.FieldMisconceptionID, diagnosisevent.FieldClassifierName, diagnosisevent.FieldReasoning:
+		case diagnosisevent.FieldOwnerID, diagnosisevent.FieldSessionID, diagnosisevent.FieldSkillID, diagnosisevent.FieldQuestionText, diagnosisevent.FieldCorrectAnswer, diagnosisevent.FieldLearnerAnswer, diagnosisevent.FieldCategory, diagnosisevent.FieldMisconceptionID, diagnosisevent.FieldClassifierName, diagnosisevent.FieldReasoning:
 			values[i] = new(sql.NullString)
 		case diagnosisevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -89,6 +91,12 @@ func (_m *DiagnosisEvent) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field timestamp", values[i])
 			} else if value.Valid {
 				_m.Timestamp = value.Time
+			}
+		case diagnosisevent.FieldOwnerID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field owner_id", values[i])
+			} else if value.Valid {
+				_m.OwnerID = value.String
 			}
 		case diagnosisevent.FieldSessionID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -192,6 +200,9 @@ func (_m *DiagnosisEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("timestamp=")
 	builder.WriteString(_m.Timestamp.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("owner_id=")
+	builder.WriteString(_m.OwnerID)
 	builder.WriteString(", ")
 	builder.WriteString("session_id=")
 	builder.WriteString(_m.SessionID)

@@ -12,10 +12,15 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/abhisek/mathiz/ent/account"
 	"github.com/abhisek/mathiz/ent/answerevent"
+	"github.com/abhisek/mathiz/ent/childprofile"
+	"github.com/abhisek/mathiz/ent/devicetoken"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/familyspace"
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
+	"github.com/abhisek/mathiz/ent/invite"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
@@ -81,10 +86,15 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			account.Table:         account.ValidColumn,
 			answerevent.Table:     answerevent.ValidColumn,
+			childprofile.Table:    childprofile.ValidColumn,
+			devicetoken.Table:     devicetoken.ValidColumn,
 			diagnosisevent.Table:  diagnosisevent.ValidColumn,
+			familyspace.Table:     familyspace.ValidColumn,
 			gemevent.Table:        gemevent.ValidColumn,
 			hintevent.Table:       hintevent.ValidColumn,
+			invite.Table:          invite.ValidColumn,
 			llmrequestevent.Table: llmrequestevent.ValidColumn,
 			lessonevent.Table:     lessonevent.ValidColumn,
 			masteryevent.Table:    masteryevent.ValidColumn,

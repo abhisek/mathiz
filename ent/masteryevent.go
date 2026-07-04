@@ -21,6 +21,8 @@ type MasteryEvent struct {
 	Sequence int64 `json:"sequence,omitempty"`
 	// UTC wall-clock time of the event
 	Timestamp time.Time `json:"timestamp,omitempty"`
+	// Owning learner (child profile ID in SaaS mode, empty for local single-user)
+	OwnerID string `json:"owner_id,omitempty"`
 	// SkillID holds the value of the "skill_id" field.
 	SkillID string `json:"skill_id,omitempty"`
 	// FromState holds the value of the "from_state" field.
@@ -45,7 +47,7 @@ func (*MasteryEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case masteryevent.FieldID, masteryevent.FieldSequence:
 			values[i] = new(sql.NullInt64)
-		case masteryevent.FieldSkillID, masteryevent.FieldFromState, masteryevent.FieldToState, masteryevent.FieldTrigger, masteryevent.FieldSessionID:
+		case masteryevent.FieldOwnerID, masteryevent.FieldSkillID, masteryevent.FieldFromState, masteryevent.FieldToState, masteryevent.FieldTrigger, masteryevent.FieldSessionID:
 			values[i] = new(sql.NullString)
 		case masteryevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -81,6 +83,12 @@ func (_m *MasteryEvent) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field timestamp", values[i])
 			} else if value.Valid {
 				_m.Timestamp = value.Time
+			}
+		case masteryevent.FieldOwnerID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field owner_id", values[i])
+			} else if value.Valid {
+				_m.OwnerID = value.String
 			}
 		case masteryevent.FieldSkillID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -159,6 +167,9 @@ func (_m *MasteryEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("timestamp=")
 	builder.WriteString(_m.Timestamp.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("owner_id=")
+	builder.WriteString(_m.OwnerID)
 	builder.WriteString(", ")
 	builder.WriteString("skill_id=")
 	builder.WriteString(_m.SkillID)

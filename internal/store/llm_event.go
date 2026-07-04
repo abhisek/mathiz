@@ -5,16 +5,31 @@ import (
 	gosql "database/sql"
 	"fmt"
 
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/abhisek/mathiz/ent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 )
 
 // eventRepo implements EventRepo backed by ent and the global sequence counter.
+// All reads and writes are scoped to a single owner (learner): every append
+// stamps the owner and every query filters by it, so learners sharing one
+// database (SaaS mode) are fully isolated.
 type eventRepo struct {
-	client *ent.Client
-	seq    *sequenceCounter
-	db     *gosql.DB
+	client  *ent.Client
+	seq     *sequenceCounter
+	db      *gosql.DB
+	dialect string
+	owner   string
+}
+
+// ownerPlaceholder returns the SQL bind placeholder for the owner parameter
+// in raw (non-ent) queries, per dialect.
+func (r *eventRepo) ownerPlaceholder() string {
+	if r.dialect == dialect.Postgres {
+		return "$1"
+	}
+	return "?"
 }
 
 func (r *eventRepo) AppendLLMRequest(ctx context.Context, data LLMRequestEventData) error {
@@ -25,6 +40,7 @@ func (r *eventRepo) AppendLLMRequest(ctx context.Context, data LLMRequestEventDa
 
 	_, err = r.client.LLMRequestEvent.Create().
 		SetSequence(seqNum).
+		SetOwnerID(r.owner).
 		SetProvider(data.Provider).
 		SetModel(data.Model).
 		SetPurpose(data.Purpose).
@@ -44,7 +60,8 @@ func (r *eventRepo) AppendLLMRequest(ctx context.Context, data LLMRequestEventDa
 }
 
 func (r *eventRepo) QueryLLMEvents(ctx context.Context, opts QueryOpts) ([]LLMRequestEventRecord, error) {
-	q := r.client.LLMRequestEvent.Query()
+	q := r.client.LLMRequestEvent.Query().
+		Where(llmrequestevent.OwnerID(r.owner))
 
 	if !opts.From.IsZero() {
 		q = q.Where(llmrequestevent.TimestampGTE(opts.From))
@@ -74,7 +91,9 @@ func (r *eventRepo) QueryLLMEvents(ctx context.Context, opts QueryOpts) ([]LLMRe
 }
 
 func (r *eventRepo) GetLLMEvent(ctx context.Context, id int) (*LLMRequestEventRecord, error) {
-	row, err := r.client.LLMRequestEvent.Get(ctx, id)
+	row, err := r.client.LLMRequestEvent.Query().
+		Where(llmrequestevent.ID(id), llmrequestevent.OwnerID(r.owner)).
+		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, nil
@@ -91,10 +110,11 @@ func (r *eventRepo) LLMUsageByPurpose(ctx context.Context) ([]LLMUsageStats, err
 		       COUNT(*) as calls,
 		       COALESCE(SUM(input_tokens), 0) as input_tokens,
 		       COALESCE(SUM(output_tokens), 0) as output_tokens,
-		       CAST(COALESCE(AVG(latency_ms), 0) AS INTEGER) as avg_latency
+		       CAST(COALESCE(AVG(latency_ms), 0) AS BIGINT) as avg_latency
 		FROM llm_request_events
+		WHERE owner_id = `+r.ownerPlaceholder()+`
 		GROUP BY purpose
-		ORDER BY calls DESC`)
+		ORDER BY calls DESC`, r.owner)
 	if err != nil {
 		return nil, fmt.Errorf("query LLM usage: %w", err)
 	}
@@ -118,8 +138,9 @@ func (r *eventRepo) LLMUsageByModel(ctx context.Context) ([]LLMModelUsage, error
 		       COALESCE(SUM(input_tokens), 0) as input_tokens,
 		       COALESCE(SUM(output_tokens), 0) as output_tokens
 		FROM llm_request_events
+		WHERE owner_id = `+r.ownerPlaceholder()+`
 		GROUP BY model
-		ORDER BY calls DESC`)
+		ORDER BY calls DESC`, r.owner)
 	if err != nil {
 		return nil, fmt.Errorf("query LLM usage by model: %w", err)
 	}

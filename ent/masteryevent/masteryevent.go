@@ -17,6 +17,8 @@ const (
 	FieldSequence = "sequence"
 	// FieldTimestamp holds the string denoting the timestamp field in the database.
 	FieldTimestamp = "timestamp"
+	// FieldOwnerID holds the string denoting the owner_id field in the database.
+	FieldOwnerID = "owner_id"
 	// FieldSkillID holds the string denoting the skill_id field in the database.
 	FieldSkillID = "skill_id"
 	// FieldFromState holds the string denoting the from_state field in the database.
@@ -38,6 +40,7 @@ var Columns = []string{
 	FieldID,
 	FieldSequence,
 	FieldTimestamp,
+	FieldOwnerID,
 	FieldSkillID,
 	FieldFromState,
 	FieldToState,
@@ -59,6 +62,8 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultTimestamp holds the default value on creation for the "timestamp" field.
 	DefaultTimestamp func() time.Time
+	// DefaultOwnerID holds the default value on creation for the "owner_id" field.
+	DefaultOwnerID string
 	// SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
 	SkillIDValidator func(string) error
 	// FromStateValidator is a validator for the "from_state" field. It is called by the builders before save.
@@ -85,6 +90,11 @@ func BySequence(opts ...sql.OrderTermOption) OrderOption {
 // ByTimestamp orders the results by the timestamp field.
 func ByTimestamp(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTimestamp, opts...).ToFunc()
+}
+
+// ByOwnerID orders the results by the owner_id field.
+func ByOwnerID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOwnerID, opts...).ToFunc()
 }
 
 // BySkillID orders the results by the skill_id field.

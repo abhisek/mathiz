@@ -23,6 +23,8 @@ type SessionEvent struct {
 	Sequence int64 `json:"sequence,omitempty"`
 	// UTC wall-clock time of the event
 	Timestamp time.Time `json:"timestamp,omitempty"`
+	// Owning learner (child profile ID in SaaS mode, empty for local single-user)
+	OwnerID string `json:"owner_id,omitempty"`
 	// UUID grouping events in a session
 	SessionID string `json:"session_id,omitempty"`
 	// start or end
@@ -47,7 +49,7 @@ func (*SessionEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case sessionevent.FieldID, sessionevent.FieldSequence, sessionevent.FieldQuestionsServed, sessionevent.FieldCorrectAnswers, sessionevent.FieldDurationSecs:
 			values[i] = new(sql.NullInt64)
-		case sessionevent.FieldSessionID, sessionevent.FieldAction:
+		case sessionevent.FieldOwnerID, sessionevent.FieldSessionID, sessionevent.FieldAction:
 			values[i] = new(sql.NullString)
 		case sessionevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -83,6 +85,12 @@ func (_m *SessionEvent) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field timestamp", values[i])
 			} else if value.Valid {
 				_m.Timestamp = value.Time
+			}
+		case sessionevent.FieldOwnerID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field owner_id", values[i])
+			} else if value.Valid {
+				_m.OwnerID = value.String
 			}
 		case sessionevent.FieldSessionID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -163,6 +171,9 @@ func (_m *SessionEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("timestamp=")
 	builder.WriteString(_m.Timestamp.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("owner_id=")
+	builder.WriteString(_m.OwnerID)
 	builder.WriteString(", ")
 	builder.WriteString("session_id=")
 	builder.WriteString(_m.SessionID)

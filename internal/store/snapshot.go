@@ -9,9 +9,11 @@ import (
 	"github.com/abhisek/mathiz/ent/snapshot"
 )
 
-// snapshotRepo implements SnapshotRepo using the ent client.
+// snapshotRepo implements SnapshotRepo using the ent client, scoped to a
+// single owner (learner).
 type snapshotRepo struct {
 	client *ent.Client
+	owner  string
 }
 
 func (r *snapshotRepo) Save(ctx context.Context, snap *Snapshot) error {
@@ -22,6 +24,7 @@ func (r *snapshotRepo) Save(ctx context.Context, snap *Snapshot) error {
 
 	_, err = r.client.Snapshot.Create().
 		SetSequence(snap.Sequence).
+		SetOwnerID(r.owner).
 		SetTimestamp(snap.Timestamp).
 		SetData(dataMap).
 		Save(ctx)
@@ -33,6 +36,7 @@ func (r *snapshotRepo) Save(ctx context.Context, snap *Snapshot) error {
 
 func (r *snapshotRepo) Latest(ctx context.Context) (*Snapshot, error) {
 	s, err := r.client.Snapshot.Query().
+		Where(snapshot.OwnerID(r.owner)).
 		Order(ent.Desc(snapshot.FieldTimestamp)).
 		First(ctx)
 	if err != nil {
@@ -47,6 +51,7 @@ func (r *snapshotRepo) Latest(ctx context.Context) (*Snapshot, error) {
 func (r *snapshotRepo) Prune(ctx context.Context, keep int) error {
 	// Find the ID threshold: get the Nth most recent snapshot.
 	snapshots, err := r.client.Snapshot.Query().
+		Where(snapshot.OwnerID(r.owner)).
 		Order(ent.Desc(snapshot.FieldTimestamp)).
 		Offset(keep).
 		Limit(1).
@@ -60,7 +65,7 @@ func (r *snapshotRepo) Prune(ctx context.Context, keep int) error {
 
 	threshold := snapshots[0].Timestamp
 	_, err = r.client.Snapshot.Delete().
-		Where(snapshot.TimestampLTE(threshold)).
+		Where(snapshot.OwnerID(r.owner), snapshot.TimestampLTE(threshold)).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("prune snapshots: %w", err)

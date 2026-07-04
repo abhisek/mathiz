@@ -8,11 +8,34 @@ import (
 )
 
 var (
+	// AccountsColumns holds the columns for the "accounts" table.
+	AccountsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "supabase_user_id", Type: field.TypeString, Unique: true},
+		{Name: "email", Type: field.TypeString, Default: ""},
+		{Name: "display_name", Type: field.TypeString, Default: ""},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// AccountsTable holds the schema information for the "accounts" table.
+	AccountsTable = &schema.Table{
+		Name:       "accounts",
+		Columns:    AccountsColumns,
+		PrimaryKey: []*schema.Column{AccountsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "account_supabase_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{AccountsColumns[2]},
+			},
+		},
+	}
 	// AnswerEventsColumns holds the columns for the "answer_events" table.
 	AnswerEventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "sequence", Type: field.TypeInt64, Unique: true},
 		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
 		{Name: "session_id", Type: field.TypeString},
 		{Name: "skill_id", Type: field.TypeString},
 		{Name: "tier", Type: field.TypeString},
@@ -41,19 +64,78 @@ var (
 				Columns: []*schema.Column{AnswerEventsColumns[2]},
 			},
 			{
-				Name:    "answerevent_session_id",
+				Name:    "answerevent_owner_id_sequence",
 				Unique:  false,
-				Columns: []*schema.Column{AnswerEventsColumns[3]},
+				Columns: []*schema.Column{AnswerEventsColumns[3], AnswerEventsColumns[1]},
 			},
 			{
-				Name:    "answerevent_skill_id",
+				Name:    "answerevent_session_id",
 				Unique:  false,
 				Columns: []*schema.Column{AnswerEventsColumns[4]},
 			},
 			{
+				Name:    "answerevent_skill_id",
+				Unique:  false,
+				Columns: []*schema.Column{AnswerEventsColumns[5]},
+			},
+			{
 				Name:    "answerevent_correct",
 				Unique:  false,
-				Columns: []*schema.Column{AnswerEventsColumns[10]},
+				Columns: []*schema.Column{AnswerEventsColumns[11]},
+			},
+		},
+	}
+	// ChildProfilesColumns holds the columns for the "child_profiles" table.
+	ChildProfilesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "family_space_id", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString},
+		{Name: "grade", Type: field.TypeInt},
+		{Name: "pin_hash", Type: field.TypeString, Default: ""},
+		{Name: "archived", Type: field.TypeBool, Default: false},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// ChildProfilesTable holds the schema information for the "child_profiles" table.
+	ChildProfilesTable = &schema.Table{
+		Name:       "child_profiles",
+		Columns:    ChildProfilesColumns,
+		PrimaryKey: []*schema.Column{ChildProfilesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "childprofile_family_space_id",
+				Unique:  false,
+				Columns: []*schema.Column{ChildProfilesColumns[2]},
+			},
+		},
+	}
+	// DeviceTokensColumns holds the columns for the "device_tokens" table.
+	DeviceTokensColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "child_profile_id", Type: field.TypeString},
+		{Name: "family_space_id", Type: field.TypeString},
+		{Name: "token_hash", Type: field.TypeString, Unique: true},
+		{Name: "device_label", Type: field.TypeString, Default: ""},
+		{Name: "revoked", Type: field.TypeBool, Default: false},
+		{Name: "last_used_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// DeviceTokensTable holds the schema information for the "device_tokens" table.
+	DeviceTokensTable = &schema.Table{
+		Name:       "device_tokens",
+		Columns:    DeviceTokensColumns,
+		PrimaryKey: []*schema.Column{DeviceTokensColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "devicetoken_child_profile_id",
+				Unique:  false,
+				Columns: []*schema.Column{DeviceTokensColumns[2]},
+			},
+			{
+				Name:    "devicetoken_token_hash",
+				Unique:  false,
+				Columns: []*schema.Column{DeviceTokensColumns[4]},
 			},
 		},
 	}
@@ -62,6 +144,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "sequence", Type: field.TypeInt64, Unique: true},
 		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
 		{Name: "session_id", Type: field.TypeString},
 		{Name: "skill_id", Type: field.TypeString},
 		{Name: "question_text", Type: field.TypeString},
@@ -90,14 +173,40 @@ var (
 				Columns: []*schema.Column{DiagnosisEventsColumns[2]},
 			},
 			{
+				Name:    "diagnosisevent_owner_id_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{DiagnosisEventsColumns[3], DiagnosisEventsColumns[1]},
+			},
+			{
 				Name:    "diagnosisevent_skill_id",
 				Unique:  false,
-				Columns: []*schema.Column{DiagnosisEventsColumns[4]},
+				Columns: []*schema.Column{DiagnosisEventsColumns[5]},
 			},
 			{
 				Name:    "diagnosisevent_session_id",
 				Unique:  false,
-				Columns: []*schema.Column{DiagnosisEventsColumns[3]},
+				Columns: []*schema.Column{DiagnosisEventsColumns[4]},
+			},
+		},
+	}
+	// FamilySpacesColumns holds the columns for the "family_spaces" table.
+	FamilySpacesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "owner_account_id", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// FamilySpacesTable holds the schema information for the "family_spaces" table.
+	FamilySpacesTable = &schema.Table{
+		Name:       "family_spaces",
+		Columns:    FamilySpacesColumns,
+		PrimaryKey: []*schema.Column{FamilySpacesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "familyspace_owner_account_id",
+				Unique:  false,
+				Columns: []*schema.Column{FamilySpacesColumns[2]},
 			},
 		},
 	}
@@ -106,6 +215,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "sequence", Type: field.TypeInt64, Unique: true},
 		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
 		{Name: "gem_type", Type: field.TypeString},
 		{Name: "rarity", Type: field.TypeString},
 		{Name: "skill_id", Type: field.TypeString, Nullable: true},
@@ -130,19 +240,24 @@ var (
 				Columns: []*schema.Column{GemEventsColumns[2]},
 			},
 			{
+				Name:    "gemevent_owner_id_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{GemEventsColumns[3], GemEventsColumns[1]},
+			},
+			{
 				Name:    "gemevent_gem_type",
 				Unique:  false,
-				Columns: []*schema.Column{GemEventsColumns[3]},
+				Columns: []*schema.Column{GemEventsColumns[4]},
 			},
 			{
 				Name:    "gemevent_session_id",
 				Unique:  false,
-				Columns: []*schema.Column{GemEventsColumns[7]},
+				Columns: []*schema.Column{GemEventsColumns[8]},
 			},
 			{
 				Name:    "gemevent_rarity",
 				Unique:  false,
-				Columns: []*schema.Column{GemEventsColumns[4]},
+				Columns: []*schema.Column{GemEventsColumns[5]},
 			},
 		},
 	}
@@ -151,6 +266,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "sequence", Type: field.TypeInt64, Unique: true},
 		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
 		{Name: "session_id", Type: field.TypeString},
 		{Name: "skill_id", Type: field.TypeString},
 		{Name: "question_text", Type: field.TypeString},
@@ -173,14 +289,47 @@ var (
 				Columns: []*schema.Column{HintEventsColumns[2]},
 			},
 			{
+				Name:    "hintevent_owner_id_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{HintEventsColumns[3], HintEventsColumns[1]},
+			},
+			{
 				Name:    "hintevent_session_id",
 				Unique:  false,
-				Columns: []*schema.Column{HintEventsColumns[3]},
+				Columns: []*schema.Column{HintEventsColumns[4]},
 			},
 			{
 				Name:    "hintevent_skill_id",
 				Unique:  false,
-				Columns: []*schema.Column{HintEventsColumns[4]},
+				Columns: []*schema.Column{HintEventsColumns[5]},
+			},
+		},
+	}
+	// InvitesColumns holds the columns for the "invites" table.
+	InvitesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "family_space_id", Type: field.TypeString},
+		{Name: "code", Type: field.TypeString, Unique: true},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "revoked", Type: field.TypeBool, Default: false},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// InvitesTable holds the schema information for the "invites" table.
+	InvitesTable = &schema.Table{
+		Name:       "invites",
+		Columns:    InvitesColumns,
+		PrimaryKey: []*schema.Column{InvitesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "invite_family_space_id",
+				Unique:  false,
+				Columns: []*schema.Column{InvitesColumns[2]},
+			},
+			{
+				Name:    "invite_code",
+				Unique:  false,
+				Columns: []*schema.Column{InvitesColumns[3]},
 			},
 		},
 	}
@@ -189,6 +338,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "sequence", Type: field.TypeInt64, Unique: true},
 		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
 		{Name: "provider", Type: field.TypeString},
 		{Name: "model", Type: field.TypeString},
 		{Name: "purpose", Type: field.TypeString},
@@ -217,19 +367,24 @@ var (
 				Columns: []*schema.Column{LlmRequestEventsColumns[2]},
 			},
 			{
+				Name:    "llmrequestevent_owner_id_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{LlmRequestEventsColumns[3], LlmRequestEventsColumns[1]},
+			},
+			{
 				Name:    "llmrequestevent_provider",
 				Unique:  false,
-				Columns: []*schema.Column{LlmRequestEventsColumns[3]},
+				Columns: []*schema.Column{LlmRequestEventsColumns[4]},
 			},
 			{
 				Name:    "llmrequestevent_purpose",
 				Unique:  false,
-				Columns: []*schema.Column{LlmRequestEventsColumns[5]},
+				Columns: []*schema.Column{LlmRequestEventsColumns[6]},
 			},
 			{
 				Name:    "llmrequestevent_success",
 				Unique:  false,
-				Columns: []*schema.Column{LlmRequestEventsColumns[9]},
+				Columns: []*schema.Column{LlmRequestEventsColumns[10]},
 			},
 		},
 	}
@@ -238,6 +393,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "sequence", Type: field.TypeInt64, Unique: true},
 		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
 		{Name: "session_id", Type: field.TypeString},
 		{Name: "skill_id", Type: field.TypeString},
 		{Name: "lesson_title", Type: field.TypeString},
@@ -262,14 +418,19 @@ var (
 				Columns: []*schema.Column{LessonEventsColumns[2]},
 			},
 			{
+				Name:    "lessonevent_owner_id_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{LessonEventsColumns[3], LessonEventsColumns[1]},
+			},
+			{
 				Name:    "lessonevent_session_id",
 				Unique:  false,
-				Columns: []*schema.Column{LessonEventsColumns[3]},
+				Columns: []*schema.Column{LessonEventsColumns[4]},
 			},
 			{
 				Name:    "lessonevent_skill_id",
 				Unique:  false,
-				Columns: []*schema.Column{LessonEventsColumns[4]},
+				Columns: []*schema.Column{LessonEventsColumns[5]},
 			},
 		},
 	}
@@ -278,6 +439,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "sequence", Type: field.TypeInt64, Unique: true},
 		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
 		{Name: "skill_id", Type: field.TypeString},
 		{Name: "from_state", Type: field.TypeString},
 		{Name: "to_state", Type: field.TypeString},
@@ -302,9 +464,14 @@ var (
 				Columns: []*schema.Column{MasteryEventsColumns[2]},
 			},
 			{
+				Name:    "masteryevent_owner_id_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{MasteryEventsColumns[3], MasteryEventsColumns[1]},
+			},
+			{
 				Name:    "masteryevent_skill_id",
 				Unique:  false,
-				Columns: []*schema.Column{MasteryEventsColumns[3]},
+				Columns: []*schema.Column{MasteryEventsColumns[4]},
 			},
 		},
 	}
@@ -313,6 +480,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "sequence", Type: field.TypeInt64, Unique: true},
 		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
 		{Name: "session_id", Type: field.TypeString},
 		{Name: "action", Type: field.TypeString},
 		{Name: "questions_served", Type: field.TypeInt, Default: 0},
@@ -337,14 +505,19 @@ var (
 				Columns: []*schema.Column{SessionEventsColumns[2]},
 			},
 			{
+				Name:    "sessionevent_owner_id_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{SessionEventsColumns[3], SessionEventsColumns[1]},
+			},
+			{
 				Name:    "sessionevent_session_id",
 				Unique:  false,
-				Columns: []*schema.Column{SessionEventsColumns[3]},
+				Columns: []*schema.Column{SessionEventsColumns[4]},
 			},
 			{
 				Name:    "sessionevent_action",
 				Unique:  false,
-				Columns: []*schema.Column{SessionEventsColumns[4]},
+				Columns: []*schema.Column{SessionEventsColumns[5]},
 			},
 		},
 	}
@@ -354,6 +527,7 @@ var (
 		{Name: "sequence", Type: field.TypeInt64},
 		{Name: "timestamp", Type: field.TypeTime},
 		{Name: "data", Type: field.TypeJSON},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
 	}
 	// SnapshotsTable holds the schema information for the "snapshots" table.
 	SnapshotsTable = &schema.Table{
@@ -371,14 +545,24 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{SnapshotsColumns[1]},
 			},
+			{
+				Name:    "snapshot_owner_id_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{SnapshotsColumns[4], SnapshotsColumns[2]},
+			},
 		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AccountsTable,
 		AnswerEventsTable,
+		ChildProfilesTable,
+		DeviceTokensTable,
 		DiagnosisEventsTable,
+		FamilySpacesTable,
 		GemEventsTable,
 		HintEventsTable,
+		InvitesTable,
 		LlmRequestEventsTable,
 		LessonEventsTable,
 		MasteryEventsTable,

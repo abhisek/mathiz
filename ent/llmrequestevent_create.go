@@ -40,6 +40,20 @@ func (_c *LLMRequestEventCreate) SetNillableTimestamp(v *time.Time) *LLMRequestE
 	return _c
 }
 
+// SetOwnerID sets the "owner_id" field.
+func (_c *LLMRequestEventCreate) SetOwnerID(v string) *LLMRequestEventCreate {
+	_c.mutation.SetOwnerID(v)
+	return _c
+}
+
+// SetNillableOwnerID sets the "owner_id" field if the given value is not nil.
+func (_c *LLMRequestEventCreate) SetNillableOwnerID(v *string) *LLMRequestEventCreate {
+	if v != nil {
+		_c.SetOwnerID(*v)
+	}
+	return _c
+}
+
 // SetProvider sets the "provider" field.
 func (_c *LLMRequestEventCreate) SetProvider(v string) *LLMRequestEventCreate {
 	_c.mutation.SetProvider(v)
@@ -187,6 +201,10 @@ func (_c *LLMRequestEventCreate) defaults() {
 		v := llmrequestevent.DefaultTimestamp()
 		_c.mutation.SetTimestamp(v)
 	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		v := llmrequestevent.DefaultOwnerID
+		_c.mutation.SetOwnerID(v)
+	}
 	if _, ok := _c.mutation.InputTokens(); !ok {
 		v := llmrequestevent.DefaultInputTokens
 		_c.mutation.SetInputTokens(v)
@@ -220,6 +238,9 @@ func (_c *LLMRequestEventCreate) check() error {
 	}
 	if _, ok := _c.mutation.Timestamp(); !ok {
 		return &ValidationError{Name: "timestamp", err: errors.New(`ent: missing required field "LLMRequestEvent.timestamp"`)}
+	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "LLMRequestEvent.owner_id"`)}
 	}
 	if _, ok := _c.mutation.Provider(); !ok {
 		return &ValidationError{Name: "provider", err: errors.New(`ent: missing required field "LLMRequestEvent.provider"`)}
@@ -284,6 +305,10 @@ func (_c *LLMRequestEventCreate) createSpec() (*LLMRequestEvent, *sqlgraph.Creat
 	if value, ok := _c.mutation.Timestamp(); ok {
 		_spec.SetField(llmrequestevent.FieldTimestamp, field.TypeTime, value)
 		_node.Timestamp = value
+	}
+	if value, ok := _c.mutation.OwnerID(); ok {
+		_spec.SetField(llmrequestevent.FieldOwnerID, field.TypeString, value)
+		_node.OwnerID = value
 	}
 	if value, ok := _c.mutation.Provider(); ok {
 		_spec.SetField(llmrequestevent.FieldProvider, field.TypeString, value)

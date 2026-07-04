@@ -13,6 +13,7 @@ func (r *eventRepo) AppendDiagnosisEvent(ctx context.Context, data DiagnosisEven
 
 	builder := r.client.DiagnosisEvent.Create().
 		SetSequence(seqNum).
+		SetOwnerID(r.owner).
 		SetSessionID(data.SessionID).
 		SetSkillID(data.SkillID).
 		SetQuestionText(data.QuestionText).

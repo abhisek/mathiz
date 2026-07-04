@@ -12,14 +12,24 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// Account is the client for interacting with the Account builders.
+	Account *AccountClient
 	// AnswerEvent is the client for interacting with the AnswerEvent builders.
 	AnswerEvent *AnswerEventClient
+	// ChildProfile is the client for interacting with the ChildProfile builders.
+	ChildProfile *ChildProfileClient
+	// DeviceToken is the client for interacting with the DeviceToken builders.
+	DeviceToken *DeviceTokenClient
 	// DiagnosisEvent is the client for interacting with the DiagnosisEvent builders.
 	DiagnosisEvent *DiagnosisEventClient
+	// FamilySpace is the client for interacting with the FamilySpace builders.
+	FamilySpace *FamilySpaceClient
 	// GemEvent is the client for interacting with the GemEvent builders.
 	GemEvent *GemEventClient
 	// HintEvent is the client for interacting with the HintEvent builders.
 	HintEvent *HintEventClient
+	// Invite is the client for interacting with the Invite builders.
+	Invite *InviteClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
 	LLMRequestEvent *LLMRequestEventClient
 	// LessonEvent is the client for interacting with the LessonEvent builders.
@@ -161,10 +171,15 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.Account = NewAccountClient(tx.config)
 	tx.AnswerEvent = NewAnswerEventClient(tx.config)
+	tx.ChildProfile = NewChildProfileClient(tx.config)
+	tx.DeviceToken = NewDeviceTokenClient(tx.config)
 	tx.DiagnosisEvent = NewDiagnosisEventClient(tx.config)
+	tx.FamilySpace = NewFamilySpaceClient(tx.config)
 	tx.GemEvent = NewGemEventClient(tx.config)
 	tx.HintEvent = NewHintEventClient(tx.config)
+	tx.Invite = NewInviteClient(tx.config)
 	tx.LLMRequestEvent = NewLLMRequestEventClient(tx.config)
 	tx.LessonEvent = NewLessonEventClient(tx.config)
 	tx.MasteryEvent = NewMasteryEventClient(tx.config)
@@ -179,7 +194,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: AnswerEvent.QueryXXX(), the query will be executed
+// applies a query, for example: Account.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

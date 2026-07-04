@@ -21,6 +21,8 @@ type GemEvent struct {
 	Sequence int64 `json:"sequence,omitempty"`
 	// UTC wall-clock time of the event
 	Timestamp time.Time `json:"timestamp,omitempty"`
+	// Owning learner (child profile ID in SaaS mode, empty for local single-user)
+	OwnerID string `json:"owner_id,omitempty"`
 	// GemType holds the value of the "gem_type" field.
 	GemType string `json:"gem_type,omitempty"`
 	// Rarity holds the value of the "rarity" field.
@@ -43,7 +45,7 @@ func (*GemEvent) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case gemevent.FieldID, gemevent.FieldSequence:
 			values[i] = new(sql.NullInt64)
-		case gemevent.FieldGemType, gemevent.FieldRarity, gemevent.FieldSkillID, gemevent.FieldSkillName, gemevent.FieldSessionID, gemevent.FieldReason:
+		case gemevent.FieldOwnerID, gemevent.FieldGemType, gemevent.FieldRarity, gemevent.FieldSkillID, gemevent.FieldSkillName, gemevent.FieldSessionID, gemevent.FieldReason:
 			values[i] = new(sql.NullString)
 		case gemevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -79,6 +81,12 @@ func (_m *GemEvent) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field timestamp", values[i])
 			} else if value.Valid {
 				_m.Timestamp = value.Time
+			}
+		case gemevent.FieldOwnerID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field owner_id", values[i])
+			} else if value.Valid {
+				_m.OwnerID = value.String
 			}
 		case gemevent.FieldGemType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -159,6 +167,9 @@ func (_m *GemEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("timestamp=")
 	builder.WriteString(_m.Timestamp.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("owner_id=")
+	builder.WriteString(_m.OwnerID)
 	builder.WriteString(", ")
 	builder.WriteString("gem_type=")
 	builder.WriteString(_m.GemType)

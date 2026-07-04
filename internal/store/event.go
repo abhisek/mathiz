@@ -36,16 +36,17 @@ type sequenceCounter struct {
 }
 
 // newSequenceCounter creates a counter and ensures the tracking table exists.
+// The SQL is portable across SQLite and PostgreSQL.
 func newSequenceCounter(db *sql.DB) (*sequenceCounter, error) {
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS global_sequence (
 		id INTEGER PRIMARY KEY CHECK (id = 1),
-		next_val INTEGER NOT NULL DEFAULT 1
+		next_val BIGINT NOT NULL DEFAULT 1
 	)`)
 	if err != nil {
 		return nil, fmt.Errorf("create sequence table: %w", err)
 	}
 
-	_, err = db.Exec(`INSERT OR IGNORE INTO global_sequence (id, next_val) VALUES (1, 1)`)
+	_, err = db.Exec(`INSERT INTO global_sequence (id, next_val) VALUES (1, 1) ON CONFLICT (id) DO NOTHING`)
 	if err != nil {
 		return nil, fmt.Errorf("seed sequence: %w", err)
 	}

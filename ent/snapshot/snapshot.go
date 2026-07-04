@@ -19,6 +19,8 @@ const (
 	FieldTimestamp = "timestamp"
 	// FieldData holds the string denoting the data field in the database.
 	FieldData = "data"
+	// FieldOwnerID holds the string denoting the owner_id field in the database.
+	FieldOwnerID = "owner_id"
 	// Table holds the table name of the snapshot in the database.
 	Table = "snapshots"
 )
@@ -29,6 +31,7 @@ var Columns = []string{
 	FieldSequence,
 	FieldTimestamp,
 	FieldData,
+	FieldOwnerID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -44,6 +47,8 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultTimestamp holds the default value on creation for the "timestamp" field.
 	DefaultTimestamp func() time.Time
+	// DefaultOwnerID holds the default value on creation for the "owner_id" field.
+	DefaultOwnerID string
 )
 
 // OrderOption defines the ordering options for the Snapshot queries.
@@ -62,4 +67,9 @@ func BySequence(opts ...sql.OrderTermOption) OrderOption {
 // ByTimestamp orders the results by the timestamp field.
 func ByTimestamp(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTimestamp, opts...).ToFunc()
+}
+
+// ByOwnerID orders the results by the owner_id field.
+func ByOwnerID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOwnerID, opts...).ToFunc()
 }

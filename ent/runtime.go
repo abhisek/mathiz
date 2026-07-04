@@ -5,10 +5,15 @@ package ent
 import (
 	"time"
 
+	"github.com/abhisek/mathiz/ent/account"
 	"github.com/abhisek/mathiz/ent/answerevent"
+	"github.com/abhisek/mathiz/ent/childprofile"
+	"github.com/abhisek/mathiz/ent/devicetoken"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/familyspace"
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
+	"github.com/abhisek/mathiz/ent/invite"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
@@ -21,6 +26,20 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	accountFields := schema.Account{}.Fields()
+	_ = accountFields
+	// accountDescEmail is the schema descriptor for email field.
+	accountDescEmail := accountFields[2].Descriptor()
+	// account.DefaultEmail holds the default value on creation for the email field.
+	account.DefaultEmail = accountDescEmail.Default.(string)
+	// accountDescDisplayName is the schema descriptor for display_name field.
+	accountDescDisplayName := accountFields[3].Descriptor()
+	// account.DefaultDisplayName holds the default value on creation for the display_name field.
+	account.DefaultDisplayName = accountDescDisplayName.Default.(string)
+	// accountDescCreatedAt is the schema descriptor for created_at field.
+	accountDescCreatedAt := accountFields[4].Descriptor()
+	// account.DefaultCreatedAt holds the default value on creation for the created_at field.
+	account.DefaultCreatedAt = accountDescCreatedAt.Default.(func() time.Time)
 	answereventMixin := schema.AnswerEvent{}.Mixin()
 	answereventMixinFields0 := answereventMixin[0].Fields()
 	_ = answereventMixinFields0
@@ -30,6 +49,10 @@ func init() {
 	answereventDescTimestamp := answereventMixinFields0[1].Descriptor()
 	// answerevent.DefaultTimestamp holds the default value on creation for the timestamp field.
 	answerevent.DefaultTimestamp = answereventDescTimestamp.Default.(func() time.Time)
+	// answereventDescOwnerID is the schema descriptor for owner_id field.
+	answereventDescOwnerID := answereventMixinFields0[2].Descriptor()
+	// answerevent.DefaultOwnerID holds the default value on creation for the owner_id field.
+	answerevent.DefaultOwnerID = answereventDescOwnerID.Default.(string)
 	// answereventDescSessionID is the schema descriptor for session_id field.
 	answereventDescSessionID := answereventFields[0].Descriptor()
 	// answerevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
@@ -62,6 +85,34 @@ func init() {
 	answereventDescAnswerFormat := answereventFields[9].Descriptor()
 	// answerevent.AnswerFormatValidator is a validator for the "answer_format" field. It is called by the builders before save.
 	answerevent.AnswerFormatValidator = answereventDescAnswerFormat.Validators[0].(func(string) error)
+	childprofileFields := schema.ChildProfile{}.Fields()
+	_ = childprofileFields
+	// childprofileDescPinHash is the schema descriptor for pin_hash field.
+	childprofileDescPinHash := childprofileFields[4].Descriptor()
+	// childprofile.DefaultPinHash holds the default value on creation for the pin_hash field.
+	childprofile.DefaultPinHash = childprofileDescPinHash.Default.(string)
+	// childprofileDescArchived is the schema descriptor for archived field.
+	childprofileDescArchived := childprofileFields[5].Descriptor()
+	// childprofile.DefaultArchived holds the default value on creation for the archived field.
+	childprofile.DefaultArchived = childprofileDescArchived.Default.(bool)
+	// childprofileDescCreatedAt is the schema descriptor for created_at field.
+	childprofileDescCreatedAt := childprofileFields[6].Descriptor()
+	// childprofile.DefaultCreatedAt holds the default value on creation for the created_at field.
+	childprofile.DefaultCreatedAt = childprofileDescCreatedAt.Default.(func() time.Time)
+	devicetokenFields := schema.DeviceToken{}.Fields()
+	_ = devicetokenFields
+	// devicetokenDescDeviceLabel is the schema descriptor for device_label field.
+	devicetokenDescDeviceLabel := devicetokenFields[4].Descriptor()
+	// devicetoken.DefaultDeviceLabel holds the default value on creation for the device_label field.
+	devicetoken.DefaultDeviceLabel = devicetokenDescDeviceLabel.Default.(string)
+	// devicetokenDescRevoked is the schema descriptor for revoked field.
+	devicetokenDescRevoked := devicetokenFields[5].Descriptor()
+	// devicetoken.DefaultRevoked holds the default value on creation for the revoked field.
+	devicetoken.DefaultRevoked = devicetokenDescRevoked.Default.(bool)
+	// devicetokenDescCreatedAt is the schema descriptor for created_at field.
+	devicetokenDescCreatedAt := devicetokenFields[7].Descriptor()
+	// devicetoken.DefaultCreatedAt holds the default value on creation for the created_at field.
+	devicetoken.DefaultCreatedAt = devicetokenDescCreatedAt.Default.(func() time.Time)
 	diagnosiseventMixin := schema.DiagnosisEvent{}.Mixin()
 	diagnosiseventMixinFields0 := diagnosiseventMixin[0].Fields()
 	_ = diagnosiseventMixinFields0
@@ -71,6 +122,10 @@ func init() {
 	diagnosiseventDescTimestamp := diagnosiseventMixinFields0[1].Descriptor()
 	// diagnosisevent.DefaultTimestamp holds the default value on creation for the timestamp field.
 	diagnosisevent.DefaultTimestamp = diagnosiseventDescTimestamp.Default.(func() time.Time)
+	// diagnosiseventDescOwnerID is the schema descriptor for owner_id field.
+	diagnosiseventDescOwnerID := diagnosiseventMixinFields0[2].Descriptor()
+	// diagnosisevent.DefaultOwnerID holds the default value on creation for the owner_id field.
+	diagnosisevent.DefaultOwnerID = diagnosiseventDescOwnerID.Default.(string)
 	// diagnosiseventDescSessionID is the schema descriptor for session_id field.
 	diagnosiseventDescSessionID := diagnosiseventFields[0].Descriptor()
 	// diagnosisevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
@@ -103,6 +158,12 @@ func init() {
 	diagnosiseventDescReasoning := diagnosiseventFields[9].Descriptor()
 	// diagnosisevent.DefaultReasoning holds the default value on creation for the reasoning field.
 	diagnosisevent.DefaultReasoning = diagnosiseventDescReasoning.Default.(string)
+	familyspaceFields := schema.FamilySpace{}.Fields()
+	_ = familyspaceFields
+	// familyspaceDescCreatedAt is the schema descriptor for created_at field.
+	familyspaceDescCreatedAt := familyspaceFields[3].Descriptor()
+	// familyspace.DefaultCreatedAt holds the default value on creation for the created_at field.
+	familyspace.DefaultCreatedAt = familyspaceDescCreatedAt.Default.(func() time.Time)
 	gemeventMixin := schema.GemEvent{}.Mixin()
 	gemeventMixinFields0 := gemeventMixin[0].Fields()
 	_ = gemeventMixinFields0
@@ -112,6 +173,10 @@ func init() {
 	gemeventDescTimestamp := gemeventMixinFields0[1].Descriptor()
 	// gemevent.DefaultTimestamp holds the default value on creation for the timestamp field.
 	gemevent.DefaultTimestamp = gemeventDescTimestamp.Default.(func() time.Time)
+	// gemeventDescOwnerID is the schema descriptor for owner_id field.
+	gemeventDescOwnerID := gemeventMixinFields0[2].Descriptor()
+	// gemevent.DefaultOwnerID holds the default value on creation for the owner_id field.
+	gemevent.DefaultOwnerID = gemeventDescOwnerID.Default.(string)
 	// gemeventDescGemType is the schema descriptor for gem_type field.
 	gemeventDescGemType := gemeventFields[0].Descriptor()
 	// gemevent.GemTypeValidator is a validator for the "gem_type" field. It is called by the builders before save.
@@ -137,6 +202,10 @@ func init() {
 	hinteventDescTimestamp := hinteventMixinFields0[1].Descriptor()
 	// hintevent.DefaultTimestamp holds the default value on creation for the timestamp field.
 	hintevent.DefaultTimestamp = hinteventDescTimestamp.Default.(func() time.Time)
+	// hinteventDescOwnerID is the schema descriptor for owner_id field.
+	hinteventDescOwnerID := hinteventMixinFields0[2].Descriptor()
+	// hintevent.DefaultOwnerID holds the default value on creation for the owner_id field.
+	hintevent.DefaultOwnerID = hinteventDescOwnerID.Default.(string)
 	// hinteventDescSessionID is the schema descriptor for session_id field.
 	hinteventDescSessionID := hinteventFields[0].Descriptor()
 	// hintevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
@@ -153,6 +222,16 @@ func init() {
 	hinteventDescHintText := hinteventFields[3].Descriptor()
 	// hintevent.HintTextValidator is a validator for the "hint_text" field. It is called by the builders before save.
 	hintevent.HintTextValidator = hinteventDescHintText.Validators[0].(func(string) error)
+	inviteFields := schema.Invite{}.Fields()
+	_ = inviteFields
+	// inviteDescRevoked is the schema descriptor for revoked field.
+	inviteDescRevoked := inviteFields[4].Descriptor()
+	// invite.DefaultRevoked holds the default value on creation for the revoked field.
+	invite.DefaultRevoked = inviteDescRevoked.Default.(bool)
+	// inviteDescCreatedAt is the schema descriptor for created_at field.
+	inviteDescCreatedAt := inviteFields[5].Descriptor()
+	// invite.DefaultCreatedAt holds the default value on creation for the created_at field.
+	invite.DefaultCreatedAt = inviteDescCreatedAt.Default.(func() time.Time)
 	llmrequesteventMixin := schema.LLMRequestEvent{}.Mixin()
 	llmrequesteventMixinFields0 := llmrequesteventMixin[0].Fields()
 	_ = llmrequesteventMixinFields0
@@ -162,6 +241,10 @@ func init() {
 	llmrequesteventDescTimestamp := llmrequesteventMixinFields0[1].Descriptor()
 	// llmrequestevent.DefaultTimestamp holds the default value on creation for the timestamp field.
 	llmrequestevent.DefaultTimestamp = llmrequesteventDescTimestamp.Default.(func() time.Time)
+	// llmrequesteventDescOwnerID is the schema descriptor for owner_id field.
+	llmrequesteventDescOwnerID := llmrequesteventMixinFields0[2].Descriptor()
+	// llmrequestevent.DefaultOwnerID holds the default value on creation for the owner_id field.
+	llmrequestevent.DefaultOwnerID = llmrequesteventDescOwnerID.Default.(string)
 	// llmrequesteventDescInputTokens is the schema descriptor for input_tokens field.
 	llmrequesteventDescInputTokens := llmrequesteventFields[3].Descriptor()
 	// llmrequestevent.DefaultInputTokens holds the default value on creation for the input_tokens field.
@@ -195,6 +278,10 @@ func init() {
 	lessoneventDescTimestamp := lessoneventMixinFields0[1].Descriptor()
 	// lessonevent.DefaultTimestamp holds the default value on creation for the timestamp field.
 	lessonevent.DefaultTimestamp = lessoneventDescTimestamp.Default.(func() time.Time)
+	// lessoneventDescOwnerID is the schema descriptor for owner_id field.
+	lessoneventDescOwnerID := lessoneventMixinFields0[2].Descriptor()
+	// lessonevent.DefaultOwnerID holds the default value on creation for the owner_id field.
+	lessonevent.DefaultOwnerID = lessoneventDescOwnerID.Default.(string)
 	// lessoneventDescSessionID is the schema descriptor for session_id field.
 	lessoneventDescSessionID := lessoneventFields[0].Descriptor()
 	// lessonevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
@@ -216,6 +303,10 @@ func init() {
 	masteryeventDescTimestamp := masteryeventMixinFields0[1].Descriptor()
 	// masteryevent.DefaultTimestamp holds the default value on creation for the timestamp field.
 	masteryevent.DefaultTimestamp = masteryeventDescTimestamp.Default.(func() time.Time)
+	// masteryeventDescOwnerID is the schema descriptor for owner_id field.
+	masteryeventDescOwnerID := masteryeventMixinFields0[2].Descriptor()
+	// masteryevent.DefaultOwnerID holds the default value on creation for the owner_id field.
+	masteryevent.DefaultOwnerID = masteryeventDescOwnerID.Default.(string)
 	// masteryeventDescSkillID is the schema descriptor for skill_id field.
 	masteryeventDescSkillID := masteryeventFields[0].Descriptor()
 	// masteryevent.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
@@ -241,6 +332,10 @@ func init() {
 	sessioneventDescTimestamp := sessioneventMixinFields0[1].Descriptor()
 	// sessionevent.DefaultTimestamp holds the default value on creation for the timestamp field.
 	sessionevent.DefaultTimestamp = sessioneventDescTimestamp.Default.(func() time.Time)
+	// sessioneventDescOwnerID is the schema descriptor for owner_id field.
+	sessioneventDescOwnerID := sessioneventMixinFields0[2].Descriptor()
+	// sessionevent.DefaultOwnerID holds the default value on creation for the owner_id field.
+	sessionevent.DefaultOwnerID = sessioneventDescOwnerID.Default.(string)
 	// sessioneventDescSessionID is the schema descriptor for session_id field.
 	sessioneventDescSessionID := sessioneventFields[0].Descriptor()
 	// sessionevent.SessionIDValidator is a validator for the "session_id" field. It is called by the builders before save.
@@ -267,4 +362,8 @@ func init() {
 	snapshotDescTimestamp := snapshotFields[1].Descriptor()
 	// snapshot.DefaultTimestamp holds the default value on creation for the timestamp field.
 	snapshot.DefaultTimestamp = snapshotDescTimestamp.Default.(func() time.Time)
+	// snapshotDescOwnerID is the schema descriptor for owner_id field.
+	snapshotDescOwnerID := snapshotFields[3].Descriptor()
+	// snapshot.DefaultOwnerID holds the default value on creation for the owner_id field.
+	snapshot.DefaultOwnerID = snapshotDescOwnerID.Default.(string)
 }

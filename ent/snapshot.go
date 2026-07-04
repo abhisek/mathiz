@@ -23,7 +23,9 @@ type Snapshot struct {
 	// When the snapshot was taken
 	Timestamp time.Time `json:"timestamp,omitempty"`
 	// Full learner state as JSON
-	Data         map[string]interface{} `json:"data,omitempty"`
+	Data map[string]interface{} `json:"data,omitempty"`
+	// Owning learner (child profile ID in SaaS mode, empty for local single-user)
+	OwnerID      string `json:"owner_id,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -36,6 +38,8 @@ func (*Snapshot) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case snapshot.FieldID, snapshot.FieldSequence:
 			values[i] = new(sql.NullInt64)
+		case snapshot.FieldOwnerID:
+			values[i] = new(sql.NullString)
 		case snapshot.FieldTimestamp:
 			values[i] = new(sql.NullTime)
 		default:
@@ -78,6 +82,12 @@ func (_m *Snapshot) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.Data); err != nil {
 					return fmt.Errorf("unmarshal field data: %w", err)
 				}
+			}
+		case snapshot.FieldOwnerID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field owner_id", values[i])
+			} else if value.Valid {
+				_m.OwnerID = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -123,6 +133,9 @@ func (_m *Snapshot) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("data=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Data))
+	builder.WriteString(", ")
+	builder.WriteString("owner_id=")
+	builder.WriteString(_m.OwnerID)
 	builder.WriteByte(')')
 	return builder.String()
 }
