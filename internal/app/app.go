@@ -238,6 +238,12 @@ func (m *AppModel) View() tea.View {
 	return v
 }
 
+// NewModel creates the root Bubble Tea model. Used by hosts that run the
+// program themselves (e.g. the SaaS terminal bridge) instead of Run.
+func NewModel(opts Options) tea.Model {
+	return newAppModel(opts)
+}
+
 // Run starts the Bubble Tea program.
 func Run(opts Options) error {
 	p := tea.NewProgram(newAppModel(opts))
