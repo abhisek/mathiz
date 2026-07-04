@@ -144,12 +144,34 @@ func (s *Server) childStats(ctx context.Context, childUID string) (map[string]an
 		return nil, err
 	}
 
+	// Per-strand ("island") progress: mastered vs total per math strand.
+	type strandStat struct {
+		ID       string `json:"id"`
+		Name     string `json:"name"`
+		Mastered int    `json:"mastered"`
+		Total    int    `json:"total"`
+	}
+	var strands []strandStat
+	for _, strand := range skillgraph.AllStrands() {
+		ss := strandStat{ID: string(strand), Name: skillgraph.StrandDisplayName(strand)}
+		for _, skill := range skillgraph.ByStrand(strand) {
+			ss.Total++
+			if snap != nil && snap.Data.Mastery != nil {
+				if sm, ok := snap.Data.Mastery.Skills[skill.ID]; ok && sm.State == "mastered" {
+					ss.Mastered++
+				}
+			}
+		}
+		strands = append(strands, ss)
+	}
+
 	return map[string]any{
 		"mastery": map[string]any{
 			"mastered": tally.mastered,
 			"learning": tally.learning,
 			"rusty":    tally.rusty,
 			"total":    len(skillgraph.AllSkills()),
+			"strands":  strands,
 			"skills":   skills,
 		},
 		"learnerProfile": profile,

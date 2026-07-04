@@ -70,6 +70,31 @@ func (s *Server) handleExpeditionHint(w http.ResponseWriter, r *http.Request, p 
 	writeJSON(w, http.StatusOK, view)
 }
 
+func (s *Server) handleExpeditionLesson(w http.ResponseWriter, r *http.Request, p authz.Principal, child *ent.ChildProfile) {
+	view, err := s.game.Lesson(r.Context(), child.UID, r.PathValue("id"))
+	if err != nil {
+		writeGameError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, view)
+}
+
+func (s *Server) handleExpeditionLessonAnswer(w http.ResponseWriter, r *http.Request, p authz.Principal, child *ent.ChildProfile) {
+	var req struct {
+		Answer string `json:"answer"`
+		Skip   bool   `json:"skip"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	view, err := s.game.AnswerLesson(r.Context(), child.UID, r.PathValue("id"), req.Answer, req.Skip)
+	if err != nil {
+		writeGameError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, view)
+}
+
 func (s *Server) handleExpeditionEnd(w http.ResponseWriter, r *http.Request, p authz.Principal, child *ent.ChildProfile) {
 	view, err := s.game.End(r.Context(), child.UID, r.PathValue("id"))
 	if err != nil {
@@ -87,7 +112,8 @@ func writeGameError(w http.ResponseWriter, err error) {
 	case errors.Is(err, game.ErrLocked),
 		errors.Is(err, game.ErrNoQuestion),
 		errors.Is(err, game.ErrExpeditionOver),
-		errors.Is(err, game.ErrNoHint):
+		errors.Is(err, game.ErrNoHint),
+		errors.Is(err, game.ErrNoLesson):
 		writeError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, game.ErrGeneration):
 		writeError(w, http.StatusServiceUnavailable, err.Error())

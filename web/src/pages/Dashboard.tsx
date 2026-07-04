@@ -383,6 +383,26 @@ function ChildCard({
             <p className="muted">No practice sessions yet.</p>
           )}
 
+          {stats?.mastery.strands && (
+            <div className="islands-progress">
+              <h4>Island progress</h4>
+              {stats.mastery.strands.map((s) => (
+                <div key={s.id} className="island-row">
+                  <span className="island-label">🏝️ {s.name}</span>
+                  <div className="progress island-bar">
+                    <div
+                      className="progress-bar"
+                      style={{ width: `${s.total > 0 ? (s.mastered / s.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="muted">
+                    {s.mastered}/{s.total}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {stats?.learnerProfile && (
             <div className="learner-profile">
               <h4>What the AI tutor has learned about {profile.name}</h4>

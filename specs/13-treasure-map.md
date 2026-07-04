@@ -64,6 +64,8 @@ An **expedition** is 5 questions on one skill the kid taps (the terminal's
 | `POST /game/expeditions/{id}/question` | Generate/fetch the current question |
 | `POST /game/expeditions/{id}/answer {answer, timeMs}` | Grade → `{correct, correctAnswer, explanation, gem, mastery, unlockedSkillIds, streak, done}` |
 | `POST /game/expeditions/{id}/hint` | Reveal the hint (records hint event) |
+| `POST /game/expeditions/{id}/lesson` | Poll for the guide's micro-lesson (pending after 2 wrong answers on a skill) |
+| `POST /game/expeditions/{id}/lesson/answer` | Grade the lesson's practice question (or record a skip) |
 | `POST /game/expeditions/{id}/end` | Early exit → summary |
 
 Map reads are side-effect-free (services built with nil event repos so the
@@ -88,6 +90,16 @@ for the curious):
   the engine offers one, gem burst on correct, gentle "try again" energy on
   wrong with the explanation after grading. Progress dots (1–5). Chest-opening
   celebration + "new paths revealed!" when mastery unlocks dependents.
+- **The guide** 🧭: after a second wrong answer on a skill, the engine's AI
+  micro-lesson surfaces as "the guide has a tip for you" — title, friendly
+  explanation, worked example, and a try-it-yourself practice question
+  (gradeable or skippable, persisted as lesson events). Lessons are
+  best-effort: if generation is slow the hunt just continues.
+- **Prove-tier countdown**: timed-in-spirit questions show a shrinking bar
+  (advisory — answers are always accepted; speed already feeds the fluency
+  score via server-side timing).
+- **Gem vault**: the header gem counter opens the collection — counts by gem
+  type (mastery 🏆, streak 🔥, expedition ⛵, comeback 💪, keeper 🛡️).
 - Written with hand-rolled SVG + CSS animation. No game engine dependency.
 
 ## 5. Testing

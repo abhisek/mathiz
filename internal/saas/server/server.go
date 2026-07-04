@@ -85,6 +85,8 @@ func (s *Server) routes() http.Handler {
 		mux.Handle("POST /api/v1/game/expeditions/{id}/question", s.withChild(s.handleExpeditionQuestion))
 		mux.Handle("POST /api/v1/game/expeditions/{id}/answer", s.withChild(s.handleExpeditionAnswer))
 		mux.Handle("POST /api/v1/game/expeditions/{id}/hint", s.withChild(s.handleExpeditionHint))
+		mux.Handle("POST /api/v1/game/expeditions/{id}/lesson", s.withChild(s.handleExpeditionLesson))
+		mux.Handle("POST /api/v1/game/expeditions/{id}/lesson/answer", s.withChild(s.handleExpeditionLessonAnswer))
 		mux.Handle("POST /api/v1/game/expeditions/{id}/end", s.withChild(s.handleExpeditionEnd))
 	}
 

@@ -42,6 +42,7 @@ export interface Question {
   choices?: string[]
   answerType: string
   tier: string
+  timeLimitSecs?: number
 }
 
 export interface GemAward {
@@ -70,7 +71,22 @@ export interface AnswerResult {
   questionsAnswered: number
   totalQuestions: number
   done: boolean
+  lessonPending?: boolean
   summary?: ExpeditionSummary
+}
+
+export interface Lesson {
+  ready: boolean
+  title?: string
+  explanation?: string
+  workedExample?: string
+  practice?: { text: string; answerType: string }
+}
+
+export interface LessonGrade {
+  correct: boolean
+  correctAnswer: string
+  explanation?: string
 }
 
 class GameApiError extends Error {
@@ -104,5 +120,8 @@ export const gameApi = {
   answer: (expId: string, answer: string) =>
     call<AnswerResult>('POST', `/api/v1/game/expeditions/${expId}/answer`, { answer }),
   hint: (expId: string) => call<{ hint: string }>('POST', `/api/v1/game/expeditions/${expId}/hint`),
+  lesson: (expId: string) => call<Lesson>('POST', `/api/v1/game/expeditions/${expId}/lesson`),
+  answerLesson: (expId: string, answer: string, skip: boolean) =>
+    call<LessonGrade>('POST', `/api/v1/game/expeditions/${expId}/lesson/answer`, { answer, skip }),
   end: (expId: string) => call<ExpeditionSummary>('POST', `/api/v1/game/expeditions/${expId}/end`),
 }
