@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Join from './pages/Join'
 import Play from './pages/Play'
+import TerminalPage from './pages/Terminal'
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
       {/* Kid routes are Supabase-free: a join code is all a child needs. */}
       <Route path="/join" element={<Join />} />
       <Route path="/play" element={<Play />} />
+      <Route path="/terminal" element={<TerminalPage />} />
 
       <Route path="/" element={<ParentArea page="login" />} />
       <Route path="/dashboard" element={<ParentArea page="dashboard" />} />

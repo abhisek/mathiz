@@ -15,6 +15,7 @@ import (
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/family"
+	"github.com/abhisek/mathiz/internal/saas/game"
 	"github.com/abhisek/mathiz/internal/saas/server"
 	"github.com/abhisek/mathiz/internal/saas/termbridge"
 	"github.com/abhisek/mathiz/internal/saas/webui"
@@ -78,7 +79,11 @@ func runServe(ctx context.Context) error {
 		IdleTimeout:    cfg.SessionIdleTimeout,
 		MaxSessions:    cfg.MaxSessions,
 	})
-	srv := server.New(cfg, st, svc, verifier, bridge, webui.Handler())
+	gameMgr := game.NewManager(game.Config{
+		Store:       st,
+		IdleTimeout: cfg.SessionIdleTimeout,
+	})
+	srv := server.New(cfg, st, svc, verifier, bridge, webui.Handler(), gameMgr)
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,

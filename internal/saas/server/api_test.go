@@ -40,7 +40,7 @@ func newTestEnv(t *testing.T) *testEnv {
 		SupabaseURL:     "https://example.supabase.co",
 		SupabaseAnonKey: "anon-key",
 	}
-	srv := New(cfg, st, family.New(st.Client()), verifier, nil, nil)
+	srv := New(cfg, st, family.New(st.Client()), verifier, nil, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 	return &testEnv{ts: ts, st: st}

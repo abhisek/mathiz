@@ -57,8 +57,10 @@ mathiz reset    # reset all progress
 
 Mathiz can also run as a multi-tenant server: parents sign up (Supabase),
 create a **Family Space**, add children, and share a **join code**. Children
-open the web app, enter the code, pick their profile, and get the full Mathiz
-terminal experience in the browser — no email, no install.
+open the web app, enter the code, pick their profile, and play the
+**treasure map**: the skill graph rendered as islands, where solving
+AI-generated math digs up treasure, collects gems, and lifts the fog on new
+territory — no email, no install.
 
 ```sh
 make dev-db          # local PostgreSQL (docker compose)

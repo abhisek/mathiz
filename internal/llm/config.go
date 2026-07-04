@@ -130,7 +130,16 @@ func ConfigFromEnv() Config {
 // (Gemini → OpenAI → Anthropic) and returns a Config for the first
 // provider whose key is found. Returns (Config{}, false) if none found.
 func DiscoverConfig() (Config, bool) {
-	cfg := DefaultConfig()
+	cfg := ConfigFromEnv()
+
+	// An explicit MATHIZ_LLM_PROVIDER wins: honor the full MATHIZ_* config
+	// (API key, model, base URL) exactly as documented.
+	if os.Getenv("MATHIZ_LLM_PROVIDER") != "" {
+		if cfg.Provider == "mock" || cfg.Validate() == nil {
+			return cfg, true
+		}
+		return Config{}, false
+	}
 
 	if k := os.Getenv("GEMINI_API_KEY"); k != "" {
 		cfg.Provider = "gemini"

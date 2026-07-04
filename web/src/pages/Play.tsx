@@ -1,129 +1,157 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Terminal } from '@xterm/xterm'
-import { FitAddon } from '@xterm/addon-fit'
-import '@xterm/xterm/css/xterm.css'
 import { api, deviceToken } from '../api'
+import {
+  gameApi,
+  type AnswerResult,
+  type Expedition,
+  type GameMap,
+  type Question,
+  type Spot,
+} from '../game'
 
-type Status = 'connecting' | 'live' | 'ended' | 'error'
+// The treasure map: the skill graph as islands. Solving AI-generated math
+// digs treasure, collects gems, and lifts the fog on new territory.
+
+type Phase = 'idle' | 'starting' | 'loading' | 'question' | 'feedback' | 'summary'
+
+const SPOT_ICON: Record<string, string> = {
+  locked: '🌫️',
+  ready: '✕',
+  digging: '⛏️',
+  proving: '🏅',
+  treasure: '💰',
+  sinking: '🌊',
+}
+
+const SPOT_LABEL: Record<string, string> = {
+  locked: 'Hidden in the fog',
+  ready: 'X marks the spot — dig here!',
+  digging: 'Keep digging!',
+  proving: 'Prove it to open the chest!',
+  treasure: 'Treasure secured!',
+  sinking: 'Treasure sinking — rescue it!',
+}
 
 export default function Play() {
   const navigate = useNavigate()
-  const hostRef = useRef<HTMLDivElement>(null)
-  const [status, setStatus] = useState<Status>('connecting')
-  const [message, setMessage] = useState('')
   const [childName, setChildName] = useState('')
-  const [reconnectNonce, setReconnectNonce] = useState(0)
+  const [map, setMap] = useState<GameMap | null>(null)
+  const [mapError, setMapError] = useState<string | null>(null)
+
+  // Expedition state machine.
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [expedition, setExpedition] = useState<Expedition | null>(null)
+  const [question, setQuestion] = useState<Question | null>(null)
+  const [result, setResult] = useState<AnswerResult | null>(null)
+  const [hint, setHint] = useState<string | null>(null)
+  const [expError, setExpError] = useState<string | null>(null)
+
+  const refreshMap = useCallback(async () => {
+    try {
+      setMap(await gameApi.map())
+      setMapError(null)
+    } catch (err) {
+      setMapError(err instanceof Error ? err.message : String(err))
+    }
+  }, [])
 
   useEffect(() => {
-    const token = deviceToken.get()
-    if (!token) {
+    if (!deviceToken.get()) {
       navigate('/join')
       return
     }
     void api
-      .childMe(token)
+      .childMe(deviceToken.get()!)
       .then((me) => setChildName(me.profile.name))
       .catch(() => {
-        // Token was revoked — back to the join flow.
         deviceToken.clear()
         navigate('/join')
       })
-  }, [navigate, reconnectNonce])
+    void refreshMap()
+  }, [navigate, refreshMap])
 
-  useEffect(() => {
-    const token = deviceToken.get()
-    if (!token || !hostRef.current) return
-
-    const term = new Terminal({
-      cursorBlink: true,
-      fontSize: 16,
-      fontFamily: '"JetBrains Mono", "Fira Code", Menlo, Consolas, monospace',
-      theme: {
-        background: '#16121f',
-        foreground: '#e6e1f0',
-      },
-    })
-    const fit = new FitAddon()
-    term.loadAddon(fit)
-    term.open(hostRef.current)
-    fit.fit()
-    term.focus()
-
-    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const ws = new WebSocket(`${proto}://${window.location.host}/api/v1/terminal`)
-    ws.binaryType = 'arraybuffer'
-    setStatus('connecting')
-
-    ws.onopen = () => {
-      ws.send(
-        JSON.stringify({ type: 'auth', token, cols: term.cols, rows: term.rows }),
-      )
+  async function dig(spot: Spot) {
+    if (spot.state === 'locked' || phase !== 'idle') return
+    setPhase('starting')
+    setExpError(null)
+    setResult(null)
+    setHint(null)
+    try {
+      const exp = await gameApi.start(spot.id)
+      setExpedition(exp)
+      await nextQuestion(exp.id)
+    } catch (err) {
+      setExpError(err instanceof Error ? err.message : String(err))
+      setPhase('idle')
     }
+  }
 
-    ws.onmessage = (ev) => {
-      if (typeof ev.data === 'string') {
-        try {
-          const msg = JSON.parse(ev.data) as { type: string; message?: string }
-          if (msg.type === 'ready') setStatus('live')
-          if (msg.type === 'exit') setStatus('ended')
-          if (msg.type === 'error') {
-            setStatus('error')
-            setMessage(msg.message ?? 'Connection error')
-          }
-        } catch {
-          // ignore malformed control frames
-        }
-        return
+  async function nextQuestion(expId: string) {
+    setPhase('loading')
+    setResult(null)
+    setHint(null)
+    try {
+      const q = await gameApi.question(expId)
+      setQuestion(q)
+      setPhase('question')
+    } catch (err) {
+      setExpError(err instanceof Error ? err.message : String(err))
+      setPhase('idle')
+      setExpedition(null)
+      await refreshMap()
+    }
+  }
+
+  async function submit(answer: string) {
+    if (!expedition) return
+    setPhase('loading')
+    try {
+      const res = await gameApi.answer(expedition.id, answer)
+      setResult(res)
+      setPhase(res.done ? 'summary' : 'feedback')
+      if (res.done) await refreshMap()
+    } catch (err) {
+      setExpError(err instanceof Error ? err.message : String(err))
+      setPhase('question')
+    }
+  }
+
+  async function showHint() {
+    if (!expedition) return
+    try {
+      const h = await gameApi.hint(expedition.id)
+      setHint(h.hint)
+    } catch {
+      // hint already used — ignore
+    }
+  }
+
+  async function sailHome() {
+    if (expedition && phase !== 'summary') {
+      try {
+        await gameApi.end(expedition.id)
+      } catch {
+        // already finished server-side
       }
-      term.write(new Uint8Array(ev.data as ArrayBuffer))
     }
-
-    ws.onclose = () => {
-      setStatus((s) => (s === 'error' ? s : 'ended'))
-    }
-
-    const dataSub = term.onData((data) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(new TextEncoder().encode(data))
-      }
-    })
-
-    const onResize = () => {
-      fit.fit()
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
-      }
-    }
-    window.addEventListener('resize', onResize)
-
-    return () => {
-      window.removeEventListener('resize', onResize)
-      dataSub.dispose()
-      ws.close()
-      term.dispose()
-    }
-  }, [navigate, reconnectNonce])
+    setExpedition(null)
+    setQuestion(null)
+    setResult(null)
+    setPhase('idle')
+    await refreshMap()
+  }
 
   return (
-    <div className="play-page">
-      <header className="play-bar">
+    <div className="game-page">
+      <header className="game-bar">
         <div className="brand brand-small brand-dark">
           <span className="brand-mark">∑</span>
           <span>Mathiz</span>
-          {childName && <span className="muted">· {childName}</span>}
+          {childName && <span className="game-captain">Captain {childName}</span>}
         </div>
-        <div className="play-bar-right">
-          {status === 'connecting' && <span className="pill pill-wait">connecting…</span>}
-          {status === 'live' && <span className="pill pill-live">live</span>}
-          {(status === 'ended' || status === 'error') && (
-            <button
-              className="btn btn-kid"
-              onClick={() => setReconnectNonce((n) => n + 1)}
-            >
-              Play again
-            </button>
-          )}
+        <div className="game-bar-right">
+          <span className="gem-counter">💎 {map?.gems.total ?? 0}</span>
           <button
             className="btn btn-ghost btn-ghost-dark"
             onClick={() => {
@@ -136,21 +164,245 @@ export default function Play() {
         </div>
       </header>
 
-      <div className="term-wrap">
-        <div ref={hostRef} className="term-host" />
-        {status === 'ended' && (
-          <div className="term-overlay">
-            <p>Great practicing! 🎉</p>
-            <button className="btn btn-kid" onClick={() => setReconnectNonce((n) => n + 1)}>
-              Play again
+      {mapError && <p className="form-error game-error">{mapError}</p>}
+      {expError && <p className="form-error game-error">{expError}</p>}
+
+      <main className="sea">
+        {!map && !mapError && <div className="boot boot-dark">Charting the map…</div>}
+        {map?.islands.map((island) => (
+          <section key={island.id} className="island">
+            <h2 className="island-name">🏝️ {island.name}</h2>
+            <div className="spots">
+              {island.spots.map((spot) => (
+                <button
+                  key={spot.id}
+                  className={`spot spot-${spot.state}`}
+                  onClick={() => void dig(spot)}
+                  disabled={spot.state === 'locked' || phase !== 'idle'}
+                  title={`${spot.name} — ${SPOT_LABEL[spot.state]}`}
+                >
+                  <span className="spot-marker">
+                    {spot.state === 'digging' || spot.state === 'proving' ? (
+                      <ProgressRing progress={spot.progress} icon={SPOT_ICON[spot.state]} />
+                    ) : (
+                      <span className="spot-icon">{SPOT_ICON[spot.state]}</span>
+                    )}
+                  </span>
+                  <span className="spot-name">{spot.name}</span>
+                  <span className="spot-grade">G{spot.grade}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
+      </main>
+
+      {phase !== 'idle' && (
+        <ExpeditionOverlay
+          phase={phase}
+          expedition={expedition}
+          question={question}
+          result={result}
+          hint={hint}
+          onSubmit={submit}
+          onHint={showHint}
+          onNext={() => expedition && void nextQuestion(expedition.id)}
+          onClose={() => void sailHome()}
+        />
+      )}
+    </div>
+  )
+}
+
+function ProgressRing({ progress, icon }: { progress: number; icon: string }) {
+  const r = 26
+  const c = 2 * Math.PI * r
+  return (
+    <span className="ring-wrap">
+      <svg viewBox="0 0 64 64" className="ring">
+        <circle cx="32" cy="32" r={r} className="ring-bg" />
+        <circle
+          cx="32"
+          cy="32"
+          r={r}
+          className="ring-fg"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - Math.max(0.05, progress))}
+        />
+      </svg>
+      <span className="spot-icon ring-icon">{icon}</span>
+    </span>
+  )
+}
+
+function ExpeditionOverlay({
+  phase,
+  expedition,
+  question,
+  result,
+  hint,
+  onSubmit,
+  onHint,
+  onNext,
+  onClose,
+}: {
+  phase: Phase
+  expedition: Expedition | null
+  question: Question | null
+  result: AnswerResult | null
+  hint: string | null
+  onSubmit: (answer: string) => void
+  onHint: () => void
+  onNext: () => void
+  onClose: () => void
+}) {
+  const [answer, setAnswer] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (phase === 'question') {
+      setAnswer('')
+      inputRef.current?.focus()
+    }
+  }, [phase, question])
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (answer.trim()) onSubmit(answer.trim())
+  }
+
+  return (
+    <div className="expedition-backdrop">
+      <div className="expedition">
+        <div className="expedition-head">
+          <strong>⛏️ {expedition?.skillName ?? 'Expedition'}</strong>
+          <button className="btn btn-ghost btn-ghost-dark" onClick={onClose}>
+            Sail home
+          </button>
+        </div>
+
+        {question && phase !== 'summary' && (
+          <div className="quest-dots">
+            {Array.from({ length: question.total }, (_, i) => (
+              <span
+                key={i}
+                className={`dot${i < question.index - 1 ? ' dot-done' : ''}${
+                  i === question.index - 1 ? ' dot-now' : ''
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
+        {(phase === 'starting' || phase === 'loading') && (
+          <div className="quest-loading">
+            <span className="compass">🧭</span>
+            <p>{phase === 'starting' ? 'Setting sail…' : 'Consulting the map…'}</p>
+          </div>
+        )}
+
+        {phase === 'question' && question && (
+          <div className="quest">
+            <p className="quest-text">{question.text}</p>
+            {question.format === 'multiple_choice' && question.choices ? (
+              <div className="choice-grid">
+                {question.choices.map((c, i) => (
+                  <button key={i} className="choice" onClick={() => onSubmit(c)}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="answer-form">
+                <input
+                  ref={inputRef}
+                  className="answer-input"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder="?"
+                  inputMode={question.answerType === 'fraction' ? 'text' : 'decimal'}
+                  autoComplete="off"
+                />
+                <button className="btn btn-kid" disabled={!answer.trim()}>
+                  Dig! ⛏️
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {phase === 'feedback' && result && (
+          <div className={`feedback ${result.correct ? 'feedback-yes' : 'feedback-no'}`}>
+            {result.correct ? (
+              <>
+                <div className="feedback-big">
+                  {result.streak >= 3 ? `🔥 ${result.streak} in a row!` : '✨ Treasure found!'}
+                </div>
+                {result.gem && (
+                  <div className="gem-pop">
+                    💎 You earned a <strong>{result.gem.rarity}</strong> gem!
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="feedback-big">🌊 Not quite!</div>
+                <p className="feedback-answer">
+                  The treasure was <strong>{result.correctAnswer}</strong>
+                </p>
+                {result.explanation && <p className="feedback-explain">{result.explanation}</p>}
+                {result.hintAvailable && !hint && (
+                  <button className="btn btn-secondary" onClick={onHint}>
+                    🗺️ Show me a clue
+                  </button>
+                )}
+                {hint && <p className="hint-box">🗺️ {hint}</p>}
+              </>
+            )}
+            {result.mastery?.to === 'learning' && result.mastery.from === 'new' && null}
+            {result.mastery && result.mastery.to !== 'mastered' && result.mastery.from === 'learning' && (
+              <p className="tier-up">🗝️ You found the vault — now prove it to open the chest!</p>
+            )}
+            <button className="btn btn-kid btn-block" onClick={onNext}>
+              Next clue →
             </button>
           </div>
         )}
-        {status === 'error' && (
-          <div className="term-overlay">
-            <p>{message || 'Something went wrong.'}</p>
-            <button className="btn btn-kid" onClick={() => setReconnectNonce((n) => n + 1)}>
-              Try again
+
+        {phase === 'summary' && result?.summary && (
+          <div className="summary">
+            {result.summary.mastered ? (
+              <>
+                <div className="summary-big chest-open">💰</div>
+                <h3>Treasure chest opened!</h3>
+                {result.unlockedSkillIds && result.unlockedSkillIds.length > 0 && (
+                  <p className="unlock-note">
+                    🗺️ The fog lifted on {result.unlockedSkillIds.length} new{' '}
+                    {result.unlockedSkillIds.length === 1 ? 'spot' : 'spots'}!
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="summary-big">⛵</div>
+                <h3>Expedition complete!</h3>
+              </>
+            )}
+            <p>
+              You dug up <strong>{result.summary.correct}</strong> of{' '}
+              <strong>{result.summary.questions}</strong> treasures.
+            </p>
+            {result.summary.gems && result.summary.gems.length > 0 && (
+              <div className="summary-gems">
+                {result.summary.gems.map((g, i) => (
+                  <span key={i} className={`gem-chip gem-${g.rarity}`}>
+                    💎 {g.rarity} {g.type}
+                  </span>
+                ))}
+              </div>
+            )}
+            <button className="btn btn-kid btn-block" onClick={onClose}>
+              Back to the map
             </button>
           </div>
         )}
