@@ -18,9 +18,8 @@ import (
 const testJWTSecret = "test-secret-value-with-enough-length!!"
 
 type testEnv struct {
-	ts  *httptest.Server
-	st  *store.Store
-	svc *family.Service
+	ts *httptest.Server
+	st *store.Store
 }
 
 func newTestEnv(t *testing.T) *testEnv {
@@ -41,11 +40,10 @@ func newTestEnv(t *testing.T) *testEnv {
 		SupabaseURL:     "https://example.supabase.co",
 		SupabaseAnonKey: "anon-key",
 	}
-	svc := family.New(st.Client())
-	srv := New(cfg, st, svc, verifier, nil, nil)
+	srv := New(cfg, st, family.New(st.Client()), verifier, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
-	return &testEnv{ts: ts, st: st, svc: svc}
+	return &testEnv{ts: ts, st: st}
 }
 
 // parentToken mints a valid Supabase-style HS256 token for a test user.

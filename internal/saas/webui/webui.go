@@ -21,21 +21,23 @@ const notBuiltPage = `<!doctype html><html><head><title>Mathiz</title></head>
 </body></html>`
 
 // Handler serves the SPA with client-side routing support: unknown paths
-// fall back to index.html. When the SPA isn't built, a hint page renders.
+// fall back to index.html. Whether the SPA was bundled is fixed at compile
+// time, so the check happens once, not per request.
 func Handler() http.Handler {
 	sub, err := fs.Sub(dist, "dist")
 	if err != nil {
 		sub = dist
 	}
-	fileServer := http.FileServer(http.FS(sub))
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := fs.Stat(sub, "index.html"); err != nil {
+	if _, err := fs.Stat(sub, "index.html"); err != nil {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			_, _ = w.Write([]byte(notBuiltPage))
-			return
-		}
+		})
+	}
 
+	fileServer := http.FileServer(http.FS(sub))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		if path == "" {
 			path = "index.html"

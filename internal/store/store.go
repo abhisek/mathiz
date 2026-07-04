@@ -49,6 +49,10 @@ func open(dsn, entDialect, driver string) (*Store, error) {
 	}
 
 	if entDialect == dialect.SQLite {
+		// Pragmas are per-connection; a pool would leave later connections
+		// without busy_timeout and surface spurious SQLITE_BUSY under
+		// concurrent writers. One connection serializes access instead.
+		db.SetMaxOpenConns(1)
 		if err := applyPragmas(db); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("apply pragmas: %w", err)
@@ -80,11 +84,6 @@ func (s *Store) Client() *ent.Client {
 // DB returns the underlying *sql.DB for raw queries.
 func (s *Store) DB() *sql.DB {
 	return s.db
-}
-
-// Dialect returns the ent dialect name ("sqlite3" or "postgres").
-func (s *Store) Dialect() string {
-	return s.dialect
 }
 
 // Close closes the database connection.

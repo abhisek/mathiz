@@ -54,10 +54,15 @@ var asymmetricAlgs = map[string]bool{
 type SupabaseVerifier struct {
 	cfg SupabaseConfig
 
-	jwksOnce sync.Once
-	jwks     keyfunc.Keyfunc
-	jwksErr  error
+	jwksMu      sync.Mutex
+	jwks        keyfunc.Keyfunc
+	jwksLastTry time.Time
+	jwksLastErr error
 }
+
+// jwksRetryInterval bounds how often a failed JWKS fetch is retried, so a
+// burst of logins during an outage doesn't hammer the endpoint.
+const jwksRetryInterval = 30 * time.Second
 
 // NewSupabaseVerifier validates the configuration. The JWKS is fetched
 // lazily on the first asymmetric token so HS256-only projects (whose JWKS
@@ -73,16 +78,34 @@ func NewSupabaseVerifier(cfg SupabaseConfig) (*SupabaseVerifier, error) {
 	return &SupabaseVerifier{cfg: cfg}, nil
 }
 
-func (v *SupabaseVerifier) jwksKeyfunc(ctx context.Context) (keyfunc.Keyfunc, error) {
-	v.jwksOnce.Do(func() {
-		if v.cfg.ProjectURL == "" {
-			v.jwksErr = fmt.Errorf("asymmetric token but no Supabase project URL configured")
-			return
-		}
-		url := v.cfg.ProjectURL + "/auth/v1/.well-known/jwks.json"
-		v.jwks, v.jwksErr = keyfunc.NewDefaultCtx(ctx, []string{url})
-	})
-	return v.jwks, v.jwksErr
+// jwksKeyfunc returns the cached JWKS, fetching it on first use. Transient
+// fetch failures are NOT cached permanently — they retry (rate-limited), so
+// one network blip at boot can't disable parent auth until restart. The
+// fetch uses a background context because keyfunc's refresh goroutine must
+// outlive the request that triggered it (key rotation support).
+func (v *SupabaseVerifier) jwksKeyfunc() (keyfunc.Keyfunc, error) {
+	v.jwksMu.Lock()
+	defer v.jwksMu.Unlock()
+
+	if v.jwks != nil {
+		return v.jwks, nil
+	}
+	if v.cfg.ProjectURL == "" {
+		return nil, fmt.Errorf("asymmetric token but no Supabase project URL configured")
+	}
+	if v.jwksLastErr != nil && time.Since(v.jwksLastTry) < jwksRetryInterval {
+		return nil, v.jwksLastErr
+	}
+
+	v.jwksLastTry = time.Now()
+	url := v.cfg.ProjectURL + "/auth/v1/.well-known/jwks.json"
+	kf, err := keyfunc.NewDefaultCtx(context.Background(), []string{url})
+	if err != nil {
+		v.jwksLastErr = fmt.Errorf("fetch JWKS: %w", err)
+		return nil, v.jwksLastErr
+	}
+	v.jwks, v.jwksLastErr = kf, nil
+	return kf, nil
 }
 
 // Verify checks the token signature and standard claims, returning the
@@ -106,7 +129,7 @@ func (v *SupabaseVerifier) Verify(ctx context.Context, tokenString string) (*Ide
 		case alg == "HS256" && v.cfg.JWTSecret != "":
 			return []byte(v.cfg.JWTSecret), nil
 		case asymmetricAlgs[alg]:
-			kf, err := v.jwksKeyfunc(ctx)
+			kf, err := v.jwksKeyfunc()
 			if err != nil {
 				return nil, err
 			}

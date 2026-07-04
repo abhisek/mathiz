@@ -244,6 +244,30 @@ func NewModel(opts Options) tea.Model {
 	return newAppModel(opts)
 }
 
+// BuildOptions wires the standard dependency graph from a pair of repos and
+// an optional LLM provider. Both the local CLI (cmd/run.go) and the SaaS
+// terminal bridge use this, so a new dependency added here reaches every
+// surface. The returned cleanup releases per-session resources (the async
+// diagnosis worker); it is non-nil even when provider is nil.
+func BuildOptions(eventRepo store.EventRepo, snapRepo store.SnapshotRepo, provider llm.Provider) (Options, func()) {
+	opts := Options{
+		EventRepo:    eventRepo,
+		SnapshotRepo: snapRepo,
+		GemService:   gems.NewService(eventRepo),
+	}
+	cleanup := func() {}
+	if provider != nil {
+		opts.LLMProvider = provider
+		opts.Generator = problemgen.New(provider, problemgen.DefaultConfig())
+		diagService := diagnosis.NewService(provider)
+		opts.DiagnosisService = diagService
+		opts.LessonService = lessons.NewService(provider, lessons.DefaultConfig())
+		opts.Compressor = lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
+		cleanup = func() { diagService.Close() }
+	}
+	return opts, cleanup
+}
+
 // Run starts the Bubble Tea program.
 func Run(opts Options) error {
 	p := tea.NewProgram(newAppModel(opts))

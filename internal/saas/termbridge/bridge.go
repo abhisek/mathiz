@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,11 +31,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/abhisek/mathiz/internal/app"
-	"github.com/abhisek/mathiz/internal/diagnosis"
-	"github.com/abhisek/mathiz/internal/gems"
-	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/llm"
-	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/family"
 	"github.com/abhisek/mathiz/internal/store"
@@ -44,6 +42,10 @@ type Options struct {
 	Store   *store.Store
 	Family  *family.Service
 	Checker *authz.Checker
+
+	// AllowedOrigins are extra Origins permitted to open terminal sessions,
+	// for split SPA deployments. Same-hostname origins are always allowed.
+	AllowedOrigins []string
 
 	// IdleTimeout disconnects sessions with no client input. Zero disables.
 	IdleTimeout time.Duration
@@ -57,6 +59,10 @@ type Bridge struct {
 	opts   Options
 	active atomic.Int64
 
+	// playing tracks which children have a live session, so a second tab or
+	// device can't run concurrently and clobber the first session's snapshot.
+	playing sync.Map // child profile UID → struct{}
+
 	upgrader websocket.Upgrader
 }
 
@@ -64,20 +70,40 @@ func New(opts Options) *Bridge {
 	if opts.MaxSessions <= 0 {
 		opts.MaxSessions = 100
 	}
-	return &Bridge{
-		opts: opts,
-		upgrader: websocket.Upgrader{
-			ReadBufferSize:  4096,
-			WriteBufferSize: 4096,
-			// The SPA is served same-origin; cross-origin browser calls are
-			// rejected. Non-browser clients (no Origin header) are allowed —
-			// they hold a bearer token, which is the actual credential.
-			CheckOrigin: func(r *http.Request) bool {
-				origin := r.Header.Get("Origin")
-				return origin == "" || sameHost(origin, r.Host)
-			},
-		},
+	b := &Bridge{opts: opts}
+	b.upgrader = websocket.Upgrader{
+		ReadBufferSize:  4096,
+		WriteBufferSize: 4096,
+		CheckOrigin:     b.originAllowed,
 	}
+	return b
+}
+
+// originAllowed is the browser CSRF guard for the upgrade. Allowed: no
+// Origin (non-browser clients — the device token is the real credential),
+// exact same-origin, a configured allowlist entry, and same-hostname with a
+// different port (the Vite dev proxy and single-box reverse proxies rewrite
+// Host but not Origin).
+func (b *Bridge) originAllowed(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" || origin == "http://"+r.Host || origin == "https://"+r.Host {
+		return true
+	}
+	for _, allowed := range b.opts.AllowedOrigins {
+		if origin == allowed {
+			return true
+		}
+	}
+	if u, err := url.Parse(origin); err == nil {
+		requestHost := r.Host
+		if h, _, err := net.SplitHostPort(requestHost); err == nil {
+			requestHost = h
+		}
+		if h := u.Hostname(); h != "" && h == requestHost {
+			return true
+		}
+	}
+	return false
 }
 
 // ActiveSessions reports the number of live terminal sessions.
@@ -140,10 +166,14 @@ func (s *session) run(ctx context.Context) {
 	defer s.conn.Close()
 	b := s.bridge
 
-	if int(b.active.Load()) >= b.opts.MaxSessions {
+	// Reserve a session slot atomically (check-then-act would let a burst of
+	// concurrent handshakes blow past the cap while none had incremented yet).
+	if n := b.active.Add(1); n > int64(b.opts.MaxSessions) {
+		b.active.Add(-1)
 		s.fail("server is full, try again in a few minutes")
 		return
 	}
+	defer b.active.Add(-1)
 
 	// First message must authenticate within a short window.
 	_ = s.conn.SetReadDeadline(time.Now().Add(15 * time.Second))
@@ -162,23 +192,24 @@ func (s *session) run(ctx context.Context) {
 		s.fail("invalid credentials")
 		return
 	}
-	principal := authz.Principal{
-		Kind:           authz.KindChild,
-		ChildProfileID: child.UID,
-		FamilySpaceID:  child.FamilySpaceID,
-	}
+	principal := authz.ChildPrincipal(child)
 	if err := b.opts.Checker.CanLearnAs(ctx, principal, child.UID); err != nil {
 		s.fail("not allowed")
 		return
 	}
 
+	// One live session per child: a second tab/device would load a stale
+	// snapshot and clobber the first session's progress on save.
+	if _, alreadyPlaying := b.playing.LoadOrStore(child.UID, struct{}{}); alreadyPlaying {
+		s.fail("Looks like you're already playing on another screen! Close it first.")
+		return
+	}
+	defer b.playing.Delete(child.UID)
+
 	cols, rows := hello.Cols, hello.Rows
 	if cols <= 0 || rows <= 0 {
 		cols, rows = 80, 24
 	}
-
-	b.active.Add(1)
-	defer b.active.Add(-1)
 
 	if err := s.writeControl(serverMsg{Type: "ready"}); err != nil {
 		return
@@ -264,37 +295,14 @@ func (s *session) run(ctx context.Context) {
 	_ = s.writeControl(serverMsg{Type: "exit"})
 }
 
-// buildAppOptions mirrors cmd/run.go's dependency wiring with owner-scoped
-// repositories. The returned cleanup releases per-session resources.
+// buildAppOptions assembles the standard app wiring (shared with cmd/run.go
+// via app.BuildOptions) on owner-scoped repositories. The per-session LLM
+// provider logs usage events into this child's stream.
 func buildAppOptions(ctx context.Context, st *store.Store, ownerID string) (app.Options, func()) {
 	eventRepo := st.EventRepoFor(ownerID)
-	opts := app.Options{
-		EventRepo:    eventRepo,
-		SnapshotRepo: st.SnapshotRepoFor(ownerID),
-		GemService:   gems.NewService(eventRepo),
-	}
-
-	cleanup := func() {}
-	// Per-session provider so LLM usage events land in this child's stream.
 	provider, err := llm.NewProviderFromEnv(ctx, eventRepo)
-	if err == nil {
-		opts.LLMProvider = provider
-		opts.Generator = problemgen.New(provider, problemgen.DefaultConfig())
-		diagService := diagnosis.NewService(provider)
-		opts.DiagnosisService = diagService
-		opts.LessonService = lessons.NewService(provider, lessons.DefaultConfig())
-		opts.Compressor = lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
-		cleanup = func() { diagService.Close() }
+	if err != nil {
+		provider = nil // AI features off; the TUI degrades gracefully
 	}
-	return opts, cleanup
-}
-
-// sameHost reports whether an Origin header points at the given host.
-func sameHost(origin, host string) bool {
-	for _, scheme := range []string{"http://", "https://"} {
-		if origin == scheme+host {
-			return true
-		}
-	}
-	return false
+	return app.BuildOptions(eventRepo, st.SnapshotRepoFor(ownerID), provider)
 }

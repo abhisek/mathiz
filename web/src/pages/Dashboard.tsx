@@ -138,13 +138,21 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
   }, [refresh])
 
   async function mintInvite() {
-    await api.createInvite(token, family.id)
-    await refresh()
+    try {
+      await api.createInvite(token, family.id)
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   async function revokeInvite(id: string) {
-    await api.revokeInvite(token, id)
-    await refresh()
+    try {
+      await api.revokeInvite(token, id)
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   return (
@@ -312,6 +320,7 @@ function ChildCard({
   const { profile, summary } = child
   const [stats, setStats] = useState<ChildStats | null>(null)
   const [devices, setDevices] = useState<Device[]>([])
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -323,15 +332,24 @@ function ChildCard({
   }, [open, token, profile.id])
 
   async function revokeDevice(id: string) {
-    await api.revokeDevice(token, id)
-    const d = await api.listDevices(token, profile.id)
-    setDevices(d.devices ?? [])
+    try {
+      await api.revokeDevice(token, id)
+      const d = await api.listDevices(token, profile.id)
+      setDevices(d.devices ?? [])
+      setActionError(null)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   async function archive() {
     if (!window.confirm(`Archive ${profile.name}? Their devices will be signed out.`)) return
-    await api.updateChild(token, profile.id, { archived: true })
-    await onChanged()
+    try {
+      await api.updateChild(token, profile.id, { archived: true })
+      await onChanged()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   const pct =
@@ -356,6 +374,7 @@ function ChildCard({
 
       {open && (
         <div className="child-detail">
+          {actionError && <p className="form-error">{actionError}</p>}
           {summary.lastSessionAt ? (
             <p className="muted">
               Last practice: {new Date(summary.lastSessionAt).toLocaleString()}

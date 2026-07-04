@@ -20,8 +20,9 @@ func (FamilySpace) Fields() []ent.Field {
 			Immutable().
 			Comment("Family space ID (UUID)"),
 		field.String("owner_account_id").
+			Unique().
 			Immutable().
-			Comment("Account UID of the parent who owns this space"),
+			Comment("Account UID of the parent who owns this space (one space per account)"),
 		field.String("name"),
 		field.Time("created_at").
 			Default(time.Now).

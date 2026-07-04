@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/abhisek/mathiz/ent"
 	"github.com/abhisek/mathiz/internal/saas/family"
 )
 
@@ -33,6 +34,17 @@ type Principal struct {
 	// their device token.
 	ChildProfileID string
 	FamilySpaceID  string
+}
+
+// ChildPrincipal builds the principal for an authenticated child device.
+// Every child auth surface (HTTP middleware, terminal bridge) uses this so
+// hardening added to the principal reaches all of them.
+func ChildPrincipal(child *ent.ChildProfile) Principal {
+	return Principal{
+		Kind:           KindChild,
+		ChildProfileID: child.UID,
+		FamilySpaceID:  child.FamilySpaceID,
+	}
 }
 
 // Checker answers authorization questions using control-plane data.

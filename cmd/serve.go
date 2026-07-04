@@ -71,11 +71,12 @@ func runServe(ctx context.Context) error {
 	// One family service shared by the API server and the terminal bridge.
 	svc := family.New(st.Client())
 	bridge := termbridge.New(termbridge.Options{
-		Store:       st,
-		Family:      svc,
-		Checker:     authz.NewChecker(svc),
-		IdleTimeout: cfg.SessionIdleTimeout,
-		MaxSessions: cfg.MaxSessions,
+		Store:          st,
+		Family:         svc,
+		Checker:        authz.NewChecker(svc),
+		AllowedOrigins: cfg.CORSOrigins,
+		IdleTimeout:    cfg.SessionIdleTimeout,
+		MaxSessions:    cfg.MaxSessions,
 	})
 	srv := server.New(cfg, st, svc, verifier, bridge, webui.Handler())
 

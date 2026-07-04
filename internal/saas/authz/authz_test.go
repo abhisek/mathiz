@@ -11,7 +11,6 @@ import (
 
 type fixture struct {
 	checker *Checker
-	svc     *family.Service
 
 	ownerAcct  string
 	otherAcct  string
@@ -45,7 +44,6 @@ func newFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		checker:    NewChecker(svc),
-		svc:        svc,
 		ownerAcct:  owner.UID,
 		otherAcct:  other.UID,
 		spaceUID:   sp.UID,
