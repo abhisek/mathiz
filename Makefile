@@ -6,7 +6,7 @@ GITCOMMIT := $(shell git rev-parse HEAD)
 VERSION := "$(shell git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)-$(shell git rev-parse --short HEAD)"
 GO_LDFLAGS := -ldflags "-X github.com/abhisek/mathiz/cmd.version=$(VERSION)"
 
-.PHONY: all deps generate mathiz clean test
+.PHONY: all deps generate mathiz clean test web serve dev-db
 
 all: mathiz
 
@@ -31,6 +31,18 @@ clean:
 
 test:
 	$(GO) test ./...
+
+# Build the web SPA into the Go embed directory (requires Node 20+)
+web:
+	cd web && npm install && npm run build
+	touch internal/saas/webui/dist/.gitkeep
+
+# Build the full SaaS binary: SPA + server in one artifact
+serve-build: web mathiz
+
+# Start a local PostgreSQL for development (docker compose)
+dev-db:
+	docker compose up -d postgres
 
 # Format code
 fmt:

@@ -53,6 +53,22 @@ mathiz update   # update to the latest version
 mathiz reset    # reset all progress
 ```
 
+## Hosted mode — Family Spaces in the browser
+
+Mathiz can also run as a multi-tenant server: parents sign up (Supabase),
+create a **Family Space**, add children, and share a **join code**. Children
+open the web app, enter the code, pick their profile, and get the full Mathiz
+terminal experience in the browser — no email, no install.
+
+```sh
+make dev-db          # local PostgreSQL (docker compose)
+cp .env.example .env # configure database + Supabase + LLM key
+make web && make mathiz
+./bin/mathiz serve
+```
+
+See the [SaaS guide](./docs/saas.md) and [spec](./specs/12-saas.md).
+
 ## Multiple Profiles
 
 All progress is stored in a single SQLite file. Use the `--db` flag to maintain separate profiles for different learners:

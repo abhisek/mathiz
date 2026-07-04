@@ -320,4 +320,3 @@ func TestJoinRedeemUnknownFieldsRejected(t *testing.T) {
 	resp := e.call(t, "POST", "/api/v1/join/preview", "", map[string]any{"code": "X", "extra": true}, nil)
 	expectStatus(t, resp, 400, "unknown fields")
 }
-

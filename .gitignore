@@ -1,2 +1,13 @@
 /mathiz
 /bin
+
+# Web SPA
+web/node_modules/
+web/dist/
+
+# Built SPA embedded into the binary (rebuild with `make web`)
+internal/saas/webui/dist/*
+!internal/saas/webui/dist/.gitkeep
+
+# Local dev environment
+.env
