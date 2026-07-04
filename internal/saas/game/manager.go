@@ -36,6 +36,7 @@ var (
 	ErrNoQuestion     = errors.New("no question awaiting an answer")
 	ErrExpeditionOver = errors.New("expedition is finished")
 	ErrNoHint         = errors.New("no hint available")
+	ErrNoLesson       = errors.New("the guide has nothing to show right now")
 	ErrGeneration     = errors.New("could not conjure a question, try again")
 )
 
@@ -50,6 +51,7 @@ const maxGenFailures = 3
 type Toolset struct {
 	Generator  problemgen.Generator
 	Diagnosis  *diagnosis.Service  // optional
+	Lessons    *lessons.Service    // optional — micro-lessons when a kid struggles
 	Compressor *lessons.Compressor // optional
 }
 
@@ -67,6 +69,7 @@ func NewLLMToolset(ctx context.Context, eventRepo store.EventRepo) (*Toolset, er
 	return &Toolset{
 		Generator:  problemgen.New(provider, problemgen.DefaultConfig()),
 		Diagnosis:  diagnosis.NewService(provider),
+		Lessons:    lessons.NewService(provider, lessons.DefaultConfig()),
 		Compressor: lessons.NewCompressor(provider, lessons.DefaultCompressorConfig()),
 	}, nil
 }
@@ -123,6 +126,7 @@ type expedition struct {
 	questionsAsked int  // questions generated so far
 	answered       bool // current question already graded
 	genFailures    int
+	lesson         *lessons.Lesson // delivered lesson awaiting practice
 	lastActivity   time.Time
 	finished       bool
 }
@@ -229,6 +233,7 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 	state.SpacedRepSched = scheduler
 	state.DiagnosisService = tools.Diagnosis
 	state.EventRepo = eventRepo
+	state.LessonService = tools.Lessons
 	state.Compressor = tools.Compressor
 	state.GemService = gemSvc
 	gemSvc.ResetSession()
@@ -348,7 +353,7 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 
 func (e *expedition) questionView() *QuestionView {
 	q := e.state.CurrentQuestion
-	return &QuestionView{
+	v := &QuestionView{
 		Index:      e.questionsAsked,
 		Total:      QuestionsPerExpedition,
 		Text:       q.Text,
@@ -357,6 +362,13 @@ func (e *expedition) questionView() *QuestionView {
 		AnswerType: string(q.AnswerType),
 		Tier:       sess.TierString(q.Tier),
 	}
+	// Prove-tier questions are timed in spirit: the client shows a countdown
+	// (speed feeds the fluency score via server-side timing; nothing is
+	// force-submitted — this is a nudge, not a guillotine).
+	if q.Tier == skillgraph.TierProve {
+		v.TimeLimitSecs = e.skill.Tiers[skillgraph.TierProve].TimeLimitSecs
+	}
+	return v
 }
 
 // Answer grades the current question through the shared session engine.
@@ -417,6 +429,7 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 		Streak:            state.ConsecutiveCorrect,
 		QuestionsAnswered: exp.questionsAsked,
 		TotalQuestions:    QuestionsPerExpedition,
+		LessonPending:     state.PendingLesson,
 	}
 	if award := state.PendingGemAward; award != nil {
 		result.Gem = &GemAwardView{Type: string(award.Type), Rarity: string(award.Rarity), Reason: award.Reason}
@@ -449,8 +462,89 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 		summary.Mastered = mastered
 		result.Done = true
 		result.Summary = summary
+		result.LessonPending = false // no lesson after the ship sails home
 	}
 	return result, nil
+}
+
+// Lesson fetches the pending micro-lesson if the guide has finished writing
+// it. Lessons generate asynchronously after a kid's second wrong answer on a
+// skill, so the client polls until Ready.
+func (m *Manager) Lesson(ctx context.Context, childUID, expID string) (*LessonView, error) {
+	exp, err := m.lookup(childUID, expID)
+	if err != nil {
+		return nil, err
+	}
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+	exp.lastActivity = time.Now()
+
+	if exp.lesson != nil {
+		return lessonView(exp.lesson, true), nil
+	}
+	if !exp.state.PendingLesson || exp.tools == nil || exp.tools.Lessons == nil {
+		return nil, ErrNoLesson
+	}
+	lesson, ready := exp.tools.Lessons.ConsumeLesson()
+	if !ready || lesson == nil {
+		return &LessonView{Ready: false}, nil
+	}
+	exp.lesson = lesson
+	exp.state.PendingLesson = false
+	return lessonView(lesson, true), nil
+}
+
+func lessonView(l *lessons.Lesson, ready bool) *LessonView {
+	return &LessonView{
+		Ready:         ready,
+		Title:         l.Title,
+		Explanation:   l.Explanation,
+		WorkedExample: l.WorkedExample,
+		Practice: &LessonPracticeView{
+			Text:       l.PracticeQuestion.Text,
+			AnswerType: l.PracticeQuestion.AnswerType,
+		},
+	}
+}
+
+// AnswerLesson grades the lesson's practice question (or records a skip),
+// exactly as the terminal driver does.
+func (m *Manager) AnswerLesson(ctx context.Context, childUID, expID, answer string, skip bool) (*LessonAnswerView, error) {
+	exp, err := m.lookup(childUID, expID)
+	if err != nil {
+		return nil, err
+	}
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+	exp.lastActivity = time.Now()
+
+	lesson := exp.lesson
+	if lesson == nil {
+		return nil, ErrNoLesson
+	}
+	exp.lesson = nil
+
+	correct := false
+	if !skip {
+		correct = problemgen.CheckAnswer(answer, &problemgen.Question{
+			Answer:     lesson.PracticeQuestion.Answer,
+			AnswerType: problemgen.AnswerType(lesson.PracticeQuestion.AnswerType),
+			Format:     problemgen.FormatNumeric,
+		})
+	}
+	_ = exp.eventRepo.AppendLessonEvent(ctx, store.LessonEventData{
+		SessionID:         exp.state.SessionID,
+		SkillID:           lesson.SkillID,
+		LessonTitle:       lesson.Title,
+		PracticeAttempted: !skip,
+		PracticeCorrect:   correct,
+		PracticeSkipped:   skip,
+	})
+	return &LessonAnswerView{
+		Correct:       correct,
+		CorrectAnswer: lesson.PracticeQuestion.Answer,
+		Explanation:   lesson.PracticeQuestion.Explanation,
+	}, nil
 }
 
 // Hint reveals the hint for the just-answered question.

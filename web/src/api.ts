@@ -71,12 +71,20 @@ export interface SessionStat {
   gems: number
 }
 
+export interface StrandStat {
+  id: string
+  name: string
+  mastered: number
+  total: number
+}
+
 export interface ChildStats {
   mastery: {
     mastered: number
     learning: number
     rusty: number
     total: number
+    strands: StrandStat[] | null
     skills: SkillStat[] | null
   }
   learnerProfile: {

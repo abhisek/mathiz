@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/abhisek/mathiz/internal/lessons"
+	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/store"
@@ -245,6 +248,89 @@ func TestWrongAnswerFlow(t *testing.T) {
 	// Double answer without a fresh question is rejected.
 	if _, err := m.Answer(ctx, "child-1", exp.ID, "4"); !errors.Is(err, ErrNoQuestion) {
 		t.Errorf("double answer: got %v", err)
+	}
+}
+
+func TestMicroLessonFlow(t *testing.T) {
+	// A lessons service backed by the mock LLM provider delivers one lesson.
+	lessonJSON := `{
+		"title": "Counting On",
+		"explanation": "When adding small numbers, start from the bigger one and count up.",
+		"worked_example": "For 2 + 2: start at 2, count 3, 4. The answer is 4.",
+		"practice_question": {"text": "Try it: what is 2 + 3?", "answer": "5", "answer_type": "integer", "explanation": "Start at 3: count 4, 5."}
+	}`
+	lessonSvc := lessons.NewService(
+		llm.NewMockProvider(llm.MockResponse{Content: []byte(lessonJSON)}),
+		lessons.DefaultConfig(),
+	)
+
+	st, err := store.Open("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+	m := NewManager(Config{
+		Store: st,
+		Toolset: func(ctx context.Context, eventRepo store.EventRepo) (*Toolset, error) {
+			return &Toolset{Generator: &fakeGenerator{}, Lessons: lessonSvc}, nil
+		},
+	})
+	ctx := context.Background()
+	root := rootSkillID(t)
+
+	exp, err := m.Start(ctx, "child-1", root)
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	// One wrong answer: no lesson yet.
+	res := answerCurrent(t, m, "child-1", exp.ID, "7")
+	if res.LessonPending {
+		t.Error("lesson pending after a single wrong answer")
+	}
+	if _, err := m.Lesson(ctx, "child-1", exp.ID); !errors.Is(err, ErrNoLesson) {
+		t.Errorf("lesson before pending: got %v", err)
+	}
+
+	// Second wrong answer triggers the guide.
+	res = answerCurrent(t, m, "child-1", exp.ID, "7")
+	if !res.LessonPending {
+		t.Fatal("lesson should be pending after two wrong answers")
+	}
+
+	// Poll until the async generation lands.
+	var lesson *LessonView
+	for i := 0; i < 50; i++ {
+		lesson, err = m.Lesson(ctx, "child-1", exp.ID)
+		if err != nil {
+			t.Fatalf("lesson: %v", err)
+		}
+		if lesson.Ready {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !lesson.Ready || lesson.Title != "Counting On" || lesson.Practice == nil {
+		t.Fatalf("lesson = %+v", lesson)
+	}
+
+	// Practice: wrong answer graded, correct answer revealed.
+	graded, err := m.AnswerLesson(ctx, "child-1", exp.ID, "9", false)
+	if err != nil {
+		t.Fatalf("answer lesson: %v", err)
+	}
+	if graded.Correct || graded.CorrectAnswer != "5" {
+		t.Errorf("graded = %+v", graded)
+	}
+	// Lesson is consumed.
+	if _, err := m.AnswerLesson(ctx, "child-1", exp.ID, "5", false); !errors.Is(err, ErrNoLesson) {
+		t.Errorf("second lesson answer: got %v", err)
+	}
+
+	// The expedition continues afterwards.
+	res = answerCurrent(t, m, "child-1", exp.ID, "4")
+	if !res.Correct {
+		t.Error("expedition broken after lesson")
 	}
 }
 

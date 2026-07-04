@@ -1037,3 +1037,127 @@ table.sessions th {
 .gem-rare { background: rgb(14 96 142 / 0.15); color: #0e608e; }
 .gem-epic { background: rgb(124 58 237 / 0.15); color: #6d28d9; }
 .gem-legendary { background: rgb(217 119 6 / 0.2); color: #b45309; }
+
+/* ---- Gem vault, lesson, timer, island progress ---- */
+
+.gem-counter {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.gem-counter:hover {
+  transform: scale(1.06);
+}
+
+.vault {
+  position: fixed;
+  top: 3.6rem;
+  right: 1rem;
+  z-index: 40;
+  background: linear-gradient(165deg, #fdf6e3, #f6e8c8);
+  color: #3f3018;
+  border-radius: 16px;
+  box-shadow: 0 18px 44px rgb(0 0 0 / 0.4);
+  padding: 1rem 1.25rem;
+  min-width: 15rem;
+}
+
+.vault h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+}
+
+.vault ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vault li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.3rem 0;
+  font-size: 0.95rem;
+}
+
+.vault li strong {
+  margin-left: auto;
+}
+
+.vault-empty {
+  color: #8a6d3d;
+  font-size: 0.9rem;
+}
+
+.timer {
+  margin-bottom: 0.75rem;
+}
+
+.timer-bar {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #16a34a;
+  transition: width 1s linear, background 0.3s ease;
+}
+
+.timer-low {
+  background: #dc2626;
+}
+
+.timer-up {
+  color: #b45309;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin: 0.4rem 0 0;
+}
+
+.lesson h3 {
+  margin: 0.25rem 0 0.6rem;
+}
+
+.lesson-explain {
+  line-height: 1.55;
+}
+
+.worked {
+  background: rgb(14 96 142 / 0.08);
+  border-left: 4px solid #0e608e;
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  margin: 0.75rem 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.lesson-practice {
+  border-top: 1.5px dashed #d9c08c;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.islands-progress {
+  margin-top: 0.9rem;
+}
+
+.island-row {
+  display: grid;
+  grid-template-columns: 13rem 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.island-label {
+  font-weight: 600;
+}
+
+.island-bar {
+  height: 0.5rem;
+}

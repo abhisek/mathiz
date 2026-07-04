@@ -66,6 +66,10 @@ type QuestionView struct {
 	Choices    []string `json:"choices,omitempty"`
 	AnswerType string   `json:"answerType"` // integer | decimal | fraction | text
 	Tier       string   `json:"tier"`
+
+	// TimeLimitSecs is set for prove-tier questions: the client shows a
+	// countdown (advisory — answers are accepted after it runs out).
+	TimeLimitSecs int `json:"timeLimitSecs,omitempty"`
 }
 
 // GemAwardView is a gem earned during play.
@@ -97,8 +101,35 @@ type AnswerResultView struct {
 	TotalQuestions    int  `json:"totalQuestions"`
 	Done              bool `json:"done"`
 
+	// LessonPending means the guide is writing a micro-lesson (the kid
+	// struggled twice on this skill) — poll the lesson endpoint.
+	LessonPending bool `json:"lessonPending,omitempty"`
+
 	// Summary is present when Done.
 	Summary *SummaryView `json:"summary,omitempty"`
+}
+
+// LessonView is a micro-lesson from the guide. Ready=false means the guide
+// is still writing — poll again.
+type LessonView struct {
+	Ready         bool                `json:"ready"`
+	Title         string              `json:"title,omitempty"`
+	Explanation   string              `json:"explanation,omitempty"`
+	WorkedExample string              `json:"workedExample,omitempty"`
+	Practice      *LessonPracticeView `json:"practice,omitempty"`
+}
+
+// LessonPracticeView is the lesson's try-it-yourself question.
+type LessonPracticeView struct {
+	Text       string `json:"text"`
+	AnswerType string `json:"answerType"`
+}
+
+// LessonAnswerView grades the lesson practice attempt.
+type LessonAnswerView struct {
+	Correct       bool   `json:"correct"`
+	CorrectAnswer string `json:"correctAnswer"`
+	Explanation   string `json:"explanation,omitempty"`
 }
 
 // HintView is the revealed hint for the last answered question.

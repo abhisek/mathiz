@@ -6,6 +6,8 @@ import {
   type AnswerResult,
   type Expedition,
   type GameMap,
+  type Lesson,
+  type LessonGrade,
   type Question,
   type Spot,
 } from '../game'
@@ -13,7 +15,15 @@ import {
 // The treasure map: the skill graph as islands. Solving AI-generated math
 // digs treasure, collects gems, and lifts the fog on new territory.
 
-type Phase = 'idle' | 'starting' | 'loading' | 'question' | 'feedback' | 'summary'
+type Phase = 'idle' | 'starting' | 'loading' | 'question' | 'feedback' | 'lesson' | 'summary'
+
+const GEM_META: Record<string, { icon: string; label: string }> = {
+  mastery: { icon: '🏆', label: 'Mastery gems' },
+  streak: { icon: '🔥', label: 'Streak gems' },
+  session: { icon: '⛵', label: 'Expedition gems' },
+  recovery: { icon: '💪', label: 'Comeback gems' },
+  retention: { icon: '🛡️', label: 'Keeper gems' },
+}
 
 const SPOT_ICON: Record<string, string> = {
   locked: '🌫️',
@@ -45,6 +55,9 @@ export default function Play() {
   const [question, setQuestion] = useState<Question | null>(null)
   const [result, setResult] = useState<AnswerResult | null>(null)
   const [hint, setHint] = useState<string | null>(null)
+  const [lesson, setLesson] = useState<Lesson | null>(null)
+  const [lessonGrade, setLessonGrade] = useState<LessonGrade | null>(null)
+  const [vaultOpen, setVaultOpen] = useState(false)
   const [expError, setExpError] = useState<string | null>(null)
 
   const refreshMap = useCallback(async () => {
@@ -91,6 +104,8 @@ export default function Play() {
     setPhase('loading')
     setResult(null)
     setHint(null)
+    setLesson(null)
+    setLessonGrade(null)
     try {
       const q = await gameApi.question(expId)
       setQuestion(q)
@@ -127,6 +142,37 @@ export default function Play() {
     }
   }
 
+  // openLesson polls until the guide finishes writing (or gives up and
+  // moves on — lessons are best-effort, never a blocker).
+  async function openLesson() {
+    if (!expedition) return
+    setPhase('lesson')
+    setLesson(null)
+    setLessonGrade(null)
+    for (let attempt = 0; attempt < 8; attempt++) {
+      try {
+        const l = await gameApi.lesson(expedition.id)
+        if (l.ready) {
+          setLesson(l)
+          return
+        }
+      } catch {
+        break // lesson no longer available
+      }
+      await new Promise((r) => setTimeout(r, 1200))
+    }
+    await nextQuestion(expedition.id)
+  }
+
+  async function submitLesson(answer: string, skip: boolean) {
+    if (!expedition) return
+    try {
+      setLessonGrade(await gameApi.answerLesson(expedition.id, answer, skip))
+    } catch {
+      await nextQuestion(expedition.id)
+    }
+  }
+
   async function sailHome() {
     if (expedition && phase !== 'summary') {
       try {
@@ -151,7 +197,9 @@ export default function Play() {
           {childName && <span className="game-captain">Captain {childName}</span>}
         </div>
         <div className="game-bar-right">
-          <span className="gem-counter">💎 {map?.gems.total ?? 0}</span>
+          <button className="gem-counter" onClick={() => setVaultOpen((v) => !v)}>
+            💎 {map?.gems.total ?? 0}
+          </button>
           <button
             className="btn btn-ghost btn-ghost-dark"
             onClick={() => {
@@ -166,6 +214,27 @@ export default function Play() {
 
       {mapError && <p className="form-error game-error">{mapError}</p>}
       {expError && <p className="form-error game-error">{expError}</p>}
+
+      {vaultOpen && map && (
+        <div className="vault">
+          <h3>💎 Your gem vault</h3>
+          {map.gems.total === 0 ? (
+            <p className="vault-empty">No gems yet — go dig some treasure!</p>
+          ) : (
+            <ul>
+              {Object.entries(map.gems.byType)
+                .sort(([, a], [, b]) => b - a)
+                .map(([type, count]) => (
+                  <li key={type}>
+                    <span>{GEM_META[type]?.icon ?? '💎'}</span>
+                    <span>{GEM_META[type]?.label ?? type}</span>
+                    <strong>× {count}</strong>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <main className="sea">
         {!map && !mapError && <div className="boot boot-dark">Charting the map…</div>}
@@ -204,8 +273,12 @@ export default function Play() {
           question={question}
           result={result}
           hint={hint}
+          lesson={lesson}
+          lessonGrade={lessonGrade}
           onSubmit={submit}
           onHint={showHint}
+          onLesson={() => void openLesson()}
+          onLessonAnswer={(a, skip) => void submitLesson(a, skip)}
           onNext={() => expedition && void nextQuestion(expedition.id)}
           onClose={() => void sailHome()}
         />
@@ -241,8 +314,12 @@ function ExpeditionOverlay({
   question,
   result,
   hint,
+  lesson,
+  lessonGrade,
   onSubmit,
   onHint,
+  onLesson,
+  onLessonAnswer,
   onNext,
   onClose,
 }: {
@@ -251,12 +328,18 @@ function ExpeditionOverlay({
   question: Question | null
   result: AnswerResult | null
   hint: string | null
+  lesson: Lesson | null
+  lessonGrade: LessonGrade | null
   onSubmit: (answer: string) => void
   onHint: () => void
+  onLesson: () => void
+  onLessonAnswer: (answer: string, skip: boolean) => void
   onNext: () => void
   onClose: () => void
 }) {
   const [answer, setAnswer] = useState('')
+  const [practiceAnswer, setPracticeAnswer] = useState('')
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -264,6 +347,20 @@ function ExpeditionOverlay({
       setAnswer('')
       inputRef.current?.focus()
     }
+  }, [phase, question])
+
+  // Prove-tier countdown: a nudge for speed, never a guillotine — answers
+  // are accepted after it runs out.
+  useEffect(() => {
+    if (phase !== 'question' || !question?.timeLimitSecs) {
+      setSecondsLeft(null)
+      return
+    }
+    setSecondsLeft(question.timeLimitSecs)
+    const timer = setInterval(() => {
+      setSecondsLeft((s) => (s === null || s <= 0 ? s : s - 1))
+    }, 1000)
+    return () => clearInterval(timer)
   }, [phase, question])
 
   function handleSubmit(e: FormEvent) {
@@ -303,6 +400,17 @@ function ExpeditionOverlay({
 
         {phase === 'question' && question && (
           <div className="quest">
+            {question.timeLimitSecs && secondsLeft !== null ? (
+              <div className="timer">
+                <div
+                  className={`timer-bar${secondsLeft <= 5 ? ' timer-low' : ''}`}
+                  style={{ width: `${(secondsLeft / question.timeLimitSecs) * 100}%` }}
+                />
+                {secondsLeft === 0 && (
+                  <p className="timer-up">⏰ Time's up — give it your best guess!</p>
+                )}
+              </div>
+            ) : null}
             <p className="quest-text">{question.text}</p>
             {question.format === 'multiple_choice' && question.choices ? (
               <div className="choice-grid">
@@ -363,9 +471,88 @@ function ExpeditionOverlay({
             {result.mastery && result.mastery.to !== 'mastered' && result.mastery.from === 'learning' && (
               <p className="tier-up">🗝️ You found the vault — now prove it to open the chest!</p>
             )}
-            <button className="btn btn-kid btn-block" onClick={onNext}>
-              Next clue →
-            </button>
+            {result.lessonPending && !result.done ? (
+              <>
+                <button className="btn btn-kid btn-block" onClick={onLesson}>
+                  🧭 The guide has a tip for you!
+                </button>
+                <button className="linklike" onClick={onNext}>
+                  Skip the tip →
+                </button>
+              </>
+            ) : (
+              <button className="btn btn-kid btn-block" onClick={onNext}>
+                Next clue →
+              </button>
+            )}
+          </div>
+        )}
+
+        {phase === 'lesson' && !lesson && (
+          <div className="quest-loading">
+            <span className="compass">🧭</span>
+            <p>The guide is drawing a picture for you…</p>
+          </div>
+        )}
+
+        {phase === 'lesson' && lesson && (
+          <div className="lesson">
+            <h3>🧭 {lesson.title}</h3>
+            <p className="lesson-explain">{lesson.explanation}</p>
+            {lesson.workedExample && <div className="worked">{lesson.workedExample}</div>}
+
+            {lesson.practice && !lessonGrade && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (practiceAnswer.trim()) onLessonAnswer(practiceAnswer.trim(), false)
+                }}
+              >
+                <div className="lesson-practice">
+                  <p className="quest-text">{lesson.practice.text}</p>
+                  <div className="answer-form">
+                    <input
+                      className="answer-input"
+                      value={practiceAnswer}
+                      onChange={(e) => setPracticeAnswer(e.target.value)}
+                      placeholder="?"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      autoFocus
+                    />
+                    <button className="btn btn-kid" disabled={!practiceAnswer.trim()}>
+                      Try it!
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="linklike"
+                    onClick={() => onLessonAnswer('', true)}
+                  >
+                    Skip practice →
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {lessonGrade && (
+              <div className={`feedback ${lessonGrade.correct ? 'feedback-yes' : 'feedback-no'}`}>
+                <div className="feedback-big">
+                  {lessonGrade.correct ? '🌟 You got it!' : '💙 Good try!'}
+                </div>
+                {!lessonGrade.correct && lessonGrade.correctAnswer && (
+                  <p className="feedback-answer">
+                    The answer was <strong>{lessonGrade.correctAnswer}</strong>
+                  </p>
+                )}
+                {lessonGrade.explanation && (
+                  <p className="feedback-explain">{lessonGrade.explanation}</p>
+                )}
+                <button className="btn btn-kid btn-block" onClick={onNext}>
+                  Back to the hunt →
+                </button>
+              </div>
+            )}
           </div>
         )}
 
