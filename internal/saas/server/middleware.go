@@ -1,0 +1,183 @@
+package server
+
+import (
+	"encoding/json"
+	"errors"
+	"log"
+	"net"
+	"net/http"
+	"sync"
+	"time"
+
+	"golang.org/x/time/rate"
+
+	"github.com/abhisek/mathiz/ent"
+	"github.com/abhisek/mathiz/internal/saas/auth"
+	"github.com/abhisek/mathiz/internal/saas/authz"
+	"github.com/abhisek/mathiz/internal/saas/family"
+)
+
+// parentHandler receives the verified principal and provisioned account.
+type parentHandler func(w http.ResponseWriter, r *http.Request, p authz.Principal, acct *ent.Account)
+
+// childHandler receives the verified principal and child profile.
+type childHandler func(w http.ResponseWriter, r *http.Request, p authz.Principal, child *ent.ChildProfile)
+
+// withParent verifies the Supabase JWT, provisions the account, and invokes
+// the handler with a parent principal.
+func (s *Server) withParent(h parentHandler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token, ok := auth.BearerToken(r.Header.Get("Authorization"))
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "missing bearer token")
+			return
+		}
+		id, err := s.verifier.Verify(r.Context(), token)
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid credentials")
+			return
+		}
+		acct, err := s.family.EnsureAccount(r.Context(), id.SupabaseUserID, id.Email, id.DisplayName)
+		if err != nil {
+			log.Printf("ensure account: %v", err)
+			writeError(w, http.StatusInternalServerError, "account provisioning failed")
+			return
+		}
+		p := authz.Principal{Kind: authz.KindParent, AccountID: acct.UID}
+		h(w, r, p, acct)
+	})
+}
+
+// withChild authenticates a child device token.
+func (s *Server) withChild(h childHandler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token, ok := auth.BearerToken(r.Header.Get("Authorization"))
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "missing bearer token")
+			return
+		}
+		_, child, err := s.family.ResolveDeviceToken(r.Context(), token)
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid credentials")
+			return
+		}
+		p := authz.Principal{
+			Kind:           authz.KindChild,
+			ChildProfileID: child.UID,
+			FamilySpaceID:  child.FamilySpaceID,
+		}
+		h(w, r, p, child)
+	})
+}
+
+// ---- JSON helpers ----
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+type errorBody struct {
+	Error string `json:"error"`
+}
+
+func writeError(w http.ResponseWriter, status int, msg string) {
+	writeJSON(w, status, errorBody{Error: msg})
+}
+
+// decodeJSON reads a bounded JSON body.
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(dst); err != nil {
+		writeError(w, http.StatusBadRequest, "malformed request body")
+		return false
+	}
+	return true
+}
+
+// writeServiceError maps family/authz errors onto HTTP statuses.
+func writeServiceError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, authz.ErrDenied):
+		// Existence probes get 404, not 403 — do not confirm object IDs the
+		// caller cannot see.
+		writeError(w, http.StatusNotFound, "not found")
+	case errors.Is(err, family.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not found")
+	case errors.Is(err, family.ErrSpaceExists):
+		writeError(w, http.StatusConflict, err.Error())
+	case errors.Is(err, family.ErrInviteInvalid),
+		errors.Is(err, family.ErrPINRequired),
+		errors.Is(err, family.ErrPINMismatch),
+		errors.Is(err, family.ErrArchived):
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, family.ErrBadPIN),
+		errors.Is(err, family.ErrBadGrade),
+		errors.Is(err, family.ErrBadName):
+		writeError(w, http.StatusBadRequest, err.Error())
+	default:
+		log.Printf("internal error: %v", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+	}
+}
+
+// ---- Per-IP rate limiting for unauthenticated join endpoints ----
+
+type ipLimiter struct {
+	mu       sync.Mutex
+	limiters map[string]*ipEntry
+	rps      rate.Limit
+	burst    int
+}
+
+type ipEntry struct {
+	lim  *rate.Limiter
+	seen time.Time
+}
+
+func newIPLimiter(rps float64, burst int) *ipLimiter {
+	return &ipLimiter{
+		limiters: make(map[string]*ipEntry),
+		rps:      rate.Limit(rps),
+		burst:    burst,
+	}
+}
+
+func (l *ipLimiter) allow(ip string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	now := time.Now()
+	// Opportunistic cleanup keeps the map bounded without a background goroutine.
+	if len(l.limiters) > 10_000 {
+		for k, e := range l.limiters {
+			if now.Sub(e.seen) > 10*time.Minute {
+				delete(l.limiters, k)
+			}
+		}
+	}
+	e, ok := l.limiters[ip]
+	if !ok {
+		e = &ipEntry{lim: rate.NewLimiter(l.rps, l.burst)}
+		l.limiters[ip] = e
+	}
+	e.seen = now
+	return e.lim.Allow()
+}
+
+func (s *Server) rateLimited(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
+		if !s.joinLimiter.allow(ip) {
+			writeError(w, http.StatusTooManyRequests, "slow down")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
