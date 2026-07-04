@@ -1,0 +1,21 @@
+# Local development infrastructure for `mathiz serve`.
+# Production uses Supabase (or any hosted PostgreSQL) instead.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mathiz
+      POSTGRES_PASSWORD: mathiz
+      POSTGRES_DB: mathiz
+    ports:
+      - "5432:5432"
+    volumes:
+      - mathiz-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mathiz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  mathiz-pgdata:

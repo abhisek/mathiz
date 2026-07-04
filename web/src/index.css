@@ -1,0 +1,603 @@
+/* Mathiz web — one small hand-rolled design system.
+   Warm paper background, violet accent for parents, sunny orange for kids. */
+
+:root {
+  --bg: #faf8f4;
+  --surface: #ffffff;
+  --ink: #241f33;
+  --ink-soft: #6f6885;
+  --line: #e7e2da;
+  --accent: #6c4ef5;
+  --accent-deep: #5638e0;
+  --accent-soft: #efeafe;
+  --kid: #f59e0b;
+  --kid-deep: #d97706;
+  --good: #16a34a;
+  --bad: #dc2626;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgb(36 31 51 / 0.06), 0 8px 24px rgb(36 31 51 / 0.07);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  margin: 0 0 0.5rem;
+  line-height: 1.2;
+}
+
+code {
+  font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+.muted {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+/* ---- Boot / loading ---- */
+
+.boot {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+}
+
+.boot-error {
+  flex-direction: column;
+  text-align: center;
+}
+
+/* ---- Brand ---- */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.7rem;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.3rem;
+  font-family: Georgia, serif;
+}
+
+.brand-small {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.brand-small .brand-mark {
+  width: 1.7rem;
+  height: 1.7rem;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+}
+
+.brand-dark {
+  color: #e6e1f0;
+}
+
+/* ---- Buttons & forms ---- */
+
+.btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.65rem 1.3rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.05s ease, background 0.15s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--accent-deep);
+}
+
+.btn-secondary {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.btn-kid {
+  background: var(--kid);
+  color: #fff;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-kid:hover {
+  background: var(--kid-deep);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.btn-ghost:hover {
+  background: rgb(36 31 51 / 0.06);
+}
+
+.btn-ghost-dark {
+  color: #a79fc0;
+}
+
+.btn-ghost-dark:hover {
+  background: rgb(255 255 255 / 0.08);
+}
+
+.btn-danger {
+  color: var(--bad);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.linklike {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent-deep);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+form label {
+  display: block;
+  margin-bottom: 0.9rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+input, select {
+  display: block;
+  width: 100%;
+  margin-top: 0.3rem;
+  padding: 0.65rem 0.8rem;
+  font: inherit;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.form-error {
+  color: var(--bad);
+  font-size: 0.9rem;
+}
+
+.form-notice {
+  color: var(--good);
+  font-size: 0.9rem;
+}
+
+/* ---- Auth page ---- */
+
+.auth-page, .join-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.auth-card, .join-card, .center-card, .modal {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  width: 100%;
+  max-width: 26rem;
+}
+
+.tagline {
+  color: var(--ink-soft);
+  margin: 0.75rem 0 1.5rem;
+  line-height: 1.5;
+}
+
+.auth-switch {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.kid-door {
+  margin-top: 1.6rem;
+  padding-top: 1.2rem;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+
+/* ---- Dashboard ---- */
+
+.page {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 4rem;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1.25rem;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.center-card {
+  margin: 12vh auto 0;
+}
+
+.family-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.5rem 0 1.25rem;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.empty {
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 2.2rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.child-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.child-card-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto 8rem;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.child-card-head:hover {
+  background: rgb(36 31 51 / 0.02);
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+.avatar-big {
+  width: 3.6rem;
+  height: 3.6rem;
+  font-size: 1.6rem;
+}
+
+.child-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.child-numbers {
+  display: flex;
+  gap: 0.9rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.progress {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+.child-detail {
+  border-top: 1px solid var(--line);
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.child-detail h4 {
+  margin-top: 1.1rem;
+  font-size: 0.95rem;
+}
+
+.learner-profile {
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  margin-top: 0.75rem;
+  font-size: 0.93rem;
+  line-height: 1.5;
+}
+
+.learner-profile h4 {
+  margin-top: 0;
+}
+
+table.sessions {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+table.sessions th, table.sessions td {
+  text-align: left;
+  padding: 0.4rem 0.6rem 0.4rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+table.sessions th {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.device-list, .invite-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+}
+
+.device-list li, .invite-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.93rem;
+}
+
+.device-list li span:first-child {
+  flex: 1;
+}
+
+.invite-list li .muted {
+  flex: 1;
+}
+
+.danger-zone {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--line);
+}
+
+.invites {
+  margin-top: 2.25rem;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.join-code {
+  background: var(--ink);
+  color: #ffe8a3;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+}
+
+/* ---- Modal ---- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(20 15 35 / 0.45);
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  z-index: 50;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+/* ---- Join (kid flow) ---- */
+
+.join-card {
+  text-align: center;
+}
+
+.join-card .brand {
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.code-input {
+  text-align: center;
+  font-family: "JetBrains Mono", Menlo, monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 1rem 0;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.9rem;
+  margin-top: 1.25rem;
+}
+
+.profile-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 1.1rem 0.75rem;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.08s ease;
+}
+
+.profile-tile:hover {
+  border-color: var(--kid);
+  transform: translateY(-2px);
+}
+
+/* ---- Play (terminal) ---- */
+
+.play-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #16121f;
+}
+
+.play-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: #1e1830;
+  border-bottom: 1px solid #2c2444;
+}
+
+.play-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pill {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+}
+
+.pill-live {
+  background: rgb(22 163 74 / 0.18);
+  color: #4ade80;
+}
+
+.pill-wait {
+  background: rgb(245 158 11 / 0.16);
+  color: #fbbf24;
+}
+
+.term-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 0.5rem;
+}
+
+.term-host {
+  height: 100%;
+}
+
+.term-host .xterm {
+  height: 100%;
+}
+
+.term-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  text-align: center;
+  background: rgb(22 18 31 / 0.88);
+  color: #e6e1f0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}

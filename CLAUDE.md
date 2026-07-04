@@ -36,6 +36,9 @@ CLI (`cmd/`) → `app.AppModel` (Bubble Tea) → `router` (screen stack) → `sc
 
 ### Key Packages
 - **`cmd/run.go`** — Dependency wiring: opens SQLite store, creates LLM provider, builds `app.Options`
+- **`cmd/serve.go`** — `mathiz serve`: multi-tenant SaaS server (PostgreSQL, Supabase auth, browser TUI)
+- **`internal/saas/`** — SaaS layer: `family` (accounts, family spaces, child profiles, join codes, device tokens), `authz` (centralized permission checks), `auth` (Supabase JWT verification), `server` (REST API), `termbridge` (TUI over WebSocket), `webui` (embedded SPA)
+- **`web/`** — Vite + React SPA (parent dashboard + kid join/play), built into `internal/saas/webui/dist` via `make web`
 - **`internal/app/`** — Root Bubble Tea model, receives `app.Options` for DI
 - **`internal/router/`** — Stack-based screen navigation (push/pop)
 - **`internal/screen/`** — `Screen` interface all screens implement; `KeyHintProvider` optional interface for footer hints
@@ -49,7 +52,10 @@ CLI (`cmd/`) → `app.AppModel` (Bubble Tea) → `router` (screen stack) → `sc
 - **`internal/store/`** — Event sourcing + snapshots; `EventRepo` and `SnapshotRepo` interfaces
 
 ### Persistence Pattern
-Event sourcing via Ent schemas sharing `EventMixin` (sequence number + timestamp). State reconstructed from snapshots + events.
+Event sourcing via Ent schemas sharing `EventMixin` (sequence number + timestamp + owner_id). State reconstructed from snapshots + events. `store.Open` accepts a SQLite path (local mode, owner `""`) or a `postgres://` DSN (SaaS mode). In SaaS mode every learner's data is scoped via `Store.EventRepoFor(childProfileID)` / `SnapshotRepoFor(childProfileID)` — never use the unscoped repos server-side.
+
+### SaaS Testing
+`MATHIZ_TEST_DATABASE_URL=postgres://... go test ./internal/store/` runs the owner-isolation suite against real PostgreSQL (SQLite otherwise).
 
 ## Charm Libraries v2 API
 
