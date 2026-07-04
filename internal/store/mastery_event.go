@@ -16,6 +16,7 @@ func (r *eventRepo) AppendMasteryEvent(ctx context.Context, data MasteryEventDat
 
 	builder := r.client.MasteryEvent.Create().
 		SetSequence(seqNum).
+		SetOwnerID(r.owner).
 		SetSkillID(data.SkillID).
 		SetFromState(data.FromState).
 		SetToState(data.ToState).
@@ -36,6 +37,7 @@ func (r *eventRepo) AppendMasteryEvent(ctx context.Context, data MasteryEventDat
 func (r *eventRepo) RecentReviewAccuracy(ctx context.Context, skillID string, lastN int) (float64, int, error) {
 	events, err := r.client.AnswerEvent.Query().
 		Where(
+			answerevent.OwnerID(r.owner),
 			answerevent.SkillID(skillID),
 			answerevent.Category("review"),
 		).

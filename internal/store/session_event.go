@@ -27,6 +27,7 @@ func (r *eventRepo) AppendSessionEvent(ctx context.Context, data SessionEventDat
 
 	builder := r.client.SessionEvent.Create().
 		SetSequence(seqNum).
+		SetOwnerID(r.owner).
 		SetSessionID(data.SessionID).
 		SetAction(data.Action).
 		SetQuestionsServed(data.QuestionsServed).
@@ -52,6 +53,7 @@ func (r *eventRepo) AppendAnswerEvent(ctx context.Context, data AnswerEventData)
 
 	_, err = r.client.AnswerEvent.Create().
 		SetSequence(seqNum).
+		SetOwnerID(r.owner).
 		SetSessionID(data.SessionID).
 		SetSkillID(data.SkillID).
 		SetTier(data.Tier).
@@ -71,7 +73,7 @@ func (r *eventRepo) AppendAnswerEvent(ctx context.Context, data AnswerEventData)
 
 func (r *eventRepo) LatestAnswerTime(ctx context.Context, skillID string) (time.Time, error) {
 	ae, err := r.client.AnswerEvent.Query().
-		Where(answerevent.SkillID(skillID)).
+		Where(answerevent.OwnerID(r.owner), answerevent.SkillID(skillID)).
 		Order(ent.Desc(answerevent.FieldTimestamp)).
 		First(ctx)
 	if err != nil {
@@ -85,7 +87,7 @@ func (r *eventRepo) LatestAnswerTime(ctx context.Context, skillID string) (time.
 
 func (r *eventRepo) SkillAccuracy(ctx context.Context, skillID string) (float64, error) {
 	events, err := r.client.AnswerEvent.Query().
-		Where(answerevent.SkillID(skillID)).
+		Where(answerevent.OwnerID(r.owner), answerevent.SkillID(skillID)).
 		All(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("query skill accuracy: %w", err)

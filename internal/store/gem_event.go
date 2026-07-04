@@ -17,6 +17,7 @@ func (r *eventRepo) AppendGemEvent(ctx context.Context, data GemEventData) error
 
 	builder := r.client.GemEvent.Create().
 		SetSequence(seqNum).
+		SetOwnerID(r.owner).
 		SetGemType(data.GemType).
 		SetRarity(data.Rarity).
 		SetSessionID(data.SessionID).
@@ -38,6 +39,7 @@ func (r *eventRepo) AppendGemEvent(ctx context.Context, data GemEventData) error
 
 func (r *eventRepo) QueryGemEvents(ctx context.Context, opts QueryOpts) ([]GemEventRecord, error) {
 	query := r.client.GemEvent.Query().
+		Where(gemevent.OwnerID(r.owner)).
 		Order(ent.Desc(gemevent.FieldSequence))
 
 	if opts.Limit > 0 {
@@ -78,7 +80,9 @@ func (r *eventRepo) QueryGemEvents(ctx context.Context, opts QueryOpts) ([]GemEv
 }
 
 func (r *eventRepo) GemCounts(ctx context.Context) (map[string]int, int, error) {
-	events, err := r.client.GemEvent.Query().All(ctx)
+	events, err := r.client.GemEvent.Query().
+		Where(gemevent.OwnerID(r.owner)).
+		All(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("query gem counts: %w", err)
 	}
@@ -94,7 +98,7 @@ func (r *eventRepo) GemCounts(ctx context.Context) (map[string]int, int, error) 
 
 func (r *eventRepo) QuerySessionSummaries(ctx context.Context, opts QueryOpts) ([]SessionSummaryRecord, error) {
 	query := r.client.SessionEvent.Query().
-		Where(sessionevent.Action("end")).
+		Where(sessionevent.OwnerID(r.owner), sessionevent.Action("end")).
 		Order(ent.Desc(sessionevent.FieldSequence))
 
 	if opts.Limit > 0 {
@@ -110,7 +114,7 @@ func (r *eventRepo) QuerySessionSummaries(ctx context.Context, opts QueryOpts) (
 	for i, e := range events {
 		// Count gems for this session.
 		gemCount, _ := r.client.GemEvent.Query().
-			Where(gemevent.SessionID(e.SessionID)).
+			Where(gemevent.OwnerID(r.owner), gemevent.SessionID(e.SessionID)).
 			Count(ctx)
 
 		records[i] = SessionSummaryRecord{

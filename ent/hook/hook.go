@@ -9,6 +9,18 @@ import (
 	"github.com/abhisek/mathiz/ent"
 )
 
+// The AccountFunc type is an adapter to allow the use of ordinary
+// function as Account mutator.
+type AccountFunc func(context.Context, *ent.AccountMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AccountFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AccountMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AccountMutation", m)
+}
+
 // The AnswerEventFunc type is an adapter to allow the use of ordinary
 // function as AnswerEvent mutator.
 type AnswerEventFunc func(context.Context, *ent.AnswerEventMutation) (ent.Value, error)
@@ -21,6 +33,30 @@ func (f AnswerEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AnswerEventMutation", m)
 }
 
+// The ChildProfileFunc type is an adapter to allow the use of ordinary
+// function as ChildProfile mutator.
+type ChildProfileFunc func(context.Context, *ent.ChildProfileMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChildProfileFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChildProfileMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChildProfileMutation", m)
+}
+
+// The DeviceTokenFunc type is an adapter to allow the use of ordinary
+// function as DeviceToken mutator.
+type DeviceTokenFunc func(context.Context, *ent.DeviceTokenMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DeviceTokenFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DeviceTokenMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DeviceTokenMutation", m)
+}
+
 // The DiagnosisEventFunc type is an adapter to allow the use of ordinary
 // function as DiagnosisEvent mutator.
 type DiagnosisEventFunc func(context.Context, *ent.DiagnosisEventMutation) (ent.Value, error)
@@ -31,6 +67,18 @@ func (f DiagnosisEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagnosisEventMutation", m)
+}
+
+// The FamilySpaceFunc type is an adapter to allow the use of ordinary
+// function as FamilySpace mutator.
+type FamilySpaceFunc func(context.Context, *ent.FamilySpaceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f FamilySpaceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FamilySpaceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FamilySpaceMutation", m)
 }
 
 // The GemEventFunc type is an adapter to allow the use of ordinary
@@ -55,6 +103,18 @@ func (f HintEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, e
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.HintEventMutation", m)
+}
+
+// The InviteFunc type is an adapter to allow the use of ordinary
+// function as Invite mutator.
+type InviteFunc func(context.Context, *ent.InviteMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f InviteFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.InviteMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InviteMutation", m)
 }
 
 // The LLMRequestEventFunc type is an adapter to allow the use of ordinary

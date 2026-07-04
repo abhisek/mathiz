@@ -6,17 +6,32 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// Account is the predicate function for account builders.
+type Account func(*sql.Selector)
+
 // AnswerEvent is the predicate function for answerevent builders.
 type AnswerEvent func(*sql.Selector)
 
+// ChildProfile is the predicate function for childprofile builders.
+type ChildProfile func(*sql.Selector)
+
+// DeviceToken is the predicate function for devicetoken builders.
+type DeviceToken func(*sql.Selector)
+
 // DiagnosisEvent is the predicate function for diagnosisevent builders.
 type DiagnosisEvent func(*sql.Selector)
+
+// FamilySpace is the predicate function for familyspace builders.
+type FamilySpace func(*sql.Selector)
 
 // GemEvent is the predicate function for gemevent builders.
 type GemEvent func(*sql.Selector)
 
 // HintEvent is the predicate function for hintevent builders.
 type HintEvent func(*sql.Selector)
+
+// Invite is the predicate function for invite builders.
+type Invite func(*sql.Selector)
 
 // LLMRequestEvent is the predicate function for llmrequestevent builders.
 type LLMRequestEvent func(*sql.Selector)

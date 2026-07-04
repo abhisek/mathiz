@@ -13,6 +13,7 @@ func (r *eventRepo) AppendLessonEvent(ctx context.Context, data LessonEventData)
 
 	_, err = r.client.LessonEvent.Create().
 		SetSequence(seqNum).
+		SetOwnerID(r.owner).
 		SetSessionID(data.SessionID).
 		SetSkillID(data.SkillID).
 		SetLessonTitle(data.LessonTitle).

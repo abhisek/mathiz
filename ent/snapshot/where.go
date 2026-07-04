@@ -64,6 +64,11 @@ func Timestamp(v time.Time) predicate.Snapshot {
 	return predicate.Snapshot(sql.FieldEQ(FieldTimestamp, v))
 }
 
+// OwnerID applies equality check predicate on the "owner_id" field. It's identical to OwnerIDEQ.
+func OwnerID(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldEQ(FieldOwnerID, v))
+}
+
 // SequenceEQ applies the EQ predicate on the "sequence" field.
 func SequenceEQ(v int64) predicate.Snapshot {
 	return predicate.Snapshot(sql.FieldEQ(FieldSequence, v))
@@ -142,6 +147,71 @@ func TimestampLT(v time.Time) predicate.Snapshot {
 // TimestampLTE applies the LTE predicate on the "timestamp" field.
 func TimestampLTE(v time.Time) predicate.Snapshot {
 	return predicate.Snapshot(sql.FieldLTE(FieldTimestamp, v))
+}
+
+// OwnerIDEQ applies the EQ predicate on the "owner_id" field.
+func OwnerIDEQ(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldEQ(FieldOwnerID, v))
+}
+
+// OwnerIDNEQ applies the NEQ predicate on the "owner_id" field.
+func OwnerIDNEQ(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldNEQ(FieldOwnerID, v))
+}
+
+// OwnerIDIn applies the In predicate on the "owner_id" field.
+func OwnerIDIn(vs ...string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldIn(FieldOwnerID, vs...))
+}
+
+// OwnerIDNotIn applies the NotIn predicate on the "owner_id" field.
+func OwnerIDNotIn(vs ...string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldNotIn(FieldOwnerID, vs...))
+}
+
+// OwnerIDGT applies the GT predicate on the "owner_id" field.
+func OwnerIDGT(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldGT(FieldOwnerID, v))
+}
+
+// OwnerIDGTE applies the GTE predicate on the "owner_id" field.
+func OwnerIDGTE(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldGTE(FieldOwnerID, v))
+}
+
+// OwnerIDLT applies the LT predicate on the "owner_id" field.
+func OwnerIDLT(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldLT(FieldOwnerID, v))
+}
+
+// OwnerIDLTE applies the LTE predicate on the "owner_id" field.
+func OwnerIDLTE(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldLTE(FieldOwnerID, v))
+}
+
+// OwnerIDContains applies the Contains predicate on the "owner_id" field.
+func OwnerIDContains(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldContains(FieldOwnerID, v))
+}
+
+// OwnerIDHasPrefix applies the HasPrefix predicate on the "owner_id" field.
+func OwnerIDHasPrefix(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldHasPrefix(FieldOwnerID, v))
+}
+
+// OwnerIDHasSuffix applies the HasSuffix predicate on the "owner_id" field.
+func OwnerIDHasSuffix(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldHasSuffix(FieldOwnerID, v))
+}
+
+// OwnerIDEqualFold applies the EqualFold predicate on the "owner_id" field.
+func OwnerIDEqualFold(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldEqualFold(FieldOwnerID, v))
+}
+
+// OwnerIDContainsFold applies the ContainsFold predicate on the "owner_id" field.
+func OwnerIDContainsFold(v string) predicate.Snapshot {
+	return predicate.Snapshot(sql.FieldContainsFold(FieldOwnerID, v))
 }
 
 // And groups predicates with the AND operator between them.

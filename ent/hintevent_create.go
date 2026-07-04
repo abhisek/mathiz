@@ -40,6 +40,20 @@ func (_c *HintEventCreate) SetNillableTimestamp(v *time.Time) *HintEventCreate {
 	return _c
 }
 
+// SetOwnerID sets the "owner_id" field.
+func (_c *HintEventCreate) SetOwnerID(v string) *HintEventCreate {
+	_c.mutation.SetOwnerID(v)
+	return _c
+}
+
+// SetNillableOwnerID sets the "owner_id" field if the given value is not nil.
+func (_c *HintEventCreate) SetNillableOwnerID(v *string) *HintEventCreate {
+	if v != nil {
+		_c.SetOwnerID(*v)
+	}
+	return _c
+}
+
 // SetSessionID sets the "session_id" field.
 func (_c *HintEventCreate) SetSessionID(v string) *HintEventCreate {
 	_c.mutation.SetSessionID(v)
@@ -103,6 +117,10 @@ func (_c *HintEventCreate) defaults() {
 		v := hintevent.DefaultTimestamp()
 		_c.mutation.SetTimestamp(v)
 	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		v := hintevent.DefaultOwnerID
+		_c.mutation.SetOwnerID(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -112,6 +130,9 @@ func (_c *HintEventCreate) check() error {
 	}
 	if _, ok := _c.mutation.Timestamp(); !ok {
 		return &ValidationError{Name: "timestamp", err: errors.New(`ent: missing required field "HintEvent.timestamp"`)}
+	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "HintEvent.owner_id"`)}
 	}
 	if _, ok := _c.mutation.SessionID(); !ok {
 		return &ValidationError{Name: "session_id", err: errors.New(`ent: missing required field "HintEvent.session_id"`)}
@@ -178,6 +199,10 @@ func (_c *HintEventCreate) createSpec() (*HintEvent, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Timestamp(); ok {
 		_spec.SetField(hintevent.FieldTimestamp, field.TypeTime, value)
 		_node.Timestamp = value
+	}
+	if value, ok := _c.mutation.OwnerID(); ok {
+		_spec.SetField(hintevent.FieldOwnerID, field.TypeString, value)
+		_node.OwnerID = value
 	}
 	if value, ok := _c.mutation.SessionID(); ok {
 		_spec.SetField(hintevent.FieldSessionID, field.TypeString, value)

@@ -23,6 +23,10 @@ func (Snapshot) Fields() []ent.Field {
 			Comment("When the snapshot was taken"),
 		field.JSON("data", map[string]any{}).
 			Comment("Full learner state as JSON"),
+		field.String("owner_id").
+			Default("").
+			Immutable().
+			Comment("Owning learner (child profile ID in SaaS mode, empty for local single-user)"),
 	}
 }
 
@@ -30,5 +34,6 @@ func (Snapshot) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("timestamp"),
 		index.Fields("sequence"),
+		index.Fields("owner_id", "timestamp"),
 	}
 }

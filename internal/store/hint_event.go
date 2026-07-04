@@ -13,6 +13,7 @@ func (r *eventRepo) AppendHintEvent(ctx context.Context, data HintEventData) err
 
 	_, err = r.client.HintEvent.Create().
 		SetSequence(seqNum).
+		SetOwnerID(r.owner).
 		SetSessionID(data.SessionID).
 		SetSkillID(data.SkillID).
 		SetQuestionText(data.QuestionText).

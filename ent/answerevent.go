@@ -21,6 +21,8 @@ type AnswerEvent struct {
 	Sequence int64 `json:"sequence,omitempty"`
 	// UTC wall-clock time of the event
 	Timestamp time.Time `json:"timestamp,omitempty"`
+	// Owning learner (child profile ID in SaaS mode, empty for local single-user)
+	OwnerID string `json:"owner_id,omitempty"`
 	// Links to SessionEvent
 	SessionID string `json:"session_id,omitempty"`
 	// Skill this question was for
@@ -53,7 +55,7 @@ func (*AnswerEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case answerevent.FieldID, answerevent.FieldSequence, answerevent.FieldTimeMs:
 			values[i] = new(sql.NullInt64)
-		case answerevent.FieldSessionID, answerevent.FieldSkillID, answerevent.FieldTier, answerevent.FieldCategory, answerevent.FieldQuestionText, answerevent.FieldCorrectAnswer, answerevent.FieldLearnerAnswer, answerevent.FieldAnswerFormat:
+		case answerevent.FieldOwnerID, answerevent.FieldSessionID, answerevent.FieldSkillID, answerevent.FieldTier, answerevent.FieldCategory, answerevent.FieldQuestionText, answerevent.FieldCorrectAnswer, answerevent.FieldLearnerAnswer, answerevent.FieldAnswerFormat:
 			values[i] = new(sql.NullString)
 		case answerevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -89,6 +91,12 @@ func (_m *AnswerEvent) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field timestamp", values[i])
 			} else if value.Valid {
 				_m.Timestamp = value.Time
+			}
+		case answerevent.FieldOwnerID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field owner_id", values[i])
+			} else if value.Valid {
+				_m.OwnerID = value.String
 			}
 		case answerevent.FieldSessionID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -191,6 +199,9 @@ func (_m *AnswerEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("timestamp=")
 	builder.WriteString(_m.Timestamp.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("owner_id=")
+	builder.WriteString(_m.OwnerID)
 	builder.WriteString(", ")
 	builder.WriteString("session_id=")
 	builder.WriteString(_m.SessionID)

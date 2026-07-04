@@ -21,6 +21,8 @@ type LLMRequestEvent struct {
 	Sequence int64 `json:"sequence,omitempty"`
 	// UTC wall-clock time of the event
 	Timestamp time.Time `json:"timestamp,omitempty"`
+	// Owning learner (child profile ID in SaaS mode, empty for local single-user)
+	OwnerID string `json:"owner_id,omitempty"`
 	// Provider name: anthropic, openai, gemini
 	Provider string `json:"provider,omitempty"`
 	// Actual model ID used
@@ -53,7 +55,7 @@ func (*LLMRequestEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case llmrequestevent.FieldID, llmrequestevent.FieldSequence, llmrequestevent.FieldInputTokens, llmrequestevent.FieldOutputTokens, llmrequestevent.FieldLatencyMs:
 			values[i] = new(sql.NullInt64)
-		case llmrequestevent.FieldProvider, llmrequestevent.FieldModel, llmrequestevent.FieldPurpose, llmrequestevent.FieldErrorMessage, llmrequestevent.FieldRequestBody, llmrequestevent.FieldResponseBody:
+		case llmrequestevent.FieldOwnerID, llmrequestevent.FieldProvider, llmrequestevent.FieldModel, llmrequestevent.FieldPurpose, llmrequestevent.FieldErrorMessage, llmrequestevent.FieldRequestBody, llmrequestevent.FieldResponseBody:
 			values[i] = new(sql.NullString)
 		case llmrequestevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -89,6 +91,12 @@ func (_m *LLMRequestEvent) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field timestamp", values[i])
 			} else if value.Valid {
 				_m.Timestamp = value.Time
+			}
+		case llmrequestevent.FieldOwnerID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field owner_id", values[i])
+			} else if value.Valid {
+				_m.OwnerID = value.String
 			}
 		case llmrequestevent.FieldProvider:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -191,6 +199,9 @@ func (_m *LLMRequestEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("timestamp=")
 	builder.WriteString(_m.Timestamp.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("owner_id=")
+	builder.WriteString(_m.OwnerID)
 	builder.WriteString(", ")
 	builder.WriteString("provider=")
 	builder.WriteString(_m.Provider)

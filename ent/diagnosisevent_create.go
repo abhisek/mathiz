@@ -40,6 +40,20 @@ func (_c *DiagnosisEventCreate) SetNillableTimestamp(v *time.Time) *DiagnosisEve
 	return _c
 }
 
+// SetOwnerID sets the "owner_id" field.
+func (_c *DiagnosisEventCreate) SetOwnerID(v string) *DiagnosisEventCreate {
+	_c.mutation.SetOwnerID(v)
+	return _c
+}
+
+// SetNillableOwnerID sets the "owner_id" field if the given value is not nil.
+func (_c *DiagnosisEventCreate) SetNillableOwnerID(v *string) *DiagnosisEventCreate {
+	if v != nil {
+		_c.SetOwnerID(*v)
+	}
+	return _c
+}
+
 // SetSessionID sets the "session_id" field.
 func (_c *DiagnosisEventCreate) SetSessionID(v string) *DiagnosisEventCreate {
 	_c.mutation.SetSessionID(v)
@@ -155,6 +169,10 @@ func (_c *DiagnosisEventCreate) defaults() {
 		v := diagnosisevent.DefaultTimestamp()
 		_c.mutation.SetTimestamp(v)
 	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		v := diagnosisevent.DefaultOwnerID
+		_c.mutation.SetOwnerID(v)
+	}
 	if _, ok := _c.mutation.Reasoning(); !ok {
 		v := diagnosisevent.DefaultReasoning
 		_c.mutation.SetReasoning(v)
@@ -168,6 +186,9 @@ func (_c *DiagnosisEventCreate) check() error {
 	}
 	if _, ok := _c.mutation.Timestamp(); !ok {
 		return &ValidationError{Name: "timestamp", err: errors.New(`ent: missing required field "DiagnosisEvent.timestamp"`)}
+	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "DiagnosisEvent.owner_id"`)}
 	}
 	if _, ok := _c.mutation.SessionID(); !ok {
 		return &ValidationError{Name: "session_id", err: errors.New(`ent: missing required field "DiagnosisEvent.session_id"`)}
@@ -261,6 +282,10 @@ func (_c *DiagnosisEventCreate) createSpec() (*DiagnosisEvent, *sqlgraph.CreateS
 	if value, ok := _c.mutation.Timestamp(); ok {
 		_spec.SetField(diagnosisevent.FieldTimestamp, field.TypeTime, value)
 		_node.Timestamp = value
+	}
+	if value, ok := _c.mutation.OwnerID(); ok {
+		_spec.SetField(diagnosisevent.FieldOwnerID, field.TypeString, value)
+		_node.OwnerID = value
 	}
 	if value, ok := _c.mutation.SessionID(); ok {
 		_spec.SetField(diagnosisevent.FieldSessionID, field.TypeString, value)

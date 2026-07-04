@@ -21,6 +21,8 @@ type HintEvent struct {
 	Sequence int64 `json:"sequence,omitempty"`
 	// UTC wall-clock time of the event
 	Timestamp time.Time `json:"timestamp,omitempty"`
+	// Owning learner (child profile ID in SaaS mode, empty for local single-user)
+	OwnerID string `json:"owner_id,omitempty"`
 	// SessionID holds the value of the "session_id" field.
 	SessionID string `json:"session_id,omitempty"`
 	// SkillID holds the value of the "skill_id" field.
@@ -39,7 +41,7 @@ func (*HintEvent) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case hintevent.FieldID, hintevent.FieldSequence:
 			values[i] = new(sql.NullInt64)
-		case hintevent.FieldSessionID, hintevent.FieldSkillID, hintevent.FieldQuestionText, hintevent.FieldHintText:
+		case hintevent.FieldOwnerID, hintevent.FieldSessionID, hintevent.FieldSkillID, hintevent.FieldQuestionText, hintevent.FieldHintText:
 			values[i] = new(sql.NullString)
 		case hintevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -75,6 +77,12 @@ func (_m *HintEvent) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field timestamp", values[i])
 			} else if value.Valid {
 				_m.Timestamp = value.Time
+			}
+		case hintevent.FieldOwnerID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field owner_id", values[i])
+			} else if value.Valid {
+				_m.OwnerID = value.String
 			}
 		case hintevent.FieldSessionID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -141,6 +149,9 @@ func (_m *HintEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("timestamp=")
 	builder.WriteString(_m.Timestamp.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("owner_id=")
+	builder.WriteString(_m.OwnerID)
 	builder.WriteString(", ")
 	builder.WriteString("session_id=")
 	builder.WriteString(_m.SessionID)

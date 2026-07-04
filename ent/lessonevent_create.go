@@ -40,6 +40,20 @@ func (_c *LessonEventCreate) SetNillableTimestamp(v *time.Time) *LessonEventCrea
 	return _c
 }
 
+// SetOwnerID sets the "owner_id" field.
+func (_c *LessonEventCreate) SetOwnerID(v string) *LessonEventCreate {
+	_c.mutation.SetOwnerID(v)
+	return _c
+}
+
+// SetNillableOwnerID sets the "owner_id" field if the given value is not nil.
+func (_c *LessonEventCreate) SetNillableOwnerID(v *string) *LessonEventCreate {
+	if v != nil {
+		_c.SetOwnerID(*v)
+	}
+	return _c
+}
+
 // SetSessionID sets the "session_id" field.
 func (_c *LessonEventCreate) SetSessionID(v string) *LessonEventCreate {
 	_c.mutation.SetSessionID(v)
@@ -115,6 +129,10 @@ func (_c *LessonEventCreate) defaults() {
 		v := lessonevent.DefaultTimestamp()
 		_c.mutation.SetTimestamp(v)
 	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		v := lessonevent.DefaultOwnerID
+		_c.mutation.SetOwnerID(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -124,6 +142,9 @@ func (_c *LessonEventCreate) check() error {
 	}
 	if _, ok := _c.mutation.Timestamp(); !ok {
 		return &ValidationError{Name: "timestamp", err: errors.New(`ent: missing required field "LessonEvent.timestamp"`)}
+	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "LessonEvent.owner_id"`)}
 	}
 	if _, ok := _c.mutation.SessionID(); !ok {
 		return &ValidationError{Name: "session_id", err: errors.New(`ent: missing required field "LessonEvent.session_id"`)}
@@ -191,6 +212,10 @@ func (_c *LessonEventCreate) createSpec() (*LessonEvent, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Timestamp(); ok {
 		_spec.SetField(lessonevent.FieldTimestamp, field.TypeTime, value)
 		_node.Timestamp = value
+	}
+	if value, ok := _c.mutation.OwnerID(); ok {
+		_spec.SetField(lessonevent.FieldOwnerID, field.TypeString, value)
+		_node.OwnerID = value
 	}
 	if value, ok := _c.mutation.SessionID(); ok {
 		_spec.SetField(lessonevent.FieldSessionID, field.TypeString, value)

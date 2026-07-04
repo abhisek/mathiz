@@ -41,6 +41,20 @@ func (_c *SessionEventCreate) SetNillableTimestamp(v *time.Time) *SessionEventCr
 	return _c
 }
 
+// SetOwnerID sets the "owner_id" field.
+func (_c *SessionEventCreate) SetOwnerID(v string) *SessionEventCreate {
+	_c.mutation.SetOwnerID(v)
+	return _c
+}
+
+// SetNillableOwnerID sets the "owner_id" field if the given value is not nil.
+func (_c *SessionEventCreate) SetNillableOwnerID(v *string) *SessionEventCreate {
+	if v != nil {
+		_c.SetOwnerID(*v)
+	}
+	return _c
+}
+
 // SetSessionID sets the "session_id" field.
 func (_c *SessionEventCreate) SetSessionID(v string) *SessionEventCreate {
 	_c.mutation.SetSessionID(v)
@@ -140,6 +154,10 @@ func (_c *SessionEventCreate) defaults() {
 		v := sessionevent.DefaultTimestamp()
 		_c.mutation.SetTimestamp(v)
 	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		v := sessionevent.DefaultOwnerID
+		_c.mutation.SetOwnerID(v)
+	}
 	if _, ok := _c.mutation.QuestionsServed(); !ok {
 		v := sessionevent.DefaultQuestionsServed
 		_c.mutation.SetQuestionsServed(v)
@@ -161,6 +179,9 @@ func (_c *SessionEventCreate) check() error {
 	}
 	if _, ok := _c.mutation.Timestamp(); !ok {
 		return &ValidationError{Name: "timestamp", err: errors.New(`ent: missing required field "SessionEvent.timestamp"`)}
+	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "SessionEvent.owner_id"`)}
 	}
 	if _, ok := _c.mutation.SessionID(); !ok {
 		return &ValidationError{Name: "session_id", err: errors.New(`ent: missing required field "SessionEvent.session_id"`)}
@@ -220,6 +241,10 @@ func (_c *SessionEventCreate) createSpec() (*SessionEvent, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.Timestamp(); ok {
 		_spec.SetField(sessionevent.FieldTimestamp, field.TypeTime, value)
 		_node.Timestamp = value
+	}
+	if value, ok := _c.mutation.OwnerID(); ok {
+		_spec.SetField(sessionevent.FieldOwnerID, field.TypeString, value)
+		_node.OwnerID = value
 	}
 	if value, ok := _c.mutation.SessionID(); ok {
 		_spec.SetField(sessionevent.FieldSessionID, field.TypeString, value)

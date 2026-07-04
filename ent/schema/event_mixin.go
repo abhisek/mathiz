@@ -26,6 +26,10 @@ func (EventMixin) Fields() []ent.Field {
 			Default(time.Now).
 			Immutable().
 			Comment("UTC wall-clock time of the event"),
+		field.String("owner_id").
+			Default("").
+			Immutable().
+			Comment("Owning learner (child profile ID in SaaS mode, empty for local single-user)"),
 	}
 }
 
@@ -33,5 +37,6 @@ func (EventMixin) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("sequence"),
 		index.Fields("timestamp"),
+		index.Fields("owner_id", "sequence"),
 	}
 }

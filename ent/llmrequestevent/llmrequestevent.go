@@ -17,6 +17,8 @@ const (
 	FieldSequence = "sequence"
 	// FieldTimestamp holds the string denoting the timestamp field in the database.
 	FieldTimestamp = "timestamp"
+	// FieldOwnerID holds the string denoting the owner_id field in the database.
+	FieldOwnerID = "owner_id"
 	// FieldProvider holds the string denoting the provider field in the database.
 	FieldProvider = "provider"
 	// FieldModel holds the string denoting the model field in the database.
@@ -46,6 +48,7 @@ var Columns = []string{
 	FieldID,
 	FieldSequence,
 	FieldTimestamp,
+	FieldOwnerID,
 	FieldProvider,
 	FieldModel,
 	FieldPurpose,
@@ -71,6 +74,8 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultTimestamp holds the default value on creation for the "timestamp" field.
 	DefaultTimestamp func() time.Time
+	// DefaultOwnerID holds the default value on creation for the "owner_id" field.
+	DefaultOwnerID string
 	// DefaultInputTokens holds the default value on creation for the "input_tokens" field.
 	DefaultInputTokens int
 	// DefaultOutputTokens holds the default value on creation for the "output_tokens" field.
@@ -101,6 +106,11 @@ func BySequence(opts ...sql.OrderTermOption) OrderOption {
 // ByTimestamp orders the results by the timestamp field.
 func ByTimestamp(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTimestamp, opts...).ToFunc()
+}
+
+// ByOwnerID orders the results by the owner_id field.
+func ByOwnerID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOwnerID, opts...).ToFunc()
 }
 
 // ByProvider orders the results by the provider field.

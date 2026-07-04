@@ -46,6 +46,20 @@ func (_c *SnapshotCreate) SetData(v map[string]interface{}) *SnapshotCreate {
 	return _c
 }
 
+// SetOwnerID sets the "owner_id" field.
+func (_c *SnapshotCreate) SetOwnerID(v string) *SnapshotCreate {
+	_c.mutation.SetOwnerID(v)
+	return _c
+}
+
+// SetNillableOwnerID sets the "owner_id" field if the given value is not nil.
+func (_c *SnapshotCreate) SetNillableOwnerID(v *string) *SnapshotCreate {
+	if v != nil {
+		_c.SetOwnerID(*v)
+	}
+	return _c
+}
+
 // Mutation returns the SnapshotMutation object of the builder.
 func (_c *SnapshotCreate) Mutation() *SnapshotMutation {
 	return _c.mutation
@@ -85,6 +99,10 @@ func (_c *SnapshotCreate) defaults() {
 		v := snapshot.DefaultTimestamp()
 		_c.mutation.SetTimestamp(v)
 	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		v := snapshot.DefaultOwnerID
+		_c.mutation.SetOwnerID(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -97,6 +115,9 @@ func (_c *SnapshotCreate) check() error {
 	}
 	if _, ok := _c.mutation.Data(); !ok {
 		return &ValidationError{Name: "data", err: errors.New(`ent: missing required field "Snapshot.data"`)}
+	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "Snapshot.owner_id"`)}
 	}
 	return nil
 }
@@ -135,6 +156,10 @@ func (_c *SnapshotCreate) createSpec() (*Snapshot, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Data(); ok {
 		_spec.SetField(snapshot.FieldData, field.TypeJSON, value)
 		_node.Data = value
+	}
+	if value, ok := _c.mutation.OwnerID(); ok {
+		_spec.SetField(snapshot.FieldOwnerID, field.TypeString, value)
+		_node.OwnerID = value
 	}
 	return _node, _spec
 }

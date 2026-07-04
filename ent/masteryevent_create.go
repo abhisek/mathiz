@@ -40,6 +40,20 @@ func (_c *MasteryEventCreate) SetNillableTimestamp(v *time.Time) *MasteryEventCr
 	return _c
 }
 
+// SetOwnerID sets the "owner_id" field.
+func (_c *MasteryEventCreate) SetOwnerID(v string) *MasteryEventCreate {
+	_c.mutation.SetOwnerID(v)
+	return _c
+}
+
+// SetNillableOwnerID sets the "owner_id" field if the given value is not nil.
+func (_c *MasteryEventCreate) SetNillableOwnerID(v *string) *MasteryEventCreate {
+	if v != nil {
+		_c.SetOwnerID(*v)
+	}
+	return _c
+}
+
 // SetSkillID sets the "skill_id" field.
 func (_c *MasteryEventCreate) SetSkillID(v string) *MasteryEventCreate {
 	_c.mutation.SetSkillID(v)
@@ -123,6 +137,10 @@ func (_c *MasteryEventCreate) defaults() {
 		v := masteryevent.DefaultTimestamp()
 		_c.mutation.SetTimestamp(v)
 	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		v := masteryevent.DefaultOwnerID
+		_c.mutation.SetOwnerID(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -132,6 +150,9 @@ func (_c *MasteryEventCreate) check() error {
 	}
 	if _, ok := _c.mutation.Timestamp(); !ok {
 		return &ValidationError{Name: "timestamp", err: errors.New(`ent: missing required field "MasteryEvent.timestamp"`)}
+	}
+	if _, ok := _c.mutation.OwnerID(); !ok {
+		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "MasteryEvent.owner_id"`)}
 	}
 	if _, ok := _c.mutation.SkillID(); !ok {
 		return &ValidationError{Name: "skill_id", err: errors.New(`ent: missing required field "MasteryEvent.skill_id"`)}
@@ -201,6 +222,10 @@ func (_c *MasteryEventCreate) createSpec() (*MasteryEvent, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.Timestamp(); ok {
 		_spec.SetField(masteryevent.FieldTimestamp, field.TypeTime, value)
 		_node.Timestamp = value
+	}
+	if value, ok := _c.mutation.OwnerID(); ok {
+		_spec.SetField(masteryevent.FieldOwnerID, field.TypeString, value)
+		_node.OwnerID = value
 	}
 	if value, ok := _c.mutation.SkillID(); ok {
 		_spec.SetField(masteryevent.FieldSkillID, field.TypeString, value)
