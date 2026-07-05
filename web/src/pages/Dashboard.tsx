@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import {
   api,
   type BillingInfo,
+  type ChildProfile,
   type ChildStats,
   type ChildWithSummary,
   type Device,
@@ -138,9 +139,11 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
     void refresh()
   }, [refresh])
 
+  const [inviteDays, setInviteDays] = useState(7)
+
   async function mintInvite() {
     try {
-      await api.createInvite(token, family.id)
+      await api.createInvite(token, family.id, inviteDays * 24)
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -165,6 +168,20 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
         </button>
       </div>
       {error && <p className="form-error">{error}</p>}
+
+      {(() => {
+        const active = children.filter((c) => !c.profile.archived)
+        const noPin = active.filter((c) => !c.profile.hasPin)
+        if (active.length < 2 || noPin.length === 0) return null
+        return (
+          <div className="tip-card">
+            🔒 With more than one explorer aboard, a PIN on each profile keeps
+            siblings from mixing up each other's maps. Missing a PIN:{' '}
+            <strong>{noPin.map((c) => c.profile.name).join(', ')}</strong> —
+            open their card below to set one.
+          </div>
+        )
+      })()}
 
       <section className="cards">
         {children.length === 0 && (
@@ -191,9 +208,22 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
       <section className="invites">
         <div className="section-head">
           <h3>Join codes</h3>
-          <button className="btn btn-secondary" onClick={mintInvite}>
-            New join code
-          </button>
+          <div className="invite-mint">
+            <label className="invite-ttl">
+              Expires in{' '}
+              <select
+                value={inviteDays}
+                onChange={(e) => setInviteDays(Number(e.target.value))}
+              >
+                <option value={7}>7 days</option>
+                <option value={30}>30 days</option>
+                <option value={90}>90 days</option>
+              </select>
+            </label>
+            <button className="btn btn-secondary" onClick={mintInvite}>
+              New join code
+            </button>
+          </div>
         </div>
         <p className="muted">
           Share a code with your child. They open <code>{window.location.origin}/join</code>,
@@ -452,7 +482,10 @@ function ChildCard({
         <div className="avatar">{profile.name.charAt(0).toUpperCase()}</div>
         <div className="child-meta">
           <strong>{profile.name}</strong>
-          <span className="muted">Grade {profile.grade}</span>
+          <span className="muted">
+            Grade {profile.grade}
+            {!profile.hasPin && <span className="pin-chip">no PIN</span>}
+          </span>
         </div>
         <div className="child-numbers">
           <span title="Skills mastered">🏆 {summary.masteredSkills}</span>
@@ -537,6 +570,8 @@ function ChildCard({
             </>
           )}
 
+          <PinControl token={token} profile={profile} onChanged={onChanged} />
+
           <h4>Devices</h4>
           {devices.length === 0 ? (
             <p className="muted">No devices connected yet — share a join code.</p>
@@ -564,6 +599,89 @@ function ChildCard({
             </button>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// Set / change a child's PIN after creation. Encouraged (nudge + chip),
+// never forced.
+function PinControl({
+  token,
+  profile,
+  onChanged,
+}: {
+  token: string
+  profile: ChildProfile
+  onChanged: () => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [pin, setPin] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await api.updateChild(token, profile.id, { pin })
+      await onChanged()
+      setEditing(false)
+      setPin('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="pin-control">
+      <h4>Profile PIN</h4>
+      {!editing ? (
+        <p className="muted pin-status">
+          {profile.hasPin ? (
+            <>PIN is set — only {profile.name} can open this profile. </>
+          ) : (
+            <>
+              No PIN — anyone with the join code can open {profile.name}'s
+              profile.{' '}
+            </>
+          )}
+          <button className="linklike" onClick={() => setEditing(true)}>
+            {profile.hasPin ? 'Change PIN' : 'Set a PIN'}
+          </button>
+        </p>
+      ) : (
+        <form className="pin-form" onSubmit={save}>
+          <input
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            placeholder="4–6 digits"
+            inputMode="numeric"
+            pattern="[0-9]{4,6}"
+            minLength={4}
+            maxLength={6}
+            required
+            autoFocus
+          />
+          <button className="btn btn-primary" disabled={busy}>
+            {busy ? 'Saving…' : 'Save PIN'}
+          </button>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => {
+              setEditing(false)
+              setPin('')
+              setError(null)
+            }}
+          >
+            Cancel
+          </button>
+          {error && <p className="form-error">{error}</p>}
+        </form>
       )}
     </div>
   )

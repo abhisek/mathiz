@@ -163,8 +163,8 @@ export const api = {
   ) => request<ChildProfile>('PATCH', `/api/v1/children/${childId}`, token, patch),
   childStats: (token: string, childId: string) =>
     request<ChildStats>('GET', `/api/v1/children/${childId}/stats`, token),
-  createInvite: (token: string, familyId: string) =>
-    request<Invite>('POST', `/api/v1/family/${familyId}/invites`, token, {}),
+  createInvite: (token: string, familyId: string, ttlHours = 0) =>
+    request<Invite>('POST', `/api/v1/family/${familyId}/invites`, token, { ttlHours }),
   listInvites: (token: string, familyId: string) =>
     request<{ invites: Invite[] }>('GET', `/api/v1/family/${familyId}/invites`, token),
   revokeInvite: (token: string, inviteId: string) =>

@@ -24,7 +24,8 @@ auto-provisioned on first authenticated request.
 | Create / rename Family Space (one per account) | `/dashboard` | `POST/PATCH /api/v1/family` |
 | Add child (name, grade 2–5, optional 4–6 digit PIN) | `/dashboard` | `POST /api/v1/family/{id}/children` |
 | Edit / archive child (archiving revokes their devices) | `/dashboard` child card | `PATCH /api/v1/children/{id}` |
-| Mint / list / revoke join codes (7-day expiry) | `/dashboard` join codes panel | `POST/GET /api/v1/family/{id}/invites`, `DELETE /api/v1/invites/{id}` |
+| Set / change a child's PIN any time; with 2+ kids and a PIN missing, the dashboard nudges (never forces) | `/dashboard` child card + tip banner | `PATCH /api/v1/children/{id}` (`pin`) |
+| Mint / list / revoke join codes — parent picks expiry (7/30/90 days; default 7, server caps at 90) | `/dashboard` join codes panel | `POST/GET /api/v1/family/{id}/invites` (`ttlHours`), `DELETE /api/v1/invites/{id}` |
 | See per-child progress: island bars, mastered/learning counts, gems, recent sessions | `/dashboard` child card | `GET /api/v1/family/{id}/children`, `GET /api/v1/children/{id}/stats` |
 | Read the AI tutor's learner profile ("what the tutor has learned about X") | `/dashboard` child card | learner profile from latest snapshot |
 | List / sign out child devices | `/dashboard` child card | `GET /api/v1/children/{id}/devices`, `DELETE /api/v1/devices/{id}` |

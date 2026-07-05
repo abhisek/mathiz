@@ -49,6 +49,11 @@ const TokenPrefix = "mzd_"
 // DefaultInviteTTL is how long a join code stays redeemable.
 const DefaultInviteTTL = 7 * 24 * time.Hour
 
+// MaxInviteTTL caps parent-chosen invite expiry. A join code is a
+// family-scoped credential; the cap bounds the exposure window of a code
+// that leaks (profile PINs are the per-child guard).
+const MaxInviteTTL = 90 * 24 * time.Hour
+
 var pinPattern = regexp.MustCompile(`^\d{4,6}$`)
 
 // Service implements control-plane operations on top of the ent client.
@@ -262,6 +267,9 @@ func (s *Service) CreateInvite(ctx context.Context, spaceUID string, ttl time.Du
 	}
 	if ttl <= 0 {
 		ttl = DefaultInviteTTL
+	}
+	if ttl > MaxInviteTTL {
+		ttl = MaxInviteTTL
 	}
 	// Retry on the (unlikely) collision of the human-friendly code.
 	for attempt := 0; attempt < 5; attempt++ {
