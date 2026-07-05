@@ -176,6 +176,22 @@ func TestInviteLifecycle(t *testing.T) {
 		t.Errorf("expired preview: got %v", err)
 	}
 
+	// TTL: 0 → default, beyond the cap → clamped to MaxInviteTTL.
+	defTTL, _ := svc.CreateInvite(ctx, spaceUID, 0)
+	if got := time.Until(defTTL.ExpiresAt); got > DefaultInviteTTL || got < DefaultInviteTTL-time.Minute {
+		t.Errorf("default ttl expiry = %v out, want ~%v", got, DefaultInviteTTL)
+	}
+	if err := svc.RevokeInvite(ctx, defTTL.UID); err != nil {
+		t.Fatalf("revoke default-ttl invite: %v", err)
+	}
+	clamped, _ := svc.CreateInvite(ctx, spaceUID, 365*24*time.Hour)
+	if got := time.Until(clamped.ExpiresAt); got > MaxInviteTTL || got < MaxInviteTTL-time.Minute {
+		t.Errorf("clamped ttl expiry = %v out, want ~%v", got, MaxInviteTTL)
+	}
+	if err := svc.RevokeInvite(ctx, clamped.UID); err != nil {
+		t.Fatalf("revoke clamped invite: %v", err)
+	}
+
 	// Active list only shows live codes.
 	live, _ := svc.CreateInvite(ctx, spaceUID, 0)
 	actives, err := svc.ActiveInvites(ctx, spaceUID)
