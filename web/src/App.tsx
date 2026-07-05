@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabase } from './supa'
+import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Join from './pages/Join'
@@ -16,7 +17,10 @@ export default function App() {
       <Route path="/play" element={<Play />} />
       <Route path="/terminal" element={<TerminalPage />} />
 
-      <Route path="/" element={<ParentArea page="login" />} />
+      {/* The front door: static, Supabase-free, routes each persona. */}
+      <Route path="/" element={<Landing />} />
+
+      <Route path="/login" element={<ParentArea page="login" />} />
       <Route path="/dashboard" element={<ParentArea page="dashboard" />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -65,5 +69,5 @@ function ParentArea({ page }: { page: 'login' | 'dashboard' }) {
   if (page === 'login') {
     return session ? <Navigate to="/dashboard" replace /> : <Login />
   }
-  return session ? <Dashboard session={session} /> : <Navigate to="/" replace />
+  return session ? <Dashboard session={session} /> : <Navigate to="/login" replace />
 }
