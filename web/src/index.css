@@ -1292,3 +1292,139 @@ table.sessions th {
 .rest-card {
   text-align: center;
 }
+
+/* ---- Landing (the front door at /) ---- */
+
+.landing {
+  min-height: 100vh;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.landing-brand h1 {
+  font-size: 2.4rem;
+}
+
+.landing-tag {
+  color: var(--ink-soft);
+  font-size: 1.15rem;
+  line-height: 1.55;
+  max-width: 34rem;
+  margin: 1rem 0 2.5rem;
+}
+
+.landing-doors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+@media (max-width: 40rem) {
+  .landing-doors {
+    grid-template-columns: 1fr;
+  }
+}
+
+.door {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.door:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 2px 4px rgb(36 31 51 / 0.08), 0 14px 34px rgb(36 31 51 / 0.12);
+}
+
+.door-emoji {
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.door h2 {
+  font-size: 1.25rem;
+  margin: 0.25rem 0 0;
+}
+
+.door p {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0 0 0.9rem;
+}
+
+.door .btn {
+  margin-top: auto;
+  pointer-events: none; /* whole card is the link */
+}
+
+.door-parent {
+  border-top: 4px solid var(--accent);
+}
+
+.door-kid {
+  border-top: 4px solid var(--kid);
+}
+
+.landing-how {
+  margin: 2.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 2rem;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  counter-reset: step;
+}
+
+.landing-how li {
+  counter-increment: step;
+}
+
+.landing-how li::before {
+  content: counter(step);
+  display: inline-block;
+  width: 1.35rem;
+  height: 1.35rem;
+  line-height: 1.35rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-weight: 700;
+  font-size: 0.8rem;
+  margin-right: 0.45rem;
+}
+
+/* ---- OTP sign-in ---- */
+
+.otp-input {
+  letter-spacing: 0.45em;
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.form-hint {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}

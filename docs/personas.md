@@ -14,12 +14,13 @@ browser) — and four personas across them.
 ## 1. Parent (hosted mode)
 
 The account owner: signs up, runs the Family Space, follows their children's
-progress. Authenticated by a **Supabase JWT** (email/password or magic link
-via the SPA); an account is auto-provisioned on first authenticated request.
+progress. Authenticated by a **Supabase JWT**; an account is
+auto-provisioned on first authenticated request.
 
 | Flow | Surface | Backing |
 |---|---|---|
-| Sign up / sign in | `/` (SPA, supabase-js) | Supabase Auth; server verifies JWT locally (HS256 secret or JWKS) |
+| Land on the front door, pick the parent path | `/` (static landing, parent + kid CTAs) | no backend — routes to `/login` or `/join` |
+| Sign in — email code (OTP) first; the emailed magic link also works; email+password behind a fallback link. Account auto-created on first sign-in | `/login` (SPA, supabase-js) | Supabase Auth (`signInWithOtp`/`verifyOtp`, password fallback); server verifies JWT locally (HS256 secret or JWKS) |
 | Create / rename Family Space (one per account) | `/dashboard` | `POST/PATCH /api/v1/family` |
 | Add child (name, grade 2–5, optional 4–6 digit PIN) | `/dashboard` | `POST /api/v1/family/{id}/children` |
 | Edit / archive child (archiving revokes their devices) | `/dashboard` child card | `PATCH /api/v1/children/{id}` |
@@ -40,6 +41,7 @@ device token stored in the browser.
 
 | Flow | Surface | Backing |
 |---|---|---|
+| Front door: "I'm a kid → Enter my code" | `/` | static landing, routes to `/join` |
 | Join: enter code → pick profile → PIN | `/join` | `POST /api/v1/join/preview`, `POST /api/v1/join/redeem` |
 | Treasure map: 5 islands (strands), 54 dig spots (skills); fog on locked spots, glowing X on ready ones, progress rings while digging/proving, open chests when mastered, "sinking" sparkle when review is due | `/play` | `GET /api/v1/game/map` |
 | Expedition: 5 AI-generated questions on a tapped spot (numeric or multiple choice), gem bursts, streak fire, prove-tier countdown | `/play` expedition overlay | `POST /api/v1/game/expeditions` (+ `/question`, `/answer`) |

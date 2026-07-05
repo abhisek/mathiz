@@ -37,10 +37,25 @@ matches the minting script):
 
 ```bash
 JWT=$(node .claude/skills/saas-e2e/assets/mint-jwt.mjs)
-curl -s -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
+AUTH="Authorization: Bearer $JWT"
+curl -s -H "$AUTH" -H "Content-Type: application/json" \
   -X POST -d '{"name":"My Family"}' http://localhost:8080/api/v1/family
-# then add a child + mint an invite the same way (see docs/saas.md API table)
+FAMILY=...   # the "id" from that response (or: curl -s -H "$AUTH" http://localhost:8080/api/v1/me)
+
+# Add a child (grade 2–5; "pin" optional), then mint a 7-day join code:
+curl -s -H "$AUTH" -H "Content-Type: application/json" -X POST \
+  -d '{"name":"Asha","grade":3}' http://localhost:8080/api/v1/family/$FAMILY/children
+curl -s -H "$AUTH" -H "Content-Type: application/json" -X POST \
+  -d '{"ttlHours":168}' http://localhost:8080/api/v1/family/$FAMILY/invites
+# → {"code":"TIGER-4207",...} — enter it at /join and play.
 ```
+
+Note: in this Supabase-free mode the **browser parent login cannot work**
+(there's no real Supabase behind it) — the minted JWT *is* your parent
+session, and the parent role is curl-driven. The kid experience is fully
+browser-based. For the real parent dashboard, configure Supabase
+(§2b / docs/saas.md) — compose picks the `MATHIZ_SUPABASE_*` values up
+from a `.env` file automatically.
 
 Questions come from the bundled stub (always "What is 12 + 7?"). Point the
 stack at real services by overriding env vars, e.g.
@@ -123,10 +138,12 @@ make web && make mathiz    # SPA → internal/saas/webui/dist → embedded in th
 ./bin/mathiz serve         # listens on MATHIZ_SERVER_ADDR (default :8080)
 ```
 
-Open `http://localhost:8080` — parent dashboard at `/`, kid join at `/join`,
-treasure map at `/play`, browser terminal at `/terminal`. Typical loop:
-sign in (or curl with a minted JWT) → create Family Space → add a child →
-mint a join code → open `/join` in a private window and play as the kid.
+Open `http://localhost:8080` — landing page at `/` (parent + kid doors),
+parent sign-in at `/login` (email code first; password fallback), kid join
+at `/join`, treasure map at `/play`, browser terminal at `/terminal`.
+Typical loop: sign in (or curl with a minted JWT) → create Family Space →
+add a child → mint a join code → open `/join` in a private window and play
+as the kid.
 
 ### 2d. Web development with hot reload
 

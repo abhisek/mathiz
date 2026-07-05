@@ -42,16 +42,31 @@ make web && make mathiz
 ./bin/mathiz serve
 ```
 
-Open http://localhost:8080 — parent dashboard at `/`, kid flow at `/join`.
+Open http://localhost:8080 — landing page at `/` (parent and kid doors),
+parent sign-in at `/login`, kid flow at `/join`.
 
 For SPA development with hot reload, run `mathiz serve` on :8080 and
 `cd web && npm run dev` — Vite proxies `/api` (including the WebSocket).
 
 ### Supabase setup
 
+Parent sign-in is **email-code (OTP) first**: the parent enters their email,
+receives a code + magic link, and either one signs them in. Email+password
+remains available behind a "Prefer a password?" link on `/login`.
+
 1. Create a project at [supabase.com](https://supabase.com) (free tier works).
 2. Enable the **Email** provider (Authentication → Providers).
-3. Copy into your `.env`:
+3. Authentication → URL Configuration: set **Site URL** to your app origin
+   (dev: `http://localhost:8080`) and add `http://localhost:8080/login` to
+   the **Redirect URLs** — magic links land on `/login`, where the Supabase
+   client boots and picks up the session.
+4. Authentication → Email Templates → **Magic Link**: include
+   `{{ .Token }}` in the body so the email shows the 6-digit code, e.g.
+   "Your sign-in code: `{{ .Token }}` — or just click the link below."
+   (The default template only contains the link; without `{{ .Token }}`
+   parents can still sign in by clicking, but the code box has nothing to
+   type.)
+5. Copy into your `.env`:
    - Project URL → `MATHIZ_SUPABASE_URL`
    - Publishable/anon key → `MATHIZ_SUPABASE_ANON_KEY`
    - JWT secret (legacy HS256 projects) → `MATHIZ_SUPABASE_JWT_SECRET`.
