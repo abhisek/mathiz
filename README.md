@@ -63,6 +63,12 @@ AI-generated math digs up treasure, collects gems, and lifts the fog on new
 territory — no email, no install.
 
 ```sh
+make dev-up          # self-contained: Postgres + stub LLM + server on :8080
+```
+
+Or host-native:
+
+```sh
 make dev-db          # local PostgreSQL (docker compose)
 cp .env.example .env # configure database + Supabase + LLM key
 make web && make mathiz

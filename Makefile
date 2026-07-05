@@ -6,7 +6,7 @@ GITCOMMIT := $(shell git rev-parse HEAD)
 VERSION := "$(shell git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)-$(shell git rev-parse --short HEAD)"
 GO_LDFLAGS := -ldflags "-X github.com/abhisek/mathiz/cmd.version=$(VERSION)"
 
-.PHONY: all deps generate mathiz clean test web serve dev-db
+.PHONY: all deps generate mathiz clean test web serve dev-db dev-up dev-down
 
 all: mathiz
 
@@ -43,6 +43,15 @@ serve-build: web mathiz
 # Start a local PostgreSQL for development (docker compose)
 dev-db:
 	docker compose up -d postgres
+
+# Self-contained dev stack: PostgreSQL + stub LLM + mathiz serve on :8080.
+# No Supabase project or LLM key needed (see docker-compose.yml).
+dev-up:
+	docker compose --profile full up --build -d
+	@echo "Mathiz on http://localhost:8080 — parent JWTs: node .claude/skills/saas-e2e/assets/mint-jwt.mjs"
+
+dev-down:
+	docker compose --profile full down
 
 # Format code
 fmt:
