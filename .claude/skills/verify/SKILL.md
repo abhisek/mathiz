@@ -28,3 +28,9 @@ must pass.
   (`tea.Program.Kill` vs startup, session-cap check-then-act).
 - A screenshot from the `saas-e2e` flow is the deliverable for UI claims —
   "it builds" is not "it works".
+- Money paths (`internal/saas/credits`, `internal/saas/billing`, `Charge`
+  hooks): idempotency IS the test — replay the same webhook event / ledger
+  source and assert the balance is unchanged; also cover insufficient
+  balance (must write nothing, surface 402). `TestBillingLifecycle` in
+  `internal/saas/server/billing_api_test.go` is the pattern; the
+  `add-billing-provider` skill has the full checklist.
