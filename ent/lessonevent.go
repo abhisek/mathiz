@@ -35,7 +35,17 @@ type LessonEvent struct {
 	PracticeCorrect bool `json:"practice_correct,omitempty"`
 	// PracticeSkipped holds the value of the "practice_skipped" field.
 	PracticeSkipped bool `json:"practice_skipped,omitempty"`
-	selectValues    sql.SelectValues
+	// Explanation holds the value of the "explanation" field.
+	Explanation string `json:"explanation,omitempty"`
+	// WorkedExample holds the value of the "worked_example" field.
+	WorkedExample string `json:"worked_example,omitempty"`
+	// PracticeText holds the value of the "practice_text" field.
+	PracticeText string `json:"practice_text,omitempty"`
+	// PracticeAnswer holds the value of the "practice_answer" field.
+	PracticeAnswer string `json:"practice_answer,omitempty"`
+	// PracticeExplanation holds the value of the "practice_explanation" field.
+	PracticeExplanation string `json:"practice_explanation,omitempty"`
+	selectValues        sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -47,7 +57,7 @@ func (*LessonEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case lessonevent.FieldID, lessonevent.FieldSequence:
 			values[i] = new(sql.NullInt64)
-		case lessonevent.FieldOwnerID, lessonevent.FieldSessionID, lessonevent.FieldSkillID, lessonevent.FieldLessonTitle:
+		case lessonevent.FieldOwnerID, lessonevent.FieldSessionID, lessonevent.FieldSkillID, lessonevent.FieldLessonTitle, lessonevent.FieldExplanation, lessonevent.FieldWorkedExample, lessonevent.FieldPracticeText, lessonevent.FieldPracticeAnswer, lessonevent.FieldPracticeExplanation:
 			values[i] = new(sql.NullString)
 		case lessonevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -126,6 +136,36 @@ func (_m *LessonEvent) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.PracticeSkipped = value.Bool
 			}
+		case lessonevent.FieldExplanation:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field explanation", values[i])
+			} else if value.Valid {
+				_m.Explanation = value.String
+			}
+		case lessonevent.FieldWorkedExample:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field worked_example", values[i])
+			} else if value.Valid {
+				_m.WorkedExample = value.String
+			}
+		case lessonevent.FieldPracticeText:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field practice_text", values[i])
+			} else if value.Valid {
+				_m.PracticeText = value.String
+			}
+		case lessonevent.FieldPracticeAnswer:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field practice_answer", values[i])
+			} else if value.Valid {
+				_m.PracticeAnswer = value.String
+			}
+		case lessonevent.FieldPracticeExplanation:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field practice_explanation", values[i])
+			} else if value.Valid {
+				_m.PracticeExplanation = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -188,6 +228,21 @@ func (_m *LessonEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("practice_skipped=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PracticeSkipped))
+	builder.WriteString(", ")
+	builder.WriteString("explanation=")
+	builder.WriteString(_m.Explanation)
+	builder.WriteString(", ")
+	builder.WriteString("worked_example=")
+	builder.WriteString(_m.WorkedExample)
+	builder.WriteString(", ")
+	builder.WriteString("practice_text=")
+	builder.WriteString(_m.PracticeText)
+	builder.WriteString(", ")
+	builder.WriteString("practice_answer=")
+	builder.WriteString(_m.PracticeAnswer)
+	builder.WriteString(", ")
+	builder.WriteString("practice_explanation=")
+	builder.WriteString(_m.PracticeExplanation)
 	builder.WriteByte(')')
 	return builder.String()
 }

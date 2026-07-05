@@ -22,6 +22,15 @@ func (s *Server) handleGameMap(w http.ResponseWriter, r *http.Request, p authz.P
 	writeJSON(w, http.StatusOK, view)
 }
 
+func (s *Server) handleGameNotebook(w http.ResponseWriter, r *http.Request, p authz.Principal, child *ent.ChildProfile) {
+	view, err := s.game.Notebook(r.Context(), child.UID)
+	if err != nil {
+		writeGameError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, view)
+}
+
 func (s *Server) handleExpeditionStart(w http.ResponseWriter, r *http.Request, p authz.Principal, child *ent.ChildProfile) {
 	var req struct {
 		SkillID string `json:"skillId"`

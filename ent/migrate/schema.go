@@ -400,6 +400,11 @@ var (
 		{Name: "practice_attempted", Type: field.TypeBool},
 		{Name: "practice_correct", Type: field.TypeBool},
 		{Name: "practice_skipped", Type: field.TypeBool},
+		{Name: "explanation", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "worked_example", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "practice_text", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "practice_answer", Type: field.TypeString, Default: ""},
+		{Name: "practice_explanation", Type: field.TypeString, Size: 2147483647, Default: ""},
 	}
 	// LessonEventsTable holds the schema information for the "lesson_events" table.
 	LessonEventsTable = &schema.Table{

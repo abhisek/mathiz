@@ -132,6 +132,28 @@ type LessonAnswerView struct {
 	Explanation   string `json:"explanation,omitempty"`
 }
 
+// NotebookView is the guide's notebook: every tip the guide has ever given
+// this child, newest first, ready to be grouped by island.
+type NotebookView struct {
+	Tips []NotebookTipView `json:"tips"`
+}
+
+// NotebookTipView is one revisitable tip.
+type NotebookTipView struct {
+	SkillID    string `json:"skillId"`
+	SkillName  string `json:"skillName"`
+	IslandID   string `json:"islandId"`
+	IslandName string `json:"islandName"`
+	At         string `json:"at"` // RFC3339
+
+	Title               string `json:"title"`
+	Explanation         string `json:"explanation"`
+	WorkedExample       string `json:"workedExample,omitempty"`
+	PracticeText        string `json:"practiceText,omitempty"`
+	PracticeAnswer      string `json:"practiceAnswer,omitempty"`
+	PracticeExplanation string `json:"practiceExplanation,omitempty"`
+}
+
 // HintView is the revealed hint for the last answered question.
 type HintView struct {
 	Hint string `json:"hint"`

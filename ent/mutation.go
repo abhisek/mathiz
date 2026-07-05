@@ -7852,23 +7852,28 @@ func (m *LLMRequestEventMutation) ResetEdge(name string) error {
 // LessonEventMutation represents an operation that mutates the LessonEvent nodes in the graph.
 type LessonEventMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *int
-	sequence           *int64
-	addsequence        *int64
-	timestamp          *time.Time
-	owner_id           *string
-	session_id         *string
-	skill_id           *string
-	lesson_title       *string
-	practice_attempted *bool
-	practice_correct   *bool
-	practice_skipped   *bool
-	clearedFields      map[string]struct{}
-	done               bool
-	oldValue           func(context.Context) (*LessonEvent, error)
-	predicates         []predicate.LessonEvent
+	op                   Op
+	typ                  string
+	id                   *int
+	sequence             *int64
+	addsequence          *int64
+	timestamp            *time.Time
+	owner_id             *string
+	session_id           *string
+	skill_id             *string
+	lesson_title         *string
+	practice_attempted   *bool
+	practice_correct     *bool
+	practice_skipped     *bool
+	explanation          *string
+	worked_example       *string
+	practice_text        *string
+	practice_answer      *string
+	practice_explanation *string
+	clearedFields        map[string]struct{}
+	done                 bool
+	oldValue             func(context.Context) (*LessonEvent, error)
+	predicates           []predicate.LessonEvent
 }
 
 var _ ent.Mutation = (*LessonEventMutation)(nil)
@@ -8313,6 +8318,186 @@ func (m *LessonEventMutation) ResetPracticeSkipped() {
 	m.practice_skipped = nil
 }
 
+// SetExplanation sets the "explanation" field.
+func (m *LessonEventMutation) SetExplanation(s string) {
+	m.explanation = &s
+}
+
+// Explanation returns the value of the "explanation" field in the mutation.
+func (m *LessonEventMutation) Explanation() (r string, exists bool) {
+	v := m.explanation
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExplanation returns the old "explanation" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldExplanation(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExplanation is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExplanation requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExplanation: %w", err)
+	}
+	return oldValue.Explanation, nil
+}
+
+// ResetExplanation resets all changes to the "explanation" field.
+func (m *LessonEventMutation) ResetExplanation() {
+	m.explanation = nil
+}
+
+// SetWorkedExample sets the "worked_example" field.
+func (m *LessonEventMutation) SetWorkedExample(s string) {
+	m.worked_example = &s
+}
+
+// WorkedExample returns the value of the "worked_example" field in the mutation.
+func (m *LessonEventMutation) WorkedExample() (r string, exists bool) {
+	v := m.worked_example
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWorkedExample returns the old "worked_example" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldWorkedExample(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWorkedExample is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWorkedExample requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWorkedExample: %w", err)
+	}
+	return oldValue.WorkedExample, nil
+}
+
+// ResetWorkedExample resets all changes to the "worked_example" field.
+func (m *LessonEventMutation) ResetWorkedExample() {
+	m.worked_example = nil
+}
+
+// SetPracticeText sets the "practice_text" field.
+func (m *LessonEventMutation) SetPracticeText(s string) {
+	m.practice_text = &s
+}
+
+// PracticeText returns the value of the "practice_text" field in the mutation.
+func (m *LessonEventMutation) PracticeText() (r string, exists bool) {
+	v := m.practice_text
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPracticeText returns the old "practice_text" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldPracticeText(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPracticeText is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPracticeText requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPracticeText: %w", err)
+	}
+	return oldValue.PracticeText, nil
+}
+
+// ResetPracticeText resets all changes to the "practice_text" field.
+func (m *LessonEventMutation) ResetPracticeText() {
+	m.practice_text = nil
+}
+
+// SetPracticeAnswer sets the "practice_answer" field.
+func (m *LessonEventMutation) SetPracticeAnswer(s string) {
+	m.practice_answer = &s
+}
+
+// PracticeAnswer returns the value of the "practice_answer" field in the mutation.
+func (m *LessonEventMutation) PracticeAnswer() (r string, exists bool) {
+	v := m.practice_answer
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPracticeAnswer returns the old "practice_answer" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldPracticeAnswer(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPracticeAnswer is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPracticeAnswer requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPracticeAnswer: %w", err)
+	}
+	return oldValue.PracticeAnswer, nil
+}
+
+// ResetPracticeAnswer resets all changes to the "practice_answer" field.
+func (m *LessonEventMutation) ResetPracticeAnswer() {
+	m.practice_answer = nil
+}
+
+// SetPracticeExplanation sets the "practice_explanation" field.
+func (m *LessonEventMutation) SetPracticeExplanation(s string) {
+	m.practice_explanation = &s
+}
+
+// PracticeExplanation returns the value of the "practice_explanation" field in the mutation.
+func (m *LessonEventMutation) PracticeExplanation() (r string, exists bool) {
+	v := m.practice_explanation
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPracticeExplanation returns the old "practice_explanation" field's value of the LessonEvent entity.
+// If the LessonEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LessonEventMutation) OldPracticeExplanation(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPracticeExplanation is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPracticeExplanation requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPracticeExplanation: %w", err)
+	}
+	return oldValue.PracticeExplanation, nil
+}
+
+// ResetPracticeExplanation resets all changes to the "practice_explanation" field.
+func (m *LessonEventMutation) ResetPracticeExplanation() {
+	m.practice_explanation = nil
+}
+
 // Where appends a list predicates to the LessonEventMutation builder.
 func (m *LessonEventMutation) Where(ps ...predicate.LessonEvent) {
 	m.predicates = append(m.predicates, ps...)
@@ -8347,7 +8532,7 @@ func (m *LessonEventMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *LessonEventMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 14)
 	if m.sequence != nil {
 		fields = append(fields, lessonevent.FieldSequence)
 	}
@@ -8375,6 +8560,21 @@ func (m *LessonEventMutation) Fields() []string {
 	if m.practice_skipped != nil {
 		fields = append(fields, lessonevent.FieldPracticeSkipped)
 	}
+	if m.explanation != nil {
+		fields = append(fields, lessonevent.FieldExplanation)
+	}
+	if m.worked_example != nil {
+		fields = append(fields, lessonevent.FieldWorkedExample)
+	}
+	if m.practice_text != nil {
+		fields = append(fields, lessonevent.FieldPracticeText)
+	}
+	if m.practice_answer != nil {
+		fields = append(fields, lessonevent.FieldPracticeAnswer)
+	}
+	if m.practice_explanation != nil {
+		fields = append(fields, lessonevent.FieldPracticeExplanation)
+	}
 	return fields
 }
 
@@ -8401,6 +8601,16 @@ func (m *LessonEventMutation) Field(name string) (ent.Value, bool) {
 		return m.PracticeCorrect()
 	case lessonevent.FieldPracticeSkipped:
 		return m.PracticeSkipped()
+	case lessonevent.FieldExplanation:
+		return m.Explanation()
+	case lessonevent.FieldWorkedExample:
+		return m.WorkedExample()
+	case lessonevent.FieldPracticeText:
+		return m.PracticeText()
+	case lessonevent.FieldPracticeAnswer:
+		return m.PracticeAnswer()
+	case lessonevent.FieldPracticeExplanation:
+		return m.PracticeExplanation()
 	}
 	return nil, false
 }
@@ -8428,6 +8638,16 @@ func (m *LessonEventMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldPracticeCorrect(ctx)
 	case lessonevent.FieldPracticeSkipped:
 		return m.OldPracticeSkipped(ctx)
+	case lessonevent.FieldExplanation:
+		return m.OldExplanation(ctx)
+	case lessonevent.FieldWorkedExample:
+		return m.OldWorkedExample(ctx)
+	case lessonevent.FieldPracticeText:
+		return m.OldPracticeText(ctx)
+	case lessonevent.FieldPracticeAnswer:
+		return m.OldPracticeAnswer(ctx)
+	case lessonevent.FieldPracticeExplanation:
+		return m.OldPracticeExplanation(ctx)
 	}
 	return nil, fmt.Errorf("unknown LessonEvent field %s", name)
 }
@@ -8499,6 +8719,41 @@ func (m *LessonEventMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPracticeSkipped(v)
+		return nil
+	case lessonevent.FieldExplanation:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExplanation(v)
+		return nil
+	case lessonevent.FieldWorkedExample:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWorkedExample(v)
+		return nil
+	case lessonevent.FieldPracticeText:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPracticeText(v)
+		return nil
+	case lessonevent.FieldPracticeAnswer:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPracticeAnswer(v)
+		return nil
+	case lessonevent.FieldPracticeExplanation:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPracticeExplanation(v)
 		return nil
 	}
 	return fmt.Errorf("unknown LessonEvent field %s", name)
@@ -8590,6 +8845,21 @@ func (m *LessonEventMutation) ResetField(name string) error {
 		return nil
 	case lessonevent.FieldPracticeSkipped:
 		m.ResetPracticeSkipped()
+		return nil
+	case lessonevent.FieldExplanation:
+		m.ResetExplanation()
+		return nil
+	case lessonevent.FieldWorkedExample:
+		m.ResetWorkedExample()
+		return nil
+	case lessonevent.FieldPracticeText:
+		m.ResetPracticeText()
+		return nil
+	case lessonevent.FieldPracticeAnswer:
+		m.ResetPracticeAnswer()
+		return nil
+	case lessonevent.FieldPracticeExplanation:
+		m.ResetPracticeExplanation()
 		return nil
 	}
 	return fmt.Errorf("unknown LessonEvent field %s", name)

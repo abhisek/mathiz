@@ -8,6 +8,8 @@ import {
   type GameMap,
   type Lesson,
   type LessonGrade,
+  type Notebook,
+  type NotebookTip,
   type Question,
   type Spot,
 } from '../game'
@@ -58,6 +60,8 @@ export default function Play() {
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [lessonGrade, setLessonGrade] = useState<LessonGrade | null>(null)
   const [vaultOpen, setVaultOpen] = useState(false)
+  const [notebook, setNotebook] = useState<Notebook | null>(null)
+  const [notebookOpen, setNotebookOpen] = useState(false)
   const [expError, setExpError] = useState<string | null>(null)
 
   const refreshMap = useCallback(async () => {
@@ -173,6 +177,20 @@ export default function Play() {
     }
   }
 
+  async function toggleNotebook() {
+    if (notebookOpen) {
+      setNotebookOpen(false)
+      return
+    }
+    setVaultOpen(false)
+    setNotebookOpen(true)
+    try {
+      setNotebook(await gameApi.notebook())
+    } catch {
+      setNotebook({ tips: [] })
+    }
+  }
+
   async function sailHome() {
     if (expedition && phase !== 'summary') {
       try {
@@ -197,7 +215,16 @@ export default function Play() {
           {childName && <span className="game-captain">Captain {childName}</span>}
         </div>
         <div className="game-bar-right">
-          <button className="gem-counter" onClick={() => setVaultOpen((v) => !v)}>
+          <button className="gem-counter" onClick={() => void toggleNotebook()}>
+            🧭
+          </button>
+          <button
+            className="gem-counter"
+            onClick={() => {
+              setNotebookOpen(false)
+              setVaultOpen((v) => !v)
+            }}
+          >
             💎 {map?.gems.total ?? 0}
           </button>
           <button
@@ -214,6 +241,10 @@ export default function Play() {
 
       {mapError && <p className="form-error game-error">{mapError}</p>}
       {expError && <p className="form-error game-error">{expError}</p>}
+
+      {notebookOpen && (
+        <NotebookDrawer notebook={notebook} onClose={() => setNotebookOpen(false)} />
+      )}
 
       {vaultOpen && map && (
         <div className="vault">
@@ -283,6 +314,72 @@ export default function Play() {
           onClose={() => void sailHome()}
         />
       )}
+    </div>
+  )
+}
+
+// NotebookDrawer shows every tip the guide has given, grouped by island.
+function NotebookDrawer({
+  notebook,
+  onClose,
+}: {
+  notebook: Notebook | null
+  onClose: () => void
+}) {
+  const [openTip, setOpenTip] = useState<string | null>(null)
+
+  const byIsland = new Map<string, NotebookTip[]>()
+  for (const tip of notebook?.tips ?? []) {
+    const key = tip.islandName || 'Somewhere at sea'
+    byIsland.set(key, [...(byIsland.get(key) ?? []), tip])
+  }
+
+  return (
+    <div className="notebook">
+      <div className="notebook-head">
+        <h3>🧭 The guide's notebook</h3>
+        <button className="btn btn-ghost" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      {!notebook && <p className="vault-empty">Opening the notebook…</p>}
+      {notebook && notebook.tips.length === 0 && (
+        <p className="vault-empty">
+          No tips yet! The guide writes one down whenever a spot gets tricky.
+        </p>
+      )}
+      {[...byIsland.entries()].map(([island, tips]) => (
+        <div key={island} className="notebook-island">
+          <h4>🏝️ {island}</h4>
+          {tips.map((tip, i) => {
+            const key = `${island}-${i}`
+            const open = openTip === key
+            return (
+              <div key={key} className="notebook-tip">
+                <button
+                  className="notebook-tip-head"
+                  onClick={() => setOpenTip(open ? null : key)}
+                >
+                  <strong>{tip.title}</strong>
+                  <span className="muted">{tip.skillName}</span>
+                </button>
+                {open && (
+                  <div className="notebook-tip-body">
+                    <p>{tip.explanation}</p>
+                    {tip.workedExample && <div className="worked">{tip.workedExample}</div>}
+                    {tip.practiceText && (
+                      <p className="muted">
+                        {tip.practiceText}{' '}
+                        {tip.practiceAnswer && <strong>→ {tip.practiceAnswer}</strong>}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }

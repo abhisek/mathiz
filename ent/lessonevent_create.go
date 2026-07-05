@@ -90,6 +90,76 @@ func (_c *LessonEventCreate) SetPracticeSkipped(v bool) *LessonEventCreate {
 	return _c
 }
 
+// SetExplanation sets the "explanation" field.
+func (_c *LessonEventCreate) SetExplanation(v string) *LessonEventCreate {
+	_c.mutation.SetExplanation(v)
+	return _c
+}
+
+// SetNillableExplanation sets the "explanation" field if the given value is not nil.
+func (_c *LessonEventCreate) SetNillableExplanation(v *string) *LessonEventCreate {
+	if v != nil {
+		_c.SetExplanation(*v)
+	}
+	return _c
+}
+
+// SetWorkedExample sets the "worked_example" field.
+func (_c *LessonEventCreate) SetWorkedExample(v string) *LessonEventCreate {
+	_c.mutation.SetWorkedExample(v)
+	return _c
+}
+
+// SetNillableWorkedExample sets the "worked_example" field if the given value is not nil.
+func (_c *LessonEventCreate) SetNillableWorkedExample(v *string) *LessonEventCreate {
+	if v != nil {
+		_c.SetWorkedExample(*v)
+	}
+	return _c
+}
+
+// SetPracticeText sets the "practice_text" field.
+func (_c *LessonEventCreate) SetPracticeText(v string) *LessonEventCreate {
+	_c.mutation.SetPracticeText(v)
+	return _c
+}
+
+// SetNillablePracticeText sets the "practice_text" field if the given value is not nil.
+func (_c *LessonEventCreate) SetNillablePracticeText(v *string) *LessonEventCreate {
+	if v != nil {
+		_c.SetPracticeText(*v)
+	}
+	return _c
+}
+
+// SetPracticeAnswer sets the "practice_answer" field.
+func (_c *LessonEventCreate) SetPracticeAnswer(v string) *LessonEventCreate {
+	_c.mutation.SetPracticeAnswer(v)
+	return _c
+}
+
+// SetNillablePracticeAnswer sets the "practice_answer" field if the given value is not nil.
+func (_c *LessonEventCreate) SetNillablePracticeAnswer(v *string) *LessonEventCreate {
+	if v != nil {
+		_c.SetPracticeAnswer(*v)
+	}
+	return _c
+}
+
+// SetPracticeExplanation sets the "practice_explanation" field.
+func (_c *LessonEventCreate) SetPracticeExplanation(v string) *LessonEventCreate {
+	_c.mutation.SetPracticeExplanation(v)
+	return _c
+}
+
+// SetNillablePracticeExplanation sets the "practice_explanation" field if the given value is not nil.
+func (_c *LessonEventCreate) SetNillablePracticeExplanation(v *string) *LessonEventCreate {
+	if v != nil {
+		_c.SetPracticeExplanation(*v)
+	}
+	return _c
+}
+
 // Mutation returns the LessonEventMutation object of the builder.
 func (_c *LessonEventCreate) Mutation() *LessonEventMutation {
 	return _c.mutation
@@ -132,6 +202,26 @@ func (_c *LessonEventCreate) defaults() {
 	if _, ok := _c.mutation.OwnerID(); !ok {
 		v := lessonevent.DefaultOwnerID
 		_c.mutation.SetOwnerID(v)
+	}
+	if _, ok := _c.mutation.Explanation(); !ok {
+		v := lessonevent.DefaultExplanation
+		_c.mutation.SetExplanation(v)
+	}
+	if _, ok := _c.mutation.WorkedExample(); !ok {
+		v := lessonevent.DefaultWorkedExample
+		_c.mutation.SetWorkedExample(v)
+	}
+	if _, ok := _c.mutation.PracticeText(); !ok {
+		v := lessonevent.DefaultPracticeText
+		_c.mutation.SetPracticeText(v)
+	}
+	if _, ok := _c.mutation.PracticeAnswer(); !ok {
+		v := lessonevent.DefaultPracticeAnswer
+		_c.mutation.SetPracticeAnswer(v)
+	}
+	if _, ok := _c.mutation.PracticeExplanation(); !ok {
+		v := lessonevent.DefaultPracticeExplanation
+		_c.mutation.SetPracticeExplanation(v)
 	}
 }
 
@@ -178,6 +268,21 @@ func (_c *LessonEventCreate) check() error {
 	}
 	if _, ok := _c.mutation.PracticeSkipped(); !ok {
 		return &ValidationError{Name: "practice_skipped", err: errors.New(`ent: missing required field "LessonEvent.practice_skipped"`)}
+	}
+	if _, ok := _c.mutation.Explanation(); !ok {
+		return &ValidationError{Name: "explanation", err: errors.New(`ent: missing required field "LessonEvent.explanation"`)}
+	}
+	if _, ok := _c.mutation.WorkedExample(); !ok {
+		return &ValidationError{Name: "worked_example", err: errors.New(`ent: missing required field "LessonEvent.worked_example"`)}
+	}
+	if _, ok := _c.mutation.PracticeText(); !ok {
+		return &ValidationError{Name: "practice_text", err: errors.New(`ent: missing required field "LessonEvent.practice_text"`)}
+	}
+	if _, ok := _c.mutation.PracticeAnswer(); !ok {
+		return &ValidationError{Name: "practice_answer", err: errors.New(`ent: missing required field "LessonEvent.practice_answer"`)}
+	}
+	if _, ok := _c.mutation.PracticeExplanation(); !ok {
+		return &ValidationError{Name: "practice_explanation", err: errors.New(`ent: missing required field "LessonEvent.practice_explanation"`)}
 	}
 	return nil
 }
@@ -240,6 +345,26 @@ func (_c *LessonEventCreate) createSpec() (*LessonEvent, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.PracticeSkipped(); ok {
 		_spec.SetField(lessonevent.FieldPracticeSkipped, field.TypeBool, value)
 		_node.PracticeSkipped = value
+	}
+	if value, ok := _c.mutation.Explanation(); ok {
+		_spec.SetField(lessonevent.FieldExplanation, field.TypeString, value)
+		_node.Explanation = value
+	}
+	if value, ok := _c.mutation.WorkedExample(); ok {
+		_spec.SetField(lessonevent.FieldWorkedExample, field.TypeString, value)
+		_node.WorkedExample = value
+	}
+	if value, ok := _c.mutation.PracticeText(); ok {
+		_spec.SetField(lessonevent.FieldPracticeText, field.TypeString, value)
+		_node.PracticeText = value
+	}
+	if value, ok := _c.mutation.PracticeAnswer(); ok {
+		_spec.SetField(lessonevent.FieldPracticeAnswer, field.TypeString, value)
+		_node.PracticeAnswer = value
+	}
+	if value, ok := _c.mutation.PracticeExplanation(); ok {
+		_spec.SetField(lessonevent.FieldPracticeExplanation, field.TypeString, value)
+		_node.PracticeExplanation = value
 	}
 	return _node, _spec
 }

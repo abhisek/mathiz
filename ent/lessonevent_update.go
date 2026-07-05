@@ -111,6 +111,76 @@ func (_u *LessonEventUpdate) SetNillablePracticeSkipped(v *bool) *LessonEventUpd
 	return _u
 }
 
+// SetExplanation sets the "explanation" field.
+func (_u *LessonEventUpdate) SetExplanation(v string) *LessonEventUpdate {
+	_u.mutation.SetExplanation(v)
+	return _u
+}
+
+// SetNillableExplanation sets the "explanation" field if the given value is not nil.
+func (_u *LessonEventUpdate) SetNillableExplanation(v *string) *LessonEventUpdate {
+	if v != nil {
+		_u.SetExplanation(*v)
+	}
+	return _u
+}
+
+// SetWorkedExample sets the "worked_example" field.
+func (_u *LessonEventUpdate) SetWorkedExample(v string) *LessonEventUpdate {
+	_u.mutation.SetWorkedExample(v)
+	return _u
+}
+
+// SetNillableWorkedExample sets the "worked_example" field if the given value is not nil.
+func (_u *LessonEventUpdate) SetNillableWorkedExample(v *string) *LessonEventUpdate {
+	if v != nil {
+		_u.SetWorkedExample(*v)
+	}
+	return _u
+}
+
+// SetPracticeText sets the "practice_text" field.
+func (_u *LessonEventUpdate) SetPracticeText(v string) *LessonEventUpdate {
+	_u.mutation.SetPracticeText(v)
+	return _u
+}
+
+// SetNillablePracticeText sets the "practice_text" field if the given value is not nil.
+func (_u *LessonEventUpdate) SetNillablePracticeText(v *string) *LessonEventUpdate {
+	if v != nil {
+		_u.SetPracticeText(*v)
+	}
+	return _u
+}
+
+// SetPracticeAnswer sets the "practice_answer" field.
+func (_u *LessonEventUpdate) SetPracticeAnswer(v string) *LessonEventUpdate {
+	_u.mutation.SetPracticeAnswer(v)
+	return _u
+}
+
+// SetNillablePracticeAnswer sets the "practice_answer" field if the given value is not nil.
+func (_u *LessonEventUpdate) SetNillablePracticeAnswer(v *string) *LessonEventUpdate {
+	if v != nil {
+		_u.SetPracticeAnswer(*v)
+	}
+	return _u
+}
+
+// SetPracticeExplanation sets the "practice_explanation" field.
+func (_u *LessonEventUpdate) SetPracticeExplanation(v string) *LessonEventUpdate {
+	_u.mutation.SetPracticeExplanation(v)
+	return _u
+}
+
+// SetNillablePracticeExplanation sets the "practice_explanation" field if the given value is not nil.
+func (_u *LessonEventUpdate) SetNillablePracticeExplanation(v *string) *LessonEventUpdate {
+	if v != nil {
+		_u.SetPracticeExplanation(*v)
+	}
+	return _u
+}
+
 // Mutation returns the LessonEventMutation object of the builder.
 func (_u *LessonEventUpdate) Mutation() *LessonEventMutation {
 	return _u.mutation
@@ -192,6 +262,21 @@ func (_u *LessonEventUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	}
 	if value, ok := _u.mutation.PracticeSkipped(); ok {
 		_spec.SetField(lessonevent.FieldPracticeSkipped, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Explanation(); ok {
+		_spec.SetField(lessonevent.FieldExplanation, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.WorkedExample(); ok {
+		_spec.SetField(lessonevent.FieldWorkedExample, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PracticeText(); ok {
+		_spec.SetField(lessonevent.FieldPracticeText, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PracticeAnswer(); ok {
+		_spec.SetField(lessonevent.FieldPracticeAnswer, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PracticeExplanation(); ok {
+		_spec.SetField(lessonevent.FieldPracticeExplanation, field.TypeString, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -293,6 +378,76 @@ func (_u *LessonEventUpdateOne) SetPracticeSkipped(v bool) *LessonEventUpdateOne
 func (_u *LessonEventUpdateOne) SetNillablePracticeSkipped(v *bool) *LessonEventUpdateOne {
 	if v != nil {
 		_u.SetPracticeSkipped(*v)
+	}
+	return _u
+}
+
+// SetExplanation sets the "explanation" field.
+func (_u *LessonEventUpdateOne) SetExplanation(v string) *LessonEventUpdateOne {
+	_u.mutation.SetExplanation(v)
+	return _u
+}
+
+// SetNillableExplanation sets the "explanation" field if the given value is not nil.
+func (_u *LessonEventUpdateOne) SetNillableExplanation(v *string) *LessonEventUpdateOne {
+	if v != nil {
+		_u.SetExplanation(*v)
+	}
+	return _u
+}
+
+// SetWorkedExample sets the "worked_example" field.
+func (_u *LessonEventUpdateOne) SetWorkedExample(v string) *LessonEventUpdateOne {
+	_u.mutation.SetWorkedExample(v)
+	return _u
+}
+
+// SetNillableWorkedExample sets the "worked_example" field if the given value is not nil.
+func (_u *LessonEventUpdateOne) SetNillableWorkedExample(v *string) *LessonEventUpdateOne {
+	if v != nil {
+		_u.SetWorkedExample(*v)
+	}
+	return _u
+}
+
+// SetPracticeText sets the "practice_text" field.
+func (_u *LessonEventUpdateOne) SetPracticeText(v string) *LessonEventUpdateOne {
+	_u.mutation.SetPracticeText(v)
+	return _u
+}
+
+// SetNillablePracticeText sets the "practice_text" field if the given value is not nil.
+func (_u *LessonEventUpdateOne) SetNillablePracticeText(v *string) *LessonEventUpdateOne {
+	if v != nil {
+		_u.SetPracticeText(*v)
+	}
+	return _u
+}
+
+// SetPracticeAnswer sets the "practice_answer" field.
+func (_u *LessonEventUpdateOne) SetPracticeAnswer(v string) *LessonEventUpdateOne {
+	_u.mutation.SetPracticeAnswer(v)
+	return _u
+}
+
+// SetNillablePracticeAnswer sets the "practice_answer" field if the given value is not nil.
+func (_u *LessonEventUpdateOne) SetNillablePracticeAnswer(v *string) *LessonEventUpdateOne {
+	if v != nil {
+		_u.SetPracticeAnswer(*v)
+	}
+	return _u
+}
+
+// SetPracticeExplanation sets the "practice_explanation" field.
+func (_u *LessonEventUpdateOne) SetPracticeExplanation(v string) *LessonEventUpdateOne {
+	_u.mutation.SetPracticeExplanation(v)
+	return _u
+}
+
+// SetNillablePracticeExplanation sets the "practice_explanation" field if the given value is not nil.
+func (_u *LessonEventUpdateOne) SetNillablePracticeExplanation(v *string) *LessonEventUpdateOne {
+	if v != nil {
+		_u.SetPracticeExplanation(*v)
 	}
 	return _u
 }
@@ -408,6 +563,21 @@ func (_u *LessonEventUpdateOne) sqlSave(ctx context.Context) (_node *LessonEvent
 	}
 	if value, ok := _u.mutation.PracticeSkipped(); ok {
 		_spec.SetField(lessonevent.FieldPracticeSkipped, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Explanation(); ok {
+		_spec.SetField(lessonevent.FieldExplanation, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.WorkedExample(); ok {
+		_spec.SetField(lessonevent.FieldWorkedExample, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PracticeText(); ok {
+		_spec.SetField(lessonevent.FieldPracticeText, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PracticeAnswer(); ok {
+		_spec.SetField(lessonevent.FieldPracticeAnswer, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PracticeExplanation(); ok {
+		_spec.SetField(lessonevent.FieldPracticeExplanation, field.TypeString, value)
 	}
 	_node = &LessonEvent{config: _u.config}
 	_spec.Assign = _node.assignValues

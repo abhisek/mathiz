@@ -81,6 +81,7 @@ func (s *Server) routes() http.Handler {
 	// Treasure-map game.
 	if s.game != nil {
 		mux.Handle("GET /api/v1/game/map", s.withChild(s.handleGameMap))
+		mux.Handle("GET /api/v1/game/notebook", s.withChild(s.handleGameNotebook))
 		mux.Handle("POST /api/v1/game/expeditions", s.withChild(s.handleExpeditionStart))
 		mux.Handle("POST /api/v1/game/expeditions/{id}/question", s.withChild(s.handleExpeditionQuestion))
 		mux.Handle("POST /api/v1/game/expeditions/{id}/answer", s.withChild(s.handleExpeditionAnswer))

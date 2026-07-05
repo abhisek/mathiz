@@ -64,6 +64,10 @@ func (m *mockEventRepo) QuerySessionSummaries(_ context.Context, _ store.QueryOp
 func (m *mockEventRepo) QueryLLMEvents(_ context.Context, _ store.QueryOpts) ([]store.LLMRequestEventRecord, error) {
 	return nil, nil
 }
+
+func (m *mockEventRepo) QueryLessonEvents(_ context.Context, _ store.QueryOpts) ([]store.LessonEventRecord, error) {
+	return nil, nil
+}
 func (m *mockEventRepo) GetLLMEvent(_ context.Context, _ int) (*store.LLMRequestEventRecord, error) {
 	return nil, nil
 }

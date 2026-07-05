@@ -57,6 +57,44 @@ func (m *Manager) Map(ctx context.Context, childUID string) (*MapView, error) {
 	return view, nil
 }
 
+// notebookLimit caps how many past tips the notebook returns.
+const notebookLimit = 50
+
+// Notebook returns the guide's past tips for a child, newest first. Tips
+// written before lesson content was persisted (empty explanation) are
+// filtered out — a bare title teaches nothing.
+func (m *Manager) Notebook(ctx context.Context, childUID string) (*NotebookView, error) {
+	records, err := m.cfg.Store.EventRepoFor(childUID).QueryLessonEvents(ctx, store.QueryOpts{Limit: notebookLimit})
+	if err != nil {
+		return nil, fmt.Errorf("query lessons: %w", err)
+	}
+
+	view := &NotebookView{Tips: []NotebookTipView{}}
+	for _, rec := range records {
+		if rec.Explanation == "" {
+			continue
+		}
+		tip := NotebookTipView{
+			SkillID:             rec.SkillID,
+			SkillName:           rec.SkillID,
+			At:                  rec.Timestamp.UTC().Format(time.RFC3339),
+			Title:               rec.LessonTitle,
+			Explanation:         rec.Explanation,
+			WorkedExample:       rec.WorkedExample,
+			PracticeText:        rec.PracticeText,
+			PracticeAnswer:      rec.PracticeAnswer,
+			PracticeExplanation: rec.PracticeExplanation,
+		}
+		if skill, err := skillgraph.GetSkill(rec.SkillID); err == nil {
+			tip.SkillName = skill.Name
+			tip.IslandID = string(skill.Strand)
+			tip.IslandName = skillgraph.StrandDisplayName(skill.Strand)
+		}
+		view.Tips = append(view.Tips, tip)
+	}
+	return view, nil
+}
+
 func spotView(skill skillgraph.Skill, svc *mastery.Service, mastered, due map[string]bool) SpotView {
 	sm := svc.GetMastery(skill.ID)
 

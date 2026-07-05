@@ -539,6 +539,12 @@ func (m *Manager) AnswerLesson(ctx context.Context, childUID, expID, answer stri
 		PracticeAttempted: !skip,
 		PracticeCorrect:   correct,
 		PracticeSkipped:   skip,
+		// Full content: past tips live on in the guide's notebook.
+		Explanation:         lesson.Explanation,
+		WorkedExample:       lesson.WorkedExample,
+		PracticeText:        lesson.PracticeQuestion.Text,
+		PracticeAnswer:      lesson.PracticeQuestion.Answer,
+		PracticeExplanation: lesson.PracticeQuestion.Explanation,
 	})
 	return &LessonAnswerView{
 		Correct:       correct,
