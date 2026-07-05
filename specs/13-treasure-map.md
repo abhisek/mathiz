@@ -12,7 +12,7 @@ spaced repetition, LLM question generation, diagnosis, hints, learner profiles,
 and gems all run exactly as in the terminal app — the game is a new
 presentation driven over HTTP instead of a TUI event loop.
 
-**The map is the pedagogy, visualized.** The 54-skill Common Core DAG *is* the
+**The map is the pedagogy, visualized.** The 56-skill Common Core DAG *is* the
 treasure map: prerequisite edges are paths, the five strands are five islands,
 `skillgraph.IsUnlocked` is the fog of war, mastery opens treasure chests, and
 spaced-repetition due-dates make conquered spots sparkle again ("treasure is

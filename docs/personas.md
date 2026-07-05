@@ -44,7 +44,7 @@ device token stored in the browser.
 |---|---|---|
 | Front door: "I'm a kid → Enter my code" | `/` | static landing, routes to `/join` |
 | Join: enter code → pick profile → PIN | `/join` | `POST /api/v1/join/preview`, `POST /api/v1/join/redeem` |
-| Treasure map: 5 islands (strands), 54 dig spots (skills); fog on locked spots, glowing X on ready ones, progress rings while digging/proving, open chests when mastered, "sinking" sparkle when review is due | `/play` | `GET /api/v1/game/map` |
+| Treasure map: 5 islands (strands), 56 dig spots (skills); fog on locked spots, glowing X on ready ones, progress rings while digging/proving, open chests when mastered, "sinking" sparkle when review is due | `/play` | `GET /api/v1/game/map` |
 | Expedition: 5 AI-generated questions on a tapped spot (numeric or multiple choice), gem bursts, streak fire, prove-tier countdown | `/play` expedition overlay | `POST /api/v1/game/expeditions` (+ `/question`, `/answer`) |
 | Hints after a wrong answer | expedition overlay | `POST .../hint` |
 | The guide's micro-lesson after two wrong answers on a skill: explanation, worked example, practice question | expedition overlay | `POST .../lesson`, `POST .../lesson/answer` |

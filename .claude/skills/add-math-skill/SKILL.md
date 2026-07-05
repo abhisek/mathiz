@@ -7,7 +7,7 @@ description: Add math skills to the Mathiz skill graph (the curriculum DAG that 
 
 The graph in `internal/skillgraph/seed.go` IS the curriculum and the treasure
 map: strands are islands, prerequisite edges are the fog of war, skills are
-dig spots. 54 skills today, grades 3–5, 5 strands.
+dig spots. 56 skills today, grades 3–5, 5 strands.
 
 ## Adding a skill
 
