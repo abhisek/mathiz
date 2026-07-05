@@ -85,6 +85,32 @@ var (
 			},
 		},
 	}
+	// BillingStatesColumns holds the columns for the "billing_states" table.
+	BillingStatesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "family_space_id", Type: field.TypeString, Unique: true},
+		{Name: "provider", Type: field.TypeString, Default: ""},
+		{Name: "customer_id", Type: field.TypeString, Default: ""},
+		{Name: "subscription_id", Type: field.TypeString, Default: ""},
+		{Name: "plan_id", Type: field.TypeString, Default: ""},
+		{Name: "status", Type: field.TypeString, Default: "none"},
+		{Name: "current_period_end", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// BillingStatesTable holds the schema information for the "billing_states" table.
+	BillingStatesTable = &schema.Table{
+		Name:       "billing_states",
+		Columns:    BillingStatesColumns,
+		PrimaryKey: []*schema.Column{BillingStatesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "billingstate_family_space_id",
+				Unique:  false,
+				Columns: []*schema.Column{BillingStatesColumns[2]},
+			},
+		},
+	}
 	// ChildProfilesColumns holds the columns for the "child_profiles" table.
 	ChildProfilesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -106,6 +132,36 @@ var (
 				Name:    "childprofile_family_space_id",
 				Unique:  false,
 				Columns: []*schema.Column{ChildProfilesColumns[2]},
+			},
+		},
+	}
+	// CreditEntriesColumns holds the columns for the "credit_entries" table.
+	CreditEntriesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "family_space_id", Type: field.TypeString},
+		{Name: "kind", Type: field.TypeString},
+		{Name: "amount", Type: field.TypeInt},
+		{Name: "remaining", Type: field.TypeInt, Default: 0},
+		{Name: "source", Type: field.TypeString, Unique: true},
+		{Name: "expires_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// CreditEntriesTable holds the schema information for the "credit_entries" table.
+	CreditEntriesTable = &schema.Table{
+		Name:       "credit_entries",
+		Columns:    CreditEntriesColumns,
+		PrimaryKey: []*schema.Column{CreditEntriesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "creditentry_family_space_id",
+				Unique:  false,
+				Columns: []*schema.Column{CreditEntriesColumns[2]},
+			},
+			{
+				Name:    "creditentry_family_space_id_remaining",
+				Unique:  false,
+				Columns: []*schema.Column{CreditEntriesColumns[2], CreditEntriesColumns[5]},
 			},
 		},
 	}
@@ -561,7 +617,9 @@ var (
 	Tables = []*schema.Table{
 		AccountsTable,
 		AnswerEventsTable,
+		BillingStatesTable,
 		ChildProfilesTable,
+		CreditEntriesTable,
 		DeviceTokensTable,
 		DiagnosisEventsTable,
 		FamilySpacesTable,

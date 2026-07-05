@@ -59,6 +59,10 @@ services:
       MATHIZ_OPENAI_API_KEY: ${MATHIZ_OPENAI_API_KEY:-stub-key}
       MATHIZ_OPENAI_BASE_URL: ${MATHIZ_OPENAI_BASE_URL:-http://llmstub:9993/v1}
       MATHIZ_SERVER_ADDR: ":8080"
+      # Monetisation with the fake provider: starter credits, plans, and
+      # instant "checkout" — the full money loop, no real payments.
+      MATHIZ_BILLING_PROVIDER: ${MATHIZ_BILLING_PROVIDER:-fake}
+      MATHIZ_PUBLIC_BASE_URL: ${MATHIZ_PUBLIC_BASE_URL:-http://localhost:8080}
     ports:
       - "8080:8080"
 

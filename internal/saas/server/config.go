@@ -39,6 +39,14 @@ type Config struct {
 
 	// SessionIdleTimeout disconnects idle terminal sessions.
 	SessionIdleTimeout time.Duration
+
+	// BillingProvider enables monetisation: "" (off — everything free,
+	// the self-hoster default), "fake" (dev), "stripe"/"paddle" (planned).
+	BillingProvider string
+
+	// PublicBaseURL is this server's externally reachable origin, used for
+	// billing redirect URLs (defaults to http://localhost + Addr).
+	PublicBaseURL string
 }
 
 // ConfigFromEnv builds a Config from MATHIZ_* environment variables.
@@ -52,6 +60,8 @@ func ConfigFromEnv() (*Config, error) {
 		MaxSessions:        envIntOr("MATHIZ_MAX_SESSIONS", 100),
 		SessionIdleTimeout: time.Duration(envIntOr("MATHIZ_SESSION_IDLE_MINUTES", 30)) * time.Minute,
 		TrustProxy:         os.Getenv("MATHIZ_TRUST_PROXY") == "true",
+		BillingProvider:    os.Getenv("MATHIZ_BILLING_PROVIDER"),
+		PublicBaseURL:      os.Getenv("MATHIZ_PUBLIC_BASE_URL"),
 	}
 	if origins := os.Getenv("MATHIZ_CORS_ORIGINS"); origins != "" {
 		for _, o := range strings.Split(origins, ",") {

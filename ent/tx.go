@@ -16,8 +16,12 @@ type Tx struct {
 	Account *AccountClient
 	// AnswerEvent is the client for interacting with the AnswerEvent builders.
 	AnswerEvent *AnswerEventClient
+	// BillingState is the client for interacting with the BillingState builders.
+	BillingState *BillingStateClient
 	// ChildProfile is the client for interacting with the ChildProfile builders.
 	ChildProfile *ChildProfileClient
+	// CreditEntry is the client for interacting with the CreditEntry builders.
+	CreditEntry *CreditEntryClient
 	// DeviceToken is the client for interacting with the DeviceToken builders.
 	DeviceToken *DeviceTokenClient
 	// DiagnosisEvent is the client for interacting with the DiagnosisEvent builders.
@@ -173,7 +177,9 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Account = NewAccountClient(tx.config)
 	tx.AnswerEvent = NewAnswerEventClient(tx.config)
+	tx.BillingState = NewBillingStateClient(tx.config)
 	tx.ChildProfile = NewChildProfileClient(tx.config)
+	tx.CreditEntry = NewCreditEntryClient(tx.config)
 	tx.DeviceToken = NewDeviceTokenClient(tx.config)
 	tx.DiagnosisEvent = NewDiagnosisEventClient(tx.config)
 	tx.FamilySpace = NewFamilySpaceClient(tx.config)

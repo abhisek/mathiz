@@ -1,6 +1,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -176,6 +177,12 @@ func (s *Server) handleCreateFamily(w http.ResponseWriter, r *http.Request, p au
 	if err != nil {
 		writeServiceError(w, err)
 		return
+	}
+	// Free starter credits: kids play immediately, no card required.
+	if s.credits != nil {
+		if err := s.credits.EnsureStarterGrant(r.Context(), sp.UID); err != nil {
+			log.Printf("starter grant for %s: %v", sp.UID, err)
+		}
 	}
 	writeJSON(w, http.StatusCreated, toSpaceJSON(sp))
 }

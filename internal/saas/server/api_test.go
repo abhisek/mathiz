@@ -11,6 +11,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/abhisek/mathiz/internal/saas/auth"
+	"github.com/abhisek/mathiz/internal/saas/billing"
+	"github.com/abhisek/mathiz/internal/saas/credits"
 	"github.com/abhisek/mathiz/internal/saas/family"
 	"github.com/abhisek/mathiz/internal/store"
 )
@@ -40,7 +42,15 @@ func newTestEnv(t *testing.T) *testEnv {
 		SupabaseURL:     "https://example.supabase.co",
 		SupabaseAnonKey: "anon-key",
 	}
-	srv := New(cfg, st, family.New(st.Client()), verifier, nil, nil, nil)
+	creditsSvc := credits.New(st.Client())
+	srv := New(Deps{
+		Config:   cfg,
+		Store:    st,
+		Family:   family.New(st.Client()),
+		Verifier: verifier,
+		Credits:  creditsSvc,
+		Billing:  billing.NewService(st.Client(), creditsSvc, billing.NewFakeProvider(cfg.PublicBaseURL)),
+	})
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 	return &testEnv{ts: ts, st: st}

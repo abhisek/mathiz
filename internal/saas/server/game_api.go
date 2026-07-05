@@ -124,6 +124,10 @@ func writeGameError(w http.ResponseWriter, err error) {
 		errors.Is(err, game.ErrNoHint),
 		errors.Is(err, game.ErrNoLesson):
 		writeError(w, http.StatusConflict, err.Error())
+	case errors.Is(err, game.ErrNoCredits):
+		// The kid client renders this as "the ship needs to rest" — no
+		// prices on the child surface, ever.
+		writeError(w, http.StatusPaymentRequired, "out_of_credits")
 	case errors.Is(err, game.ErrGeneration):
 		writeError(w, http.StatusServiceUnavailable, err.Error())
 	default:

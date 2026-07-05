@@ -8,10 +8,26 @@ import (
 
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/authz"
+	"github.com/abhisek/mathiz/internal/saas/billing"
+	"github.com/abhisek/mathiz/internal/saas/credits"
 	"github.com/abhisek/mathiz/internal/saas/family"
 	"github.com/abhisek/mathiz/internal/saas/game"
 	"github.com/abhisek/mathiz/internal/store"
 )
+
+// Deps carries everything a Server needs. Terminal, WebUI, Game, Credits,
+// and Billing are optional — their routes 404 / fall through when nil.
+type Deps struct {
+	Config   *Config
+	Store    *store.Store
+	Family   *family.Service
+	Verifier *auth.SupabaseVerifier
+	Terminal http.Handler
+	WebUI    http.Handler
+	Game     *game.Manager
+	Credits  *credits.Service
+	Billing  *billing.Service
+}
 
 // Server wires config, services, and routes.
 type Server struct {
@@ -21,29 +37,29 @@ type Server struct {
 	checker  *authz.Checker
 	verifier *auth.SupabaseVerifier
 
-	// terminal serves the learning session WebSocket. Optional.
 	terminal http.Handler
-	// webui serves the embedded SPA. Optional.
-	webui http.Handler
-	// game is the treasure-map play manager. Optional.
-	game *game.Manager
+	webui    http.Handler
+	game     *game.Manager
+	credits  *credits.Service
+	billing  *billing.Service
 
 	joinLimiter *ipLimiter
 	handler     http.Handler
 }
 
-// New builds a Server around a shared family service. terminal, webui, and
-// gameMgr may be nil (their routes 404 / fall through).
-func New(cfg *Config, st *store.Store, svc *family.Service, verifier *auth.SupabaseVerifier, terminal, webui http.Handler, gameMgr *game.Manager) *Server {
+// New builds a Server from its dependencies.
+func New(d Deps) *Server {
 	s := &Server{
-		cfg:      cfg,
-		st:       st,
-		family:   svc,
-		checker:  authz.NewChecker(svc),
-		verifier: verifier,
-		terminal: terminal,
-		webui:    webui,
-		game:     gameMgr,
+		cfg:      d.Config,
+		st:       d.Store,
+		family:   d.Family,
+		checker:  authz.NewChecker(d.Family),
+		verifier: d.Verifier,
+		terminal: d.Terminal,
+		webui:    d.WebUI,
+		game:     d.Game,
+		credits:  d.Credits,
+		billing:  d.Billing,
 		// Join endpoints are unauthenticated: keep brute force slow.
 		joinLimiter: newIPLimiter(1, 10),
 	}
@@ -89,6 +105,18 @@ func (s *Server) routes() http.Handler {
 		mux.Handle("POST /api/v1/game/expeditions/{id}/lesson", s.withChild(s.handleExpeditionLesson))
 		mux.Handle("POST /api/v1/game/expeditions/{id}/lesson/answer", s.withChild(s.handleExpeditionLessonAnswer))
 		mux.Handle("POST /api/v1/game/expeditions/{id}/end", s.withChild(s.handleExpeditionEnd))
+	}
+
+	// Billing (only when a provider is configured).
+	if s.billing != nil {
+		mux.Handle("GET /api/v1/family/{id}/billing", s.withParent(s.handleGetBilling))
+		mux.Handle("POST /api/v1/family/{id}/billing/checkout", s.withParent(s.handleBillingCheckout))
+		mux.Handle("POST /api/v1/family/{id}/billing/portal", s.withParent(s.handleBillingPortal))
+		mux.HandleFunc("POST /api/v1/billing/webhook", s.handleBillingWebhook)
+		if s.billing.Provider().Name() == "fake" {
+			// Dev-only: the fake provider's "payment succeeded" redirect.
+			mux.HandleFunc("GET /api/v1/billing/fake/complete", s.handleFakeBillingComplete)
+		}
 	}
 
 	// Terminal WebSocket (authenticates in-protocol via first message).

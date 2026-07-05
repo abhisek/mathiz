@@ -33,6 +33,18 @@ func (f AnswerEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AnswerEventMutation", m)
 }
 
+// The BillingStateFunc type is an adapter to allow the use of ordinary
+// function as BillingState mutator.
+type BillingStateFunc func(context.Context, *ent.BillingStateMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f BillingStateFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.BillingStateMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BillingStateMutation", m)
+}
+
 // The ChildProfileFunc type is an adapter to allow the use of ordinary
 // function as ChildProfile mutator.
 type ChildProfileFunc func(context.Context, *ent.ChildProfileMutation) (ent.Value, error)
@@ -43,6 +55,18 @@ func (f ChildProfileFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChildProfileMutation", m)
+}
+
+// The CreditEntryFunc type is an adapter to allow the use of ordinary
+// function as CreditEntry mutator.
+type CreditEntryFunc func(context.Context, *ent.CreditEntryMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CreditEntryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CreditEntryMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CreditEntryMutation", m)
 }
 
 // The DeviceTokenFunc type is an adapter to allow the use of ordinary

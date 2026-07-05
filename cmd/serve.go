@@ -14,6 +14,8 @@ import (
 
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/authz"
+	"github.com/abhisek/mathiz/internal/saas/billing"
+	"github.com/abhisek/mathiz/internal/saas/credits"
 	"github.com/abhisek/mathiz/internal/saas/family"
 	"github.com/abhisek/mathiz/internal/saas/game"
 	"github.com/abhisek/mathiz/internal/saas/server"
@@ -71,6 +73,43 @@ func runServe(ctx context.Context) error {
 
 	// One family service shared by the API server and the terminal bridge.
 	svc := family.New(st.Client())
+
+	// Monetisation: enabled only when a billing provider is configured.
+	// Without one, everything is free (local/self-hosted default).
+	var (
+		creditsSvc *credits.Service
+		billingSvc *billing.Service
+		charge     func(ctx context.Context, childUID, sessionID string) error
+	)
+	switch cfg.BillingProvider {
+	case "":
+		// billing disabled
+	case "fake":
+		baseURL := cfg.PublicBaseURL
+		if baseURL == "" {
+			baseURL = "http://localhost" + cfg.Addr
+		}
+		creditsSvc = credits.New(st.Client())
+		billingSvc = billing.NewService(st.Client(), creditsSvc, billing.NewFakeProvider(baseURL))
+	default:
+		return fmt.Errorf("unsupported MATHIZ_BILLING_PROVIDER %q (available: fake; stripe/paddle planned)", cfg.BillingProvider)
+	}
+	if creditsSvc != nil {
+		// One credit per learning session, debited at start. The session ID
+		// is the idempotency key; ErrNoCredits maps to a kid-friendly stop.
+		charge = func(ctx context.Context, childUID, sessionID string) error {
+			child, err := svc.Child(ctx, childUID)
+			if err != nil {
+				return err
+			}
+			err = creditsSvc.Debit(ctx, child.FamilySpaceID, 1, "session:"+sessionID)
+			if errors.Is(err, credits.ErrInsufficient) {
+				return game.ErrNoCredits
+			}
+			return err
+		}
+	}
+
 	bridge := termbridge.New(termbridge.Options{
 		Store:          st,
 		Family:         svc,
@@ -78,12 +117,24 @@ func runServe(ctx context.Context) error {
 		AllowedOrigins: cfg.CORSOrigins,
 		IdleTimeout:    cfg.SessionIdleTimeout,
 		MaxSessions:    cfg.MaxSessions,
+		Charge:         charge,
 	})
 	gameMgr := game.NewManager(game.Config{
 		Store:       st,
 		IdleTimeout: cfg.SessionIdleTimeout,
+		Charge:      charge,
 	})
-	srv := server.New(cfg, st, svc, verifier, bridge, webui.Handler(), gameMgr)
+	srv := server.New(server.Deps{
+		Config:   cfg,
+		Store:    st,
+		Family:   svc,
+		Verifier: verifier,
+		Terminal: bridge,
+		WebUI:    webui.Handler(),
+		Game:     gameMgr,
+		Credits:  creditsSvc,
+		Billing:  billingSvc,
+	})
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,
