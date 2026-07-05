@@ -219,13 +219,13 @@ func TestAvailableSkills_PartialMastered(t *testing.T) {
 
 	// Skills that depend only on pv-hundreds should now be available
 	expectedAvailable := map[string]bool{
-		"compare-1000":        true,
+		"compare-1000":         true,
 		"round-nearest-10-100": true,
-		"pv-ten-thousands":    true,
-		"add-2digit":          true,
-		"sub-2digit":          true,
-		"meas-length":         true,
-		"meas-mass-volume":    true,
+		"pv-ten-thousands":     true,
+		"add-2digit":           true,
+		"sub-2digit":           true,
+		"meas-length":          true,
+		"meas-mass-volume":     true,
 	}
 	availableIDs := map[string]bool{}
 	for _, s := range available {
