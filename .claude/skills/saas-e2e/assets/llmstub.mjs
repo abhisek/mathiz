@@ -52,4 +52,8 @@ http
       )
     })
   })
-  .listen(9993, '127.0.0.1', () => console.log('llm stub on :9993'))
+  .listen(
+    Number(process.env.PORT ?? 9993),
+    process.env.HOST ?? '127.0.0.1', // HOST=0.0.0.0 inside containers
+    () => console.log(`llm stub on ${process.env.HOST ?? '127.0.0.1'}:${process.env.PORT ?? 9993}`),
+  )

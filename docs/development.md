@@ -21,6 +21,34 @@ git clone https://github.com/abhisek/mathiz.git && cd mathiz
 CGO_ENABLED=0 go build ./...        # sanity: compiles everything
 ```
 
+## 0. One command: the self-contained Docker stack
+
+If you have Docker and just want the whole hosted product running:
+
+```bash
+make dev-up        # builds the image (SPA + Go, multi-stage) and starts
+                   # PostgreSQL + a stub LLM + mathiz serve on :8080
+```
+
+Open `http://localhost:8080/join` — kids need only a join code, so once a
+family exists you can play immediately. For the parent API without a real
+Supabase project, mint a dev JWT (the compose file's default HS256 secret
+matches the minting script):
+
+```bash
+JWT=$(node .claude/skills/saas-e2e/assets/mint-jwt.mjs)
+curl -s -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
+  -X POST -d '{"name":"My Family"}' http://localhost:8080/api/v1/family
+# then add a child + mint an invite the same way (see docs/saas.md API table)
+```
+
+Questions come from the bundled stub (always "What is 12 + 7?"). Point the
+stack at real services by overriding env vars, e.g.
+`MATHIZ_LLM_PROVIDER=gemini MATHIZ_GEMINI_API_KEY=... make dev-up`, or a real
+`MATHIZ_SUPABASE_URL`/`_ANON_KEY`/`_JWT_SECRET`. `make dev-down` stops it.
+
+Everything below is the host-native path — better for fast iteration.
+
 ## 1. Run the local CLI (fastest first win)
 
 ```bash

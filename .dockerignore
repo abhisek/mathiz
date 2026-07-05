@@ -1,0 +1,9 @@
+.git
+bin
+web/node_modules
+web/dist
+internal/saas/webui/dist/*
+!internal/saas/webui/dist/.gitkeep
+.env
+*.db
+docs/assets

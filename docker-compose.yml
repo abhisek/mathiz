@@ -1,5 +1,16 @@
-# Local development infrastructure for `mathiz serve`.
-# Production uses Supabase (or any hosted PostgreSQL) instead.
+# Local development infrastructure for Mathiz.
+#
+#   make dev-db      → just PostgreSQL (run `mathiz serve` on the host)
+#   make dev-up      → the WHOLE stack, self-contained:
+#                      PostgreSQL + stub LLM + mathiz serve on :8080.
+#                      No Supabase project or LLM API key required — parent
+#                      auth uses the dev HS256 secret (mint tokens with
+#                      .claude/skills/saas-e2e/assets/mint-jwt.mjs) and the
+#                      kid flows only need a join code.
+#
+# To use a real Supabase project and/or a real LLM, set the MATHIZ_* env
+# vars (or a .env file next to this compose file) — every default below is
+# overridable. Production uses hosted PostgreSQL instead.
 services:
   postgres:
     image: postgres:16-alpine
@@ -16,6 +27,40 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # OpenAI-compatible stub: every question is "What is 12 + 7?" (answer 19),
+  # with a canned micro-lesson. Perfect for flow development; swap for a real
+  # provider via MATHIZ_OPENAI_BASE_URL / MATHIZ_LLM_PROVIDER.
+  llmstub:
+    profiles: ["full"]
+    image: node:20-alpine
+    environment:
+      HOST: 0.0.0.0
+    volumes:
+      - ./.claude/skills/saas-e2e/assets/llmstub.mjs:/app/llmstub.mjs:ro
+    command: ["node", "/app/llmstub.mjs"]
+
+  mathiz:
+    profiles: ["full"]
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      llmstub:
+        condition: service_started
+    environment:
+      MATHIZ_DATABASE_URL: postgres://mathiz:mathiz@postgres:5432/mathiz?sslmode=disable
+      MATHIZ_SUPABASE_URL: ${MATHIZ_SUPABASE_URL:-https://dummy.supabase.co}
+      MATHIZ_SUPABASE_ANON_KEY: ${MATHIZ_SUPABASE_ANON_KEY:-dev-anon-key}
+      # Dev-only secret; matches mint-jwt.mjs's default so curl flows work
+      # out of the box. Override for anything beyond local development.
+      MATHIZ_SUPABASE_JWT_SECRET: ${MATHIZ_SUPABASE_JWT_SECRET:-e2e-test-secret-with-plenty-of-length!!}
+      MATHIZ_LLM_PROVIDER: ${MATHIZ_LLM_PROVIDER:-openai}
+      MATHIZ_OPENAI_API_KEY: ${MATHIZ_OPENAI_API_KEY:-stub-key}
+      MATHIZ_OPENAI_BASE_URL: ${MATHIZ_OPENAI_BASE_URL:-http://llmstub:9993/v1}
+      MATHIZ_SERVER_ADDR: ":8080"
+    ports:
+      - "8080:8080"
 
 volumes:
   mathiz-pgdata:
