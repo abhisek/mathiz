@@ -1,0 +1,49 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/block-generated-edits.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/gofmt-on-save.py"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(go build:*)",
+      "Bash(go test:*)",
+      "Bash(go vet:*)",
+      "Bash(go generate:*)",
+      "Bash(go mod tidy)",
+      "Bash(go mod download)",
+      "Bash(CGO_ENABLED=0 go build:*)",
+      "Bash(CGO_ENABLED=0 go generate:*)",
+      "Bash(gofmt:*)",
+      "Bash(make generate)",
+      "Bash(make mathiz)",
+      "Bash(make web)",
+      "Bash(make test)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ]
+  }
+}
