@@ -68,7 +68,9 @@ Two deployment modes, one engine:
 
 Specs in `specs/` are the design record (spec-driven repo): `12-saas.md`
 (SaaS layer), `13-treasure-map.md` (game). Write/update a spec for any
-significant feature.
+significant feature. `docs/personas.md` is the source of truth for
+user-facing flows — **update it when you add or change one**.
+`docs/development.md` is the human dev-setup guide.
 
 ## Invariants (do not break)
 
