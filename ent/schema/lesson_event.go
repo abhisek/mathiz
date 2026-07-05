@@ -23,6 +23,13 @@ func (LessonEvent) Fields() []ent.Field {
 		field.Bool("practice_attempted"),
 		field.Bool("practice_correct"),
 		field.Bool("practice_skipped"),
+		// Full lesson content so past tips can be revisited (the guide's
+		// notebook). Empty on rows written before these fields existed.
+		field.Text("explanation").Default(""),
+		field.Text("worked_example").Default(""),
+		field.Text("practice_text").Default(""),
+		field.String("practice_answer").Default(""),
+		field.Text("practice_explanation").Default(""),
 	}
 }
 

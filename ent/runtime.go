@@ -294,6 +294,26 @@ func init() {
 	lessoneventDescLessonTitle := lessoneventFields[2].Descriptor()
 	// lessonevent.LessonTitleValidator is a validator for the "lesson_title" field. It is called by the builders before save.
 	lessonevent.LessonTitleValidator = lessoneventDescLessonTitle.Validators[0].(func(string) error)
+	// lessoneventDescExplanation is the schema descriptor for explanation field.
+	lessoneventDescExplanation := lessoneventFields[6].Descriptor()
+	// lessonevent.DefaultExplanation holds the default value on creation for the explanation field.
+	lessonevent.DefaultExplanation = lessoneventDescExplanation.Default.(string)
+	// lessoneventDescWorkedExample is the schema descriptor for worked_example field.
+	lessoneventDescWorkedExample := lessoneventFields[7].Descriptor()
+	// lessonevent.DefaultWorkedExample holds the default value on creation for the worked_example field.
+	lessonevent.DefaultWorkedExample = lessoneventDescWorkedExample.Default.(string)
+	// lessoneventDescPracticeText is the schema descriptor for practice_text field.
+	lessoneventDescPracticeText := lessoneventFields[8].Descriptor()
+	// lessonevent.DefaultPracticeText holds the default value on creation for the practice_text field.
+	lessonevent.DefaultPracticeText = lessoneventDescPracticeText.Default.(string)
+	// lessoneventDescPracticeAnswer is the schema descriptor for practice_answer field.
+	lessoneventDescPracticeAnswer := lessoneventFields[9].Descriptor()
+	// lessonevent.DefaultPracticeAnswer holds the default value on creation for the practice_answer field.
+	lessonevent.DefaultPracticeAnswer = lessoneventDescPracticeAnswer.Default.(string)
+	// lessoneventDescPracticeExplanation is the schema descriptor for practice_explanation field.
+	lessoneventDescPracticeExplanation := lessoneventFields[10].Descriptor()
+	// lessonevent.DefaultPracticeExplanation holds the default value on creation for the practice_explanation field.
+	lessonevent.DefaultPracticeExplanation = lessoneventDescPracticeExplanation.Default.(string)
 	masteryeventMixin := schema.MasteryEvent{}.Mixin()
 	masteryeventMixinFields0 := masteryeventMixin[0].Fields()
 	_ = masteryeventMixinFields0

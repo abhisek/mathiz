@@ -17,11 +17,11 @@ type QueryOpts struct {
 // SnapshotData captures the full learner state at a point in time.
 // Domain modules register their state types here as they are implemented.
 type SnapshotData struct {
-	Version        int                          `json:"version"`
-	Mastery        *MasterySnapshotData         `json:"mastery,omitempty"`
-	SpacedRep      *SpacedRepSnapshotData       `json:"spaced_rep,omitempty"`
-	LearnerProfile *LearnerProfileData          `json:"learner_profile,omitempty"`
-	Gems           *GemsSnapshotData            `json:"gems,omitempty"`
+	Version        int                    `json:"version"`
+	Mastery        *MasterySnapshotData   `json:"mastery,omitempty"`
+	SpacedRep      *SpacedRepSnapshotData `json:"spaced_rep,omitempty"`
+	LearnerProfile *LearnerProfileData    `json:"learner_profile,omitempty"`
+	Gems           *GemsSnapshotData      `json:"gems,omitempty"`
 
 	// Deprecated: kept for migration only. New snapshots use Mastery field.
 	TierProgress map[string]*TierProgressData `json:"tier_progress,omitempty"`
@@ -50,18 +50,18 @@ type MasterySnapshotData struct {
 
 // SkillMasteryData is the serialized form of SkillMastery for snapshot storage.
 type SkillMasteryData struct {
-	SkillID       string    `json:"skill_id"`
-	State         string    `json:"state"`
-	CurrentTier   string    `json:"current_tier"`
-	TotalAttempts int       `json:"total_attempts"`
-	CorrectCount  int       `json:"correct_count"`
-	SpeedScores   []float64 `json:"speed_scores,omitempty"`
-	SpeedWindow   int       `json:"speed_window"`
-	Streak        int       `json:"streak"`
-	StreakCap     int       `json:"streak_cap"`
-	MasteredAt           *string `json:"mastered_at,omitempty"`
-	RustyAt              *string `json:"rusty_at,omitempty"`
-	MisconceptionPenalty int     `json:"misconception_penalty,omitempty"`
+	SkillID              string    `json:"skill_id"`
+	State                string    `json:"state"`
+	CurrentTier          string    `json:"current_tier"`
+	TotalAttempts        int       `json:"total_attempts"`
+	CorrectCount         int       `json:"correct_count"`
+	SpeedScores          []float64 `json:"speed_scores,omitempty"`
+	SpeedWindow          int       `json:"speed_window"`
+	Streak               int       `json:"streak"`
+	StreakCap            int       `json:"streak_cap"`
+	MasteredAt           *string   `json:"mastered_at,omitempty"`
+	RustyAt              *string   `json:"rusty_at,omitempty"`
+	MisconceptionPenalty int       `json:"misconception_penalty,omitempty"`
 }
 
 // TierProgressData is the serialized form of tier progress for a skill.
@@ -142,12 +142,12 @@ type LLMModelUsage struct {
 
 // SessionEventData captures the data for a session lifecycle event.
 type SessionEventData struct {
-	SessionID      string
-	Action         string // "start" or "end"
+	SessionID       string
+	Action          string // "start" or "end"
 	QuestionsServed int
-	CorrectAnswers int
-	DurationSecs   int
-	PlanSummary    []PlanSlotSummaryData
+	CorrectAnswers  int
+	DurationSecs    int
+	PlanSummary     []PlanSlotSummaryData
 }
 
 // PlanSlotSummaryData is the serialized form of a plan slot for events.
@@ -190,6 +190,7 @@ type HintEventData struct {
 }
 
 // LessonEventData records that a micro-lesson was generated and shown.
+// Content fields carry the full lesson so past tips can be revisited.
 type LessonEventData struct {
 	SessionID         string
 	SkillID           string
@@ -197,6 +198,29 @@ type LessonEventData struct {
 	PracticeAttempted bool
 	PracticeCorrect   bool
 	PracticeSkipped   bool
+
+	Explanation         string
+	WorkedExample       string
+	PracticeText        string
+	PracticeAnswer      string
+	PracticeExplanation string
+}
+
+// LessonEventRecord is a hydrated lesson event for display.
+type LessonEventRecord struct {
+	Sequence            int64
+	Timestamp           time.Time
+	SessionID           string
+	SkillID             string
+	LessonTitle         string
+	Explanation         string
+	WorkedExample       string
+	PracticeText        string
+	PracticeAnswer      string
+	PracticeExplanation string
+	PracticeAttempted   bool
+	PracticeCorrect     bool
+	PracticeSkipped     bool
 }
 
 // LearnerProfileData is the serializable form of LearnerProfile.
@@ -294,6 +318,10 @@ type EventRepo interface {
 
 	// AppendLessonEvent records that a micro-lesson was shown.
 	AppendLessonEvent(ctx context.Context, data LessonEventData) error
+
+	// QueryLessonEvents returns lesson events matching the query options,
+	// newest first.
+	QueryLessonEvents(ctx context.Context, opts QueryOpts) ([]LessonEventRecord, error)
 
 	// AppendGemEvent records a gem award event.
 	AppendGemEvent(ctx context.Context, data GemEventData) error

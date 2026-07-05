@@ -99,6 +99,31 @@ func PracticeSkipped(v bool) predicate.LessonEvent {
 	return predicate.LessonEvent(sql.FieldEQ(FieldPracticeSkipped, v))
 }
 
+// Explanation applies equality check predicate on the "explanation" field. It's identical to ExplanationEQ.
+func Explanation(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldExplanation, v))
+}
+
+// WorkedExample applies equality check predicate on the "worked_example" field. It's identical to WorkedExampleEQ.
+func WorkedExample(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldWorkedExample, v))
+}
+
+// PracticeText applies equality check predicate on the "practice_text" field. It's identical to PracticeTextEQ.
+func PracticeText(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldPracticeText, v))
+}
+
+// PracticeAnswer applies equality check predicate on the "practice_answer" field. It's identical to PracticeAnswerEQ.
+func PracticeAnswer(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldPracticeAnswer, v))
+}
+
+// PracticeExplanation applies equality check predicate on the "practice_explanation" field. It's identical to PracticeExplanationEQ.
+func PracticeExplanation(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldPracticeExplanation, v))
+}
+
 // SequenceEQ applies the EQ predicate on the "sequence" field.
 func SequenceEQ(v int64) predicate.LessonEvent {
 	return predicate.LessonEvent(sql.FieldEQ(FieldSequence, v))
@@ -467,6 +492,331 @@ func PracticeSkippedEQ(v bool) predicate.LessonEvent {
 // PracticeSkippedNEQ applies the NEQ predicate on the "practice_skipped" field.
 func PracticeSkippedNEQ(v bool) predicate.LessonEvent {
 	return predicate.LessonEvent(sql.FieldNEQ(FieldPracticeSkipped, v))
+}
+
+// ExplanationEQ applies the EQ predicate on the "explanation" field.
+func ExplanationEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldExplanation, v))
+}
+
+// ExplanationNEQ applies the NEQ predicate on the "explanation" field.
+func ExplanationNEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNEQ(FieldExplanation, v))
+}
+
+// ExplanationIn applies the In predicate on the "explanation" field.
+func ExplanationIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldIn(FieldExplanation, vs...))
+}
+
+// ExplanationNotIn applies the NotIn predicate on the "explanation" field.
+func ExplanationNotIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNotIn(FieldExplanation, vs...))
+}
+
+// ExplanationGT applies the GT predicate on the "explanation" field.
+func ExplanationGT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGT(FieldExplanation, v))
+}
+
+// ExplanationGTE applies the GTE predicate on the "explanation" field.
+func ExplanationGTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGTE(FieldExplanation, v))
+}
+
+// ExplanationLT applies the LT predicate on the "explanation" field.
+func ExplanationLT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLT(FieldExplanation, v))
+}
+
+// ExplanationLTE applies the LTE predicate on the "explanation" field.
+func ExplanationLTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLTE(FieldExplanation, v))
+}
+
+// ExplanationContains applies the Contains predicate on the "explanation" field.
+func ExplanationContains(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContains(FieldExplanation, v))
+}
+
+// ExplanationHasPrefix applies the HasPrefix predicate on the "explanation" field.
+func ExplanationHasPrefix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasPrefix(FieldExplanation, v))
+}
+
+// ExplanationHasSuffix applies the HasSuffix predicate on the "explanation" field.
+func ExplanationHasSuffix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasSuffix(FieldExplanation, v))
+}
+
+// ExplanationEqualFold applies the EqualFold predicate on the "explanation" field.
+func ExplanationEqualFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEqualFold(FieldExplanation, v))
+}
+
+// ExplanationContainsFold applies the ContainsFold predicate on the "explanation" field.
+func ExplanationContainsFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContainsFold(FieldExplanation, v))
+}
+
+// WorkedExampleEQ applies the EQ predicate on the "worked_example" field.
+func WorkedExampleEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldWorkedExample, v))
+}
+
+// WorkedExampleNEQ applies the NEQ predicate on the "worked_example" field.
+func WorkedExampleNEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNEQ(FieldWorkedExample, v))
+}
+
+// WorkedExampleIn applies the In predicate on the "worked_example" field.
+func WorkedExampleIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldIn(FieldWorkedExample, vs...))
+}
+
+// WorkedExampleNotIn applies the NotIn predicate on the "worked_example" field.
+func WorkedExampleNotIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNotIn(FieldWorkedExample, vs...))
+}
+
+// WorkedExampleGT applies the GT predicate on the "worked_example" field.
+func WorkedExampleGT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGT(FieldWorkedExample, v))
+}
+
+// WorkedExampleGTE applies the GTE predicate on the "worked_example" field.
+func WorkedExampleGTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGTE(FieldWorkedExample, v))
+}
+
+// WorkedExampleLT applies the LT predicate on the "worked_example" field.
+func WorkedExampleLT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLT(FieldWorkedExample, v))
+}
+
+// WorkedExampleLTE applies the LTE predicate on the "worked_example" field.
+func WorkedExampleLTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLTE(FieldWorkedExample, v))
+}
+
+// WorkedExampleContains applies the Contains predicate on the "worked_example" field.
+func WorkedExampleContains(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContains(FieldWorkedExample, v))
+}
+
+// WorkedExampleHasPrefix applies the HasPrefix predicate on the "worked_example" field.
+func WorkedExampleHasPrefix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasPrefix(FieldWorkedExample, v))
+}
+
+// WorkedExampleHasSuffix applies the HasSuffix predicate on the "worked_example" field.
+func WorkedExampleHasSuffix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasSuffix(FieldWorkedExample, v))
+}
+
+// WorkedExampleEqualFold applies the EqualFold predicate on the "worked_example" field.
+func WorkedExampleEqualFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEqualFold(FieldWorkedExample, v))
+}
+
+// WorkedExampleContainsFold applies the ContainsFold predicate on the "worked_example" field.
+func WorkedExampleContainsFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContainsFold(FieldWorkedExample, v))
+}
+
+// PracticeTextEQ applies the EQ predicate on the "practice_text" field.
+func PracticeTextEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldPracticeText, v))
+}
+
+// PracticeTextNEQ applies the NEQ predicate on the "practice_text" field.
+func PracticeTextNEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNEQ(FieldPracticeText, v))
+}
+
+// PracticeTextIn applies the In predicate on the "practice_text" field.
+func PracticeTextIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldIn(FieldPracticeText, vs...))
+}
+
+// PracticeTextNotIn applies the NotIn predicate on the "practice_text" field.
+func PracticeTextNotIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNotIn(FieldPracticeText, vs...))
+}
+
+// PracticeTextGT applies the GT predicate on the "practice_text" field.
+func PracticeTextGT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGT(FieldPracticeText, v))
+}
+
+// PracticeTextGTE applies the GTE predicate on the "practice_text" field.
+func PracticeTextGTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGTE(FieldPracticeText, v))
+}
+
+// PracticeTextLT applies the LT predicate on the "practice_text" field.
+func PracticeTextLT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLT(FieldPracticeText, v))
+}
+
+// PracticeTextLTE applies the LTE predicate on the "practice_text" field.
+func PracticeTextLTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLTE(FieldPracticeText, v))
+}
+
+// PracticeTextContains applies the Contains predicate on the "practice_text" field.
+func PracticeTextContains(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContains(FieldPracticeText, v))
+}
+
+// PracticeTextHasPrefix applies the HasPrefix predicate on the "practice_text" field.
+func PracticeTextHasPrefix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasPrefix(FieldPracticeText, v))
+}
+
+// PracticeTextHasSuffix applies the HasSuffix predicate on the "practice_text" field.
+func PracticeTextHasSuffix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasSuffix(FieldPracticeText, v))
+}
+
+// PracticeTextEqualFold applies the EqualFold predicate on the "practice_text" field.
+func PracticeTextEqualFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEqualFold(FieldPracticeText, v))
+}
+
+// PracticeTextContainsFold applies the ContainsFold predicate on the "practice_text" field.
+func PracticeTextContainsFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContainsFold(FieldPracticeText, v))
+}
+
+// PracticeAnswerEQ applies the EQ predicate on the "practice_answer" field.
+func PracticeAnswerEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerNEQ applies the NEQ predicate on the "practice_answer" field.
+func PracticeAnswerNEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNEQ(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerIn applies the In predicate on the "practice_answer" field.
+func PracticeAnswerIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldIn(FieldPracticeAnswer, vs...))
+}
+
+// PracticeAnswerNotIn applies the NotIn predicate on the "practice_answer" field.
+func PracticeAnswerNotIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNotIn(FieldPracticeAnswer, vs...))
+}
+
+// PracticeAnswerGT applies the GT predicate on the "practice_answer" field.
+func PracticeAnswerGT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGT(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerGTE applies the GTE predicate on the "practice_answer" field.
+func PracticeAnswerGTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGTE(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerLT applies the LT predicate on the "practice_answer" field.
+func PracticeAnswerLT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLT(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerLTE applies the LTE predicate on the "practice_answer" field.
+func PracticeAnswerLTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLTE(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerContains applies the Contains predicate on the "practice_answer" field.
+func PracticeAnswerContains(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContains(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerHasPrefix applies the HasPrefix predicate on the "practice_answer" field.
+func PracticeAnswerHasPrefix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasPrefix(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerHasSuffix applies the HasSuffix predicate on the "practice_answer" field.
+func PracticeAnswerHasSuffix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasSuffix(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerEqualFold applies the EqualFold predicate on the "practice_answer" field.
+func PracticeAnswerEqualFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEqualFold(FieldPracticeAnswer, v))
+}
+
+// PracticeAnswerContainsFold applies the ContainsFold predicate on the "practice_answer" field.
+func PracticeAnswerContainsFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContainsFold(FieldPracticeAnswer, v))
+}
+
+// PracticeExplanationEQ applies the EQ predicate on the "practice_explanation" field.
+func PracticeExplanationEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEQ(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationNEQ applies the NEQ predicate on the "practice_explanation" field.
+func PracticeExplanationNEQ(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNEQ(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationIn applies the In predicate on the "practice_explanation" field.
+func PracticeExplanationIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldIn(FieldPracticeExplanation, vs...))
+}
+
+// PracticeExplanationNotIn applies the NotIn predicate on the "practice_explanation" field.
+func PracticeExplanationNotIn(vs ...string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldNotIn(FieldPracticeExplanation, vs...))
+}
+
+// PracticeExplanationGT applies the GT predicate on the "practice_explanation" field.
+func PracticeExplanationGT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGT(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationGTE applies the GTE predicate on the "practice_explanation" field.
+func PracticeExplanationGTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldGTE(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationLT applies the LT predicate on the "practice_explanation" field.
+func PracticeExplanationLT(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLT(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationLTE applies the LTE predicate on the "practice_explanation" field.
+func PracticeExplanationLTE(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldLTE(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationContains applies the Contains predicate on the "practice_explanation" field.
+func PracticeExplanationContains(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContains(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationHasPrefix applies the HasPrefix predicate on the "practice_explanation" field.
+func PracticeExplanationHasPrefix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasPrefix(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationHasSuffix applies the HasSuffix predicate on the "practice_explanation" field.
+func PracticeExplanationHasSuffix(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldHasSuffix(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationEqualFold applies the EqualFold predicate on the "practice_explanation" field.
+func PracticeExplanationEqualFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldEqualFold(FieldPracticeExplanation, v))
+}
+
+// PracticeExplanationContainsFold applies the ContainsFold predicate on the "practice_explanation" field.
+func PracticeExplanationContainsFold(v string) predicate.LessonEvent {
+	return predicate.LessonEvent(sql.FieldContainsFold(FieldPracticeExplanation, v))
 }
 
 // And groups predicates with the AND operator between them.

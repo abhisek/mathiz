@@ -31,6 +31,16 @@ const (
 	FieldPracticeCorrect = "practice_correct"
 	// FieldPracticeSkipped holds the string denoting the practice_skipped field in the database.
 	FieldPracticeSkipped = "practice_skipped"
+	// FieldExplanation holds the string denoting the explanation field in the database.
+	FieldExplanation = "explanation"
+	// FieldWorkedExample holds the string denoting the worked_example field in the database.
+	FieldWorkedExample = "worked_example"
+	// FieldPracticeText holds the string denoting the practice_text field in the database.
+	FieldPracticeText = "practice_text"
+	// FieldPracticeAnswer holds the string denoting the practice_answer field in the database.
+	FieldPracticeAnswer = "practice_answer"
+	// FieldPracticeExplanation holds the string denoting the practice_explanation field in the database.
+	FieldPracticeExplanation = "practice_explanation"
 	// Table holds the table name of the lessonevent in the database.
 	Table = "lesson_events"
 )
@@ -47,6 +57,11 @@ var Columns = []string{
 	FieldPracticeAttempted,
 	FieldPracticeCorrect,
 	FieldPracticeSkipped,
+	FieldExplanation,
+	FieldWorkedExample,
+	FieldPracticeText,
+	FieldPracticeAnswer,
+	FieldPracticeExplanation,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -70,6 +85,16 @@ var (
 	SkillIDValidator func(string) error
 	// LessonTitleValidator is a validator for the "lesson_title" field. It is called by the builders before save.
 	LessonTitleValidator func(string) error
+	// DefaultExplanation holds the default value on creation for the "explanation" field.
+	DefaultExplanation string
+	// DefaultWorkedExample holds the default value on creation for the "worked_example" field.
+	DefaultWorkedExample string
+	// DefaultPracticeText holds the default value on creation for the "practice_text" field.
+	DefaultPracticeText string
+	// DefaultPracticeAnswer holds the default value on creation for the "practice_answer" field.
+	DefaultPracticeAnswer string
+	// DefaultPracticeExplanation holds the default value on creation for the "practice_explanation" field.
+	DefaultPracticeExplanation string
 )
 
 // OrderOption defines the ordering options for the LessonEvent queries.
@@ -123,4 +148,29 @@ func ByPracticeCorrect(opts ...sql.OrderTermOption) OrderOption {
 // ByPracticeSkipped orders the results by the practice_skipped field.
 func ByPracticeSkipped(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPracticeSkipped, opts...).ToFunc()
+}
+
+// ByExplanation orders the results by the explanation field.
+func ByExplanation(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldExplanation, opts...).ToFunc()
+}
+
+// ByWorkedExample orders the results by the worked_example field.
+func ByWorkedExample(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldWorkedExample, opts...).ToFunc()
+}
+
+// ByPracticeText orders the results by the practice_text field.
+func ByPracticeText(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPracticeText, opts...).ToFunc()
+}
+
+// ByPracticeAnswer orders the results by the practice_answer field.
+func ByPracticeAnswer(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPracticeAnswer, opts...).ToFunc()
+}
+
+// ByPracticeExplanation orders the results by the practice_explanation field.
+func ByPracticeExplanation(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPracticeExplanation, opts...).ToFunc()
 }

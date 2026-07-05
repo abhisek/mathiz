@@ -89,6 +89,24 @@ export interface LessonGrade {
   explanation?: string
 }
 
+export interface NotebookTip {
+  skillId: string
+  skillName: string
+  islandId: string
+  islandName: string
+  at: string
+  title: string
+  explanation: string
+  workedExample?: string
+  practiceText?: string
+  practiceAnswer?: string
+  practiceExplanation?: string
+}
+
+export interface Notebook {
+  tips: NotebookTip[]
+}
+
 class GameApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -115,6 +133,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export const gameApi = {
   map: () => call<GameMap>('GET', '/api/v1/game/map'),
+  notebook: () => call<Notebook>('GET', '/api/v1/game/notebook'),
   start: (skillId: string) => call<Expedition>('POST', '/api/v1/game/expeditions', { skillId }),
   question: (expId: string) => call<Question>('POST', `/api/v1/game/expeditions/${expId}/question`),
   answer: (expId: string, answer: string) =>

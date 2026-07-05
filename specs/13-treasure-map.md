@@ -60,6 +60,7 @@ An **expedition** is 5 questions on one skill the kid taps (the terminal's
 | Method & path | Purpose |
 |---|---|
 | `GET  /game/map` | Full map state: islands, per-skill `{state, unlocked, dueReview, tierProgress}`, gem counts, child info |
+| `GET  /game/notebook` | The guide's notebook: every past tip with full content, grouped by island client-side |
 | `POST /game/expeditions {skillId}` | Start (replaces any active one) → expedition descriptor |
 | `POST /game/expeditions/{id}/question` | Generate/fetch the current question |
 | `POST /game/expeditions/{id}/answer {answer, timeMs}` | Grade → `{correct, correctAnswer, explanation, gem, mastery, unlockedSkillIds, streak, done}` |
@@ -100,6 +101,11 @@ for the curious):
   score via server-side timing).
 - **Gem vault**: the header gem counter opens the collection — counts by gem
   type (mastery 🏆, streak 🔥, expedition ⛵, comeback 💪, keeper 🛡️).
+- **The guide's notebook**: every tip ever given is revisitable from the map
+  header, grouped by island. Lesson events persist the full lesson content
+  (explanation, worked example, practice with answer) to make this possible —
+  the terminal app records the same fields, so local tips carry over when a
+  learner moves to hosted mode.
 - Written with hand-rolled SVG + CSS animation. No game engine dependency.
 
 ## 5. Testing

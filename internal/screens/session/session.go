@@ -27,7 +27,7 @@ import (
 type practiceState int
 
 const (
-	practiceIdle          practiceState = iota
+	practiceIdle practiceState = iota
 	practiceAnswering
 	practiceShowingResult
 )
@@ -663,6 +663,12 @@ func (s *SessionScreen) persistLessonEvent(attempted, correct, skipped bool) {
 		PracticeAttempted: attempted,
 		PracticeCorrect:   correct,
 		PracticeSkipped:   skipped,
+		// Full content so hosted mode's notebook can revisit local tips too.
+		Explanation:         s.currentLesson.Explanation,
+		WorkedExample:       s.currentLesson.WorkedExample,
+		PracticeText:        s.currentLesson.PracticeQuestion.Text,
+		PracticeAnswer:      s.currentLesson.PracticeQuestion.Answer,
+		PracticeExplanation: s.currentLesson.PracticeQuestion.Explanation,
 	})
 }
 

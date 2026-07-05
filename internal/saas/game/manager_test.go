@@ -332,6 +332,35 @@ func TestMicroLessonFlow(t *testing.T) {
 	if !res.Correct {
 		t.Error("expedition broken after lesson")
 	}
+
+	// The tip lives on in the guide's notebook, with full content and the
+	// island it belongs to.
+	nb, err := m.Notebook(ctx, "child-1")
+	if err != nil {
+		t.Fatalf("notebook: %v", err)
+	}
+	if len(nb.Tips) != 1 {
+		t.Fatalf("notebook tips = %d, want 1", len(nb.Tips))
+	}
+	tip := nb.Tips[0]
+	if tip.Title != "Counting On" || tip.SkillID != root {
+		t.Errorf("tip = %+v", tip)
+	}
+	if tip.Explanation == "" || tip.WorkedExample == "" || tip.PracticeAnswer != "5" {
+		t.Errorf("tip content missing: %+v", tip)
+	}
+	if tip.IslandName == "" || tip.SkillName == root {
+		t.Errorf("tip not enriched with skill metadata: %+v", tip)
+	}
+
+	// Another child's notebook is empty (owner scoping).
+	other, err := m.Notebook(ctx, "child-2")
+	if err != nil {
+		t.Fatalf("notebook child-2: %v", err)
+	}
+	if len(other.Tips) != 0 {
+		t.Errorf("cross-child notebook tips = %d, want 0", len(other.Tips))
+	}
 }
 
 func TestExpeditionOwnership(t *testing.T) {
