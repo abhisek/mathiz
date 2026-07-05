@@ -105,6 +105,23 @@ export class ApiError extends Error {
   }
 }
 
+export interface BillingPlan {
+  id: string
+  name: string
+  priceUsdCents: number
+  monthlyCredits?: number
+  topupCredits?: number
+  blurb: string
+}
+
+export interface BillingInfo {
+  balance: number
+  plan: string
+  status: string
+  periodEnd?: string
+  plans: BillingPlan[]
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -156,6 +173,14 @@ export const api = {
     request<{ devices: Device[] }>('GET', `/api/v1/children/${childId}/devices`, token),
   revokeDevice: (token: string, deviceId: string) =>
     request<void>('DELETE', `/api/v1/devices/${deviceId}`, token),
+
+  // Billing (404s when the server runs without a billing provider)
+  billing: (token: string, familyId: string) =>
+    request<BillingInfo>('GET', `/api/v1/family/${familyId}/billing`, token),
+  billingCheckout: (token: string, familyId: string, planId: string) =>
+    request<{ url: string }>('POST', `/api/v1/family/${familyId}/billing/checkout`, token, { planId }),
+  billingPortal: (token: string, familyId: string) =>
+    request<{ url: string }>('POST', `/api/v1/family/${familyId}/billing/portal`, token),
 
   // Child join flow (public)
   joinPreview: (code: string) =>

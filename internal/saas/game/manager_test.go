@@ -436,6 +436,52 @@ func TestGenerationCircuitBreaker(t *testing.T) {
 	}
 }
 
+func TestExpeditionChargeGate(t *testing.T) {
+	st, err := store.Open("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	// A one-credit wallet: first expedition charges it, second is refused.
+	remaining := 1
+	var charged []string
+	m := NewManager(Config{
+		Store: st,
+		Toolset: func(ctx context.Context, eventRepo store.EventRepo) (*Toolset, error) {
+			return &Toolset{Generator: &fakeGenerator{}}, nil
+		},
+		Charge: func(_ context.Context, childUID, sessionID string) error {
+			if remaining == 0 {
+				return ErrNoCredits
+			}
+			remaining--
+			charged = append(charged, sessionID)
+			return nil
+		},
+	})
+	ctx := context.Background()
+	root := rootSkillID(t)
+
+	exp, err := m.Start(ctx, "child-1", root)
+	if err != nil {
+		t.Fatalf("first start: %v", err)
+	}
+	if len(charged) != 1 || charged[0] == "" {
+		t.Fatalf("charged = %v, want one session-ID debit", charged)
+	}
+	// The debit's idempotency key is the expedition's session ID.
+	answerCurrent(t, m, "child-1", exp.ID, "4")
+
+	// Wallet empty → the next dig is refused before any LLM work.
+	if _, err := m.Start(ctx, "child-1", root); !errors.Is(err, ErrNoCredits) {
+		t.Fatalf("second start: got %v, want ErrNoCredits", err)
+	}
+	if len(charged) != 1 {
+		t.Errorf("charged = %v after refusal, want unchanged", charged)
+	}
+}
+
 func TestFreshMapState(t *testing.T) {
 	m := newTestManager(t, &fakeGenerator{})
 	mv, err := m.Map(context.Background(), "child-new")

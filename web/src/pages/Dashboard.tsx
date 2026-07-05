@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import {
   api,
+  type BillingInfo,
   type ChildStats,
   type ChildWithSummary,
   type Device,
@@ -185,6 +186,8 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
         ))}
       </section>
 
+      <BillingCard token={token} familyId={family.id} />
+
       <section className="invites">
         <div className="section-head">
           <h3>Join codes</h3>
@@ -227,6 +230,94 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
         />
       )}
     </div>
+  )
+}
+
+// BillingCard shows the expedition wallet. Hidden entirely when the server
+// runs without billing (self-hosted free mode → the endpoint 404s).
+function BillingCard({ token, familyId }: { token: string; familyId: string }) {
+  const [info, setInfo] = useState<BillingInfo | null>(null)
+  const [hidden, setHidden] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    api
+      .billing(token, familyId)
+      .then(setInfo)
+      .catch(() => setHidden(true))
+  }, [token, familyId])
+
+  if (hidden || !info) return null
+
+  const currentPlan = info.plans.find((p) => p.id === info.plan)
+
+  async function buy(planId: string) {
+    setBusy(planId)
+    setError(null)
+    try {
+      const { url } = await api.billingCheckout(token, familyId, planId)
+      window.location.href = url
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setBusy(null)
+    }
+  }
+
+  async function portal() {
+    try {
+      const { url } = await api.billingPortal(token, familyId)
+      window.location.href = url
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  return (
+    <section className="billing">
+      <div className="section-head">
+        <h3>Expedition wallet</h3>
+        {info.status === 'active' && (
+          <button className="btn btn-ghost" onClick={() => void portal()}>
+            Manage billing
+          </button>
+        )}
+      </div>
+      <div className="wallet">
+        <span className="wallet-balance">⛵ {info.balance}</span>
+        <span className="muted">
+          expeditions left
+          {info.status === 'active' && currentPlan
+            ? ` · ${currentPlan.name} plan${info.periodEnd ? `, renews ${new Date(info.periodEnd).toLocaleDateString()}` : ''}`
+            : ' · no plan yet'}
+        </span>
+      </div>
+      {info.balance <= 10 && (
+        <p className="wallet-low">
+          Running low — pick a plan so the crew can keep exploring.
+        </p>
+      )}
+      {error && <p className="form-error">{error}</p>}
+      <div className="plan-grid">
+        {info.plans.map((p) => (
+          <div key={p.id} className={`plan-card${p.id === info.plan ? ' plan-current' : ''}`}>
+            <strong>{p.name}</strong>
+            <span className="plan-price">
+              ${(p.priceUsdCents / 100).toFixed(0)}
+              {p.monthlyCredits ? '/mo' : ''}
+            </span>
+            <span className="muted plan-blurb">{p.blurb}</span>
+            <button
+              className={p.monthlyCredits ? 'btn btn-primary' : 'btn btn-secondary'}
+              disabled={busy !== null || p.id === info.plan}
+              onClick={() => void buy(p.id)}
+            >
+              {p.id === info.plan ? 'Current plan' : busy === p.id ? 'Opening…' : p.monthlyCredits ? 'Subscribe' : 'Buy pack'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 

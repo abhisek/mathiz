@@ -27,6 +27,7 @@ via the SPA); an account is auto-provisioned on first authenticated request.
 | See per-child progress: island bars, mastered/learning counts, gems, recent sessions | `/dashboard` child card | `GET /api/v1/family/{id}/children`, `GET /api/v1/children/{id}/stats` |
 | Read the AI tutor's learner profile ("what the tutor has learned about X") | `/dashboard` child card | learner profile from latest snapshot |
 | List / sign out child devices | `/dashboard` child card | `GET /api/v1/children/{id}/devices`, `DELETE /api/v1/devices/{id}` |
+| Expedition wallet: balance, plans, subscribe / top-up, manage billing | `/dashboard` billing card | `GET/POST /api/v1/family/{id}/billing*` (only when a billing provider is configured; 30 free starter credits on space creation) |
 
 Authorization: a parent can only ever see and manage the Family Space they
 own; cross-tenant requests return 404 (`internal/saas/authz`).
@@ -52,7 +53,9 @@ device token stored in the browser.
 
 Constraints kids can rely on: one live session per child (a second tab is
 politely refused); a child can only ever act as themselves; the LLM key
-never reaches the browser.
+never reaches the browser. **Kids never see the credit meter** — when the
+family's expeditions run out they get "The ship needs to rest! ⛵ Ask your
+grown-up", never prices or a paywall.
 
 ## 3. Solo learner (local CLI)
 
@@ -84,6 +87,7 @@ Whoever runs `mathiz serve` for their family or a community.
 | Resource limits: concurrent sessions, idle timeout | `MATHIZ_MAX_SESSIONS`, `MATHIZ_SESSION_IDLE_MINUTES` |
 | Reverse-proxy correctness (rate limiting by real client IP) | `MATHIZ_TRUST_PROXY=true` |
 | Split SPA deployments | `MATHIZ_CORS_ORIGINS` |
+| Monetisation on/off + provider (off = everything free; fake for dev; Stripe/Paddle planned) | `MATHIZ_BILLING_PROVIDER`, `MATHIZ_BILLING_PRICE_*` — see [specs/14-monetisation.md](../specs/14-monetisation.md) |
 | Per-child LLM usage events (auditing/cost attribution) | logged into each child's event stream |
 
 Full setup: [docs/saas.md](./saas.md) · env reference: [.env.example](../.env.example)

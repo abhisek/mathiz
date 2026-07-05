@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, deviceToken } from '../api'
 import {
   gameApi,
+  GameApiError,
   type AnswerResult,
   type Expedition,
   type GameMap,
@@ -62,6 +63,7 @@ export default function Play() {
   const [vaultOpen, setVaultOpen] = useState(false)
   const [notebook, setNotebook] = useState<Notebook | null>(null)
   const [notebookOpen, setNotebookOpen] = useState(false)
+  const [shipResting, setShipResting] = useState(false)
   const [expError, setExpError] = useState<string | null>(null)
 
   const refreshMap = useCallback(async () => {
@@ -99,8 +101,13 @@ export default function Play() {
       setExpedition(exp)
       await nextQuestion(exp.id)
     } catch (err) {
-      setExpError(err instanceof Error ? err.message : String(err))
       setPhase('idle')
+      if (err instanceof GameApiError && err.status === 402) {
+        // Out of credits: kid-friendly, no prices, no meter.
+        setShipResting(true)
+        return
+      }
+      setExpError(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -241,6 +248,22 @@ export default function Play() {
 
       {mapError && <p className="form-error game-error">{mapError}</p>}
       {expError && <p className="form-error game-error">{expError}</p>}
+
+      {shipResting && (
+        <div className="expedition-backdrop" onClick={() => setShipResting(false)}>
+          <div className="expedition rest-card" onClick={(e) => e.stopPropagation()}>
+            <div className="summary-big">⛵💤</div>
+            <h3>The ship needs to rest!</h3>
+            <p>
+              You've explored so much today. Ask your grown-up to send the ship
+              back out on more expeditions.
+            </p>
+            <button className="btn btn-kid btn-block" onClick={() => setShipResting(false)}>
+              Back to the map
+            </button>
+          </div>
+        </div>
+      )}
 
       {notebookOpen && (
         <NotebookDrawer notebook={notebook} onClose={() => setNotebookOpen(false)} />

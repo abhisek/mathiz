@@ -7,7 +7,9 @@ import (
 
 	"github.com/abhisek/mathiz/ent/account"
 	"github.com/abhisek/mathiz/ent/answerevent"
+	"github.com/abhisek/mathiz/ent/billingstate"
 	"github.com/abhisek/mathiz/ent/childprofile"
+	"github.com/abhisek/mathiz/ent/creditentry"
 	"github.com/abhisek/mathiz/ent/devicetoken"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
 	"github.com/abhisek/mathiz/ent/familyspace"
@@ -85,6 +87,34 @@ func init() {
 	answereventDescAnswerFormat := answereventFields[9].Descriptor()
 	// answerevent.AnswerFormatValidator is a validator for the "answer_format" field. It is called by the builders before save.
 	answerevent.AnswerFormatValidator = answereventDescAnswerFormat.Validators[0].(func(string) error)
+	billingstateFields := schema.BillingState{}.Fields()
+	_ = billingstateFields
+	// billingstateDescProvider is the schema descriptor for provider field.
+	billingstateDescProvider := billingstateFields[2].Descriptor()
+	// billingstate.DefaultProvider holds the default value on creation for the provider field.
+	billingstate.DefaultProvider = billingstateDescProvider.Default.(string)
+	// billingstateDescCustomerID is the schema descriptor for customer_id field.
+	billingstateDescCustomerID := billingstateFields[3].Descriptor()
+	// billingstate.DefaultCustomerID holds the default value on creation for the customer_id field.
+	billingstate.DefaultCustomerID = billingstateDescCustomerID.Default.(string)
+	// billingstateDescSubscriptionID is the schema descriptor for subscription_id field.
+	billingstateDescSubscriptionID := billingstateFields[4].Descriptor()
+	// billingstate.DefaultSubscriptionID holds the default value on creation for the subscription_id field.
+	billingstate.DefaultSubscriptionID = billingstateDescSubscriptionID.Default.(string)
+	// billingstateDescPlanID is the schema descriptor for plan_id field.
+	billingstateDescPlanID := billingstateFields[5].Descriptor()
+	// billingstate.DefaultPlanID holds the default value on creation for the plan_id field.
+	billingstate.DefaultPlanID = billingstateDescPlanID.Default.(string)
+	// billingstateDescStatus is the schema descriptor for status field.
+	billingstateDescStatus := billingstateFields[6].Descriptor()
+	// billingstate.DefaultStatus holds the default value on creation for the status field.
+	billingstate.DefaultStatus = billingstateDescStatus.Default.(string)
+	// billingstateDescUpdatedAt is the schema descriptor for updated_at field.
+	billingstateDescUpdatedAt := billingstateFields[8].Descriptor()
+	// billingstate.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	billingstate.DefaultUpdatedAt = billingstateDescUpdatedAt.Default.(func() time.Time)
+	// billingstate.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	billingstate.UpdateDefaultUpdatedAt = billingstateDescUpdatedAt.UpdateDefault.(func() time.Time)
 	childprofileFields := schema.ChildProfile{}.Fields()
 	_ = childprofileFields
 	// childprofileDescPinHash is the schema descriptor for pin_hash field.
@@ -99,6 +129,16 @@ func init() {
 	childprofileDescCreatedAt := childprofileFields[6].Descriptor()
 	// childprofile.DefaultCreatedAt holds the default value on creation for the created_at field.
 	childprofile.DefaultCreatedAt = childprofileDescCreatedAt.Default.(func() time.Time)
+	creditentryFields := schema.CreditEntry{}.Fields()
+	_ = creditentryFields
+	// creditentryDescRemaining is the schema descriptor for remaining field.
+	creditentryDescRemaining := creditentryFields[4].Descriptor()
+	// creditentry.DefaultRemaining holds the default value on creation for the remaining field.
+	creditentry.DefaultRemaining = creditentryDescRemaining.Default.(int)
+	// creditentryDescCreatedAt is the schema descriptor for created_at field.
+	creditentryDescCreatedAt := creditentryFields[7].Descriptor()
+	// creditentry.DefaultCreatedAt holds the default value on creation for the created_at field.
+	creditentry.DefaultCreatedAt = creditentryDescCreatedAt.Default.(func() time.Time)
 	devicetokenFields := schema.DeviceToken{}.Fields()
 	_ = devicetokenFields
 	// devicetokenDescDeviceLabel is the schema descriptor for device_label field.

@@ -38,6 +38,10 @@ var (
 	ErrNoHint         = errors.New("no hint available")
 	ErrNoLesson       = errors.New("the guide has nothing to show right now")
 	ErrGeneration     = errors.New("could not conjure a question, try again")
+	// ErrNoCredits means the family's credit balance can't cover the
+	// expedition. The kid-facing surface must never show prices — the API
+	// maps this to out_of_credits and the client shows "the ship rests".
+	ErrNoCredits = errors.New("out of credits")
 )
 
 // QuestionsPerExpedition is how many digs one expedition holds.
@@ -79,6 +83,11 @@ type Config struct {
 	Store       *store.Store
 	Toolset     ToolsetFactory // defaults to NewLLMToolset
 	IdleTimeout time.Duration  // defaults to 30 minutes
+
+	// Charge debits the cost of one expedition before it starts (sessionID
+	// is the idempotency key). Return ErrNoCredits to refuse. Nil = free
+	// (local mode, self-hosters without billing, tests).
+	Charge func(ctx context.Context, childUID, sessionID string) error
 }
 
 // Manager owns all live expeditions (one per child).
@@ -211,6 +220,15 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 		}
 	}
 
+	// Charge before any LLM tooling spins up. The session ID is generated
+	// here so the debit is idempotent per expedition.
+	sessionID := uuid.NewString()
+	if m.cfg.Charge != nil {
+		if err := m.cfg.Charge(ctx, childUID, sessionID); err != nil {
+			return nil, err
+		}
+	}
+
 	tools, err := m.cfg.Toolset(ctx, eventRepo)
 	if err != nil {
 		return nil, err
@@ -225,7 +243,6 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 		Duration: sess.DefaultSessionDuration,
 	}
 
-	sessionID := uuid.NewString()
 	state := sess.NewSessionState(plan, sessionID, mastered, tierProgress)
 	gemSvc := gems.NewService(eventRepo)
 

@@ -107,7 +107,7 @@ export interface Notebook {
   tips: NotebookTip[]
 }
 
-class GameApiError extends Error {
+export class GameApiError extends Error {
   status: number
   constructor(status: number, message: string) {
     super(message)

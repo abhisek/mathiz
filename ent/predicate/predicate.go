@@ -12,8 +12,14 @@ type Account func(*sql.Selector)
 // AnswerEvent is the predicate function for answerevent builders.
 type AnswerEvent func(*sql.Selector)
 
+// BillingState is the predicate function for billingstate builders.
+type BillingState func(*sql.Selector)
+
 // ChildProfile is the predicate function for childprofile builders.
 type ChildProfile func(*sql.Selector)
+
+// CreditEntry is the predicate function for creditentry builders.
+type CreditEntry func(*sql.Selector)
 
 // DeviceToken is the predicate function for devicetoken builders.
 type DeviceToken func(*sql.Selector)

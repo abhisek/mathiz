@@ -28,6 +28,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	"github.com/abhisek/mathiz/internal/app"
@@ -46,6 +47,10 @@ type Options struct {
 	// AllowedOrigins are extra Origins permitted to open terminal sessions,
 	// for split SPA deployments. Same-hostname origins are always allowed.
 	AllowedOrigins []string
+
+	// Charge debits the cost of one terminal session before it starts.
+	// Nil = free (tests, deployments without billing).
+	Charge func(ctx context.Context, childUID, sessionID string) error
 
 	// IdleTimeout disconnects sessions with no client input. Zero disables.
 	IdleTimeout time.Duration
@@ -205,6 +210,14 @@ func (s *session) run(ctx context.Context) {
 		return
 	}
 	defer b.playing.Delete(child.UID)
+
+	// Credits: one debit per terminal session, before the program spins up.
+	if b.opts.Charge != nil {
+		if err := b.opts.Charge(ctx, child.UID, "terminal:"+uuid.NewString()); err != nil {
+			s.fail("The ship needs to rest! Ask your grown-up for more expeditions.")
+			return
+		}
+	}
 
 	cols, rows := hello.Cols, hello.Rows
 	if cols <= 0 || rows <= 0 {
