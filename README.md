@@ -90,18 +90,24 @@ But the system is designed to support multiple standards and curriculum.
 
 ## Guides
 
+- [Personas & Supported Flows](./docs/personas.md) — who Mathiz serves and everything each persona can do
+- [Development Guide](./docs/development.md) — zero to running locally (CLI, hosted mode, web, tests)
+- [SaaS / Hosted Mode](./docs/saas.md) — architecture and deployment of `mathiz serve`
 - [Skill Preview](./docs/skill-preview.md) — browse skills and test LLM-generated questions without a database
 - [LLM Usage Auditing](./docs/llm-usage-auditing.md) — inspect LLM requests, responses, and token usage
 
 ## Build from source
 
-Requires Go 1.25+.
+Requires Go 1.25+ (and Node 20+ for the hosted-mode web app).
 
 ```sh
 git clone https://github.com/abhisek/mathiz.git
 cd mathiz
 make
 ```
+
+See the [Development Guide](./docs/development.md) for the full local setup,
+including hosted mode without any external services.
 
 ## Limitations
 
