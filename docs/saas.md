@@ -62,6 +62,15 @@ Mathiz uses Supabase **only for authentication**. All application data —
 families, children, learning events — lives in your own PostgreSQL via Ent,
 and authorization is enforced entirely by Mathiz.
 
+## Monetisation (optional)
+
+Credit-based: 1 credit = 1 expedition, 30 free starter credits per family,
+subscriptions + top-up packs beyond that. Off by default — set
+`MATHIZ_BILLING_PROVIDER` to enable (`fake` for dev; Stripe/Paddle planned).
+Kids never see prices or balances. Design:
+[specs/14-monetisation.md](../specs/14-monetisation.md) · dev setup:
+[docs/development.md §2e](./development.md#2e-billing--payments-the-fake-provider).
+
 ## Production notes
 
 - Point `MATHIZ_DATABASE_URL` at Supabase's Postgres connection string or any
