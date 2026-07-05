@@ -47,6 +47,11 @@ stack at real services by overriding env vars, e.g.
 `MATHIZ_LLM_PROVIDER=gemini MATHIZ_GEMINI_API_KEY=... make dev-up`, or a real
 `MATHIZ_SUPABASE_URL`/`_ANON_KEY`/`_JWT_SECRET`. `make dev-down` stops it.
 
+Billing runs too: the stack defaults to the **fake payment provider**, so
+every new family gets 30 starter expeditions and the dashboard's wallet card
+is fully clickable — subscribe, top up, run out of credits — with no real
+money. Details in [§2e](#2e-billing--payments-the-fake-provider).
+
 Everything below is the host-native path — better for fast iteration.
 
 ## 1. Run the local CLI (fastest first win)
@@ -133,6 +138,72 @@ cd web && npm install && npm run dev  # Vite on :5173, proxies /api (incl. WebSo
 Edit `web/src/**` with instant reload; `npm run build` also runs `tsc` and
 is the SPA's type check.
 
+### 2e. Billing & payments (the fake provider)
+
+Design: [specs/14-monetisation.md](../specs/14-monetisation.md). The short
+version: 1 credit = 1 expedition (5 AI questions, hints and micro-lessons
+included); every new Family Space gets **30 free starter credits** that
+expire after 30 days; parents subscribe (plan credits, expire at period end)
+or buy top-up packs (never expire). Kids never see any of this — at zero
+balance they get "The ship needs to rest! ⛵", not a paywall.
+
+**Enable / disable.** One env var controls everything:
+
+```bash
+MATHIZ_BILLING_PROVIDER=fake   # dev provider: full money loop, no real money
+MATHIZ_BILLING_PROVIDER=       # empty = billing OFF: everything free,
+                               # no wallet card, no credit checks (self-hoster default)
+```
+
+`make dev-up` sets `fake` for you (see `docker-compose.yml`). Host-native,
+export it before `./bin/mathiz serve`. Anything other than `fake` or empty
+is rejected at startup (Stripe/Paddle adapters are planned — the `billing.Provider`
+interface is where they'll plug in).
+
+**The clickable loop (recommended).** Sign in on the dashboard → the wallet
+card shows "⛵ 30 expeditions left" → pick a plan (Explorer $5/150 ·
+Voyager $10/400 · Armada $20/1000, or the $5/100 top-up) → **Subscribe** /
+**Buy pack**. With the fake provider the "checkout" URL is a local endpoint
+that completes instantly — you land back on `/dashboard?billing=success`
+with the credits granted and the plan active. "Manage billing" works too
+(the fake portal is just the dashboard).
+
+**The curl loop (scriptable).** Same flow the SPA drives:
+
+```bash
+JWT=$(node .claude/skills/saas-e2e/assets/mint-jwt.mjs)
+AUTH="Authorization: Bearer $JWT"
+FAMILY=... # uid from POST /api/v1/family (§0)
+
+# Wallet: balance, current plan, and the catalog
+curl -s -H "$AUTH" http://localhost:8080/api/v1/family/$FAMILY/billing
+
+# Start a checkout (planId: explorer | voyager | armada | topup-100)
+URL=$(curl -s -H "$AUTH" -H 'Content-Type: application/json' \
+  -X POST -d '{"planId":"explorer"}' \
+  http://localhost:8080/api/v1/family/$FAMILY/billing/checkout | jq -r .url)
+
+# "Pay": follow the fake checkout URL (single-use token; replay → 400)
+curl -s -o /dev/null -w '%{http_code}\n' "$URL"    # 303 → credits granted
+
+curl -s -H "$AUTH" http://localhost:8080/api/v1/family/$FAMILY/billing
+# → {"balance":180,"plan":"explorer","status":"active",...}
+```
+
+**Testing the out-of-credits kid flow.** Each expedition (or terminal
+session) debits 1 credit. Either play through the starter balance, or
+temporarily lower `StarterCredits` in `internal/saas/credits/service.go`
+to 1–2 and recreate the family. When the wallet hits zero the next
+expedition returns HTTP 402 and the kid sees the ship-resting screen;
+subscribing or topping up from the dashboard unblocks them immediately.
+
+**Real providers (when you're ready).** Set `MATHIZ_BILLING_PROVIDER` to the
+provider, `MATHIZ_PUBLIC_BASE_URL` to your public origin (checkout/webhook
+redirects), and map the catalog to provider price objects via
+`MATHIZ_BILLING_PRICE_EXPLORER` / `_VOYAGER` / `_ARMADA` / `_TOPUP_100`
+(see `.env.example`). The webhook endpoint is `POST /api/v1/billing/webhook`;
+event application is idempotent, so provider retries are safe.
+
 ## 3. Code generation
 
 Ent generates the ORM from `ent/schema/`. After any schema change:
@@ -194,3 +265,6 @@ docs/                 this guide, personas.md, saas.md
 | Terminal/expedition won't start, API 500s | Check the serve process's stderr/log — usually the LLM provider (missing key or unreachable base URL). |
 | Kid's terminal 403s on WebSocket upgrade behind a proxy | Origin/Host mismatch: add your SPA origin to `MATHIZ_CORS_ORIGINS`. |
 | Changed the SPA but `:8080` serves the old one | Rebuild both: `make web && make mathiz` (the binary embeds the SPA at compile time). |
+| No wallet/billing card on the dashboard | Billing is off (`MATHIZ_BILLING_PROVIDER` empty). Set it to `fake` and restart — the card hides on 404 by design. |
+| Kid sees "The ship needs to rest! ⛵" | Family's credits are at 0. Subscribe/top up on the dashboard (fake checkout is instant), or disable billing. See §2e. |
+| Fake checkout URL returns 400 | The token is single-use and in-memory: already redeemed, or the server restarted between checkout and completion. Start a new checkout. |
