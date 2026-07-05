@@ -252,7 +252,7 @@ var skills = []Skill{
 		Tiers:         DefaultTiers(),
 	},
 
-	// ── Multiplication & Division (14 nodes) ──────────────────
+	// ── Multiplication & Division (16 nodes) ──────────────────
 
 	{
 		ID:            "mult-concept",
@@ -420,6 +420,30 @@ var skills = []Skill{
 		EstimatedMins: 15,
 		Keywords:      []string{"long division", "two-digit divisor"},
 		Prerequisites: []string{"div-3d-by-1d", "mult-2d-by-2d"},
+		Tiers:         DefaultTiers(),
+	},
+	{
+		ID:            "factors-multiples-primes",
+		Name:          "Factors, Multiples & Primes",
+		Description:   "Find all factor pairs of a number up to 100, list multiples, and tell prime from composite numbers",
+		Strand:        StrandMultDiv,
+		GradeLevel:    4,
+		CommonCoreID:  "4.OA.B.4",
+		EstimatedMins: 15,
+		Keywords:      []string{"factor pairs", "multiples", "prime", "composite", "divisibility"},
+		Prerequisites: []string{"mult-facts-7-8-9", "div-facts"},
+		Tiers:         DefaultTiers(),
+	},
+	{
+		ID:            "hcf-lcm",
+		Name:          "HCF & LCM",
+		Description:   "Find the highest common factor (HCF, also called GCF) and lowest common multiple (LCM) of two numbers up to 100",
+		Strand:        StrandMultDiv,
+		GradeLevel:    5,
+		CommonCoreID:  "6.NS.B.4",
+		EstimatedMins: 15,
+		Keywords:      []string{"HCF", "GCF", "greatest common factor", "LCM", "least common multiple", "common denominators"},
+		Prerequisites: []string{"factors-multiples-primes"},
 		Tiers:         DefaultTiers(),
 	},
 

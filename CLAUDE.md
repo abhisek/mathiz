@@ -42,7 +42,7 @@ Two deployment modes, one engine:
 - **`internal/session/`** — the pure session engine. `HandleAnswer` is the
   single entry point for grading: checking, mastery, streaks, gems,
   diagnosis, error context. Both the TUI screen and the game manager drive it.
-- **`internal/skillgraph/`** — 54-skill Common Core DAG (5 strands, single
+- **`internal/skillgraph/`** — 56-skill Common Core DAG (5 strands, single
   root), package-level singleton initialized in `init()`, panics on
   validation failure.
 - **`internal/mastery/`** — state machine (new → learning → mastered → rusty),

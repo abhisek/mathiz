@@ -14,7 +14,7 @@ See [specs/12-saas.md](../specs/12-saas.md) for the full architecture.
 - **Children** never need email. A parent mints a **join code** (e.g.
   `TIGER-4207`), the child enters it at `/join`, picks their profile, confirms
   their PIN, and the browser stores a revocable **device token**.
-- **Children play a treasure-map game** at `/play`: the 54-skill Common Core
+- **Children play a treasure-map game** at `/play`: the 56-skill Common Core
   DAG rendered as five islands. Solving AI-generated questions digs treasure,
   collects gems, and lifts the fog on new territory — mastery opens chests,
   spaced-repetition due-dates make conquered spots "sink" until rescued. The
