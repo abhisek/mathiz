@@ -20,7 +20,7 @@ gofmt -w <files you touched>    # Format ONLY files you touch (see Quirks)
 
 Project skills in `.claude/skills/` cover the recurring multi-step jobs:
 `saas-e2e` (full-stack browser E2E in a sandbox, no real LLM or Supabase
-needed), `add-event-type`, `add-math-skill`, `verify`.
+needed), `add-event-type`, `add-math-skill`, `add-billing-provider`, `verify`.
 
 ## Architecture
 
@@ -59,7 +59,9 @@ Two deployment modes, one engine:
 - **`internal/saas/`** — `family` (accounts, family spaces, child profiles,
   join codes, device tokens), `authz` (ALL permission decisions), `auth`
   (Supabase JWT verify), `server` (REST API), `game` (treasure-map
-  expeditions), `termbridge` (TUI over WebSocket), `webui` (embedded SPA).
+  expeditions), `termbridge` (TUI over WebSocket), `webui` (embedded SPA),
+  `credits` (prepaid credit ledger — THE entitlement source of truth),
+  `billing` (thin payment-provider abstraction; `fake` shipped, Stripe next).
 - **`web/`** — Vite + React SPA. `npm run build` emits into
   `internal/saas/webui/dist` (gitignored except `.gitkeep`).
 - **`cmd/run.go` / `cmd/serve.go`** — wiring. Shared dependency graph lives
@@ -67,7 +69,8 @@ Two deployment modes, one engine:
   and the SaaS surfaces get them.
 
 Specs in `specs/` are the design record (spec-driven repo): `12-saas.md`
-(SaaS layer), `13-treasure-map.md` (game). Write/update a spec for any
+(SaaS layer), `13-treasure-map.md` (game), `14-monetisation.md` (credits,
+plans, billing providers). Write/update a spec for any
 significant feature. `docs/personas.md` is the source of truth for
 user-facing flows — **update it when you add or change one**.
 `docs/development.md` is the human dev-setup guide.
@@ -109,6 +112,30 @@ user-facing flows — **update it when you add or change one**.
 - One live session per child is enforced (termbridge `playing` map; game
   manager `byChild`) because concurrent sessions clobber each other's
   snapshot on save. Keep that property.
+
+**Money (credits / billing)**
+- Entitlements live in OUR ledger (`internal/saas/credits`), never in the
+  payment provider. The provider is a money pipe only: 3 methods
+  (`CreateCheckout`/`PortalURL`/`ParseWebhook`) emitting 4 normalized events.
+  Do not widen that interface, and do not adopt provider-side entitlement
+  features — decided: Stripe = subscriptions + one-time payments, **no
+  metered billing, no Stripe credit grants** (specs/14-monetisation.md §4).
+- Idempotency is structural: every grant/debit row carries a unique `source`
+  (`starter:<spaceID>`, `sub:<providerEventID>`, `session:<sessionID>`).
+  Webhook replays and request retries MUST be no-ops — never write a ledger
+  entry without a deterministic source, and never invent a fresh UUID as one.
+- Debits consume grants FIFO by soonest expiry inside one transaction;
+  insufficient balance writes nothing and surfaces as HTTP 402
+  `out_of_credits`.
+- **The kid never sees the meter.** Zero balance → "The ship needs to
+  rest! ⛵ Ask your grown-up" — no prices, balances, plans, or upgrade
+  prompts on any child surface, ever. Purchase/balance UI is parent-dashboard
+  only.
+- `Charge` hooks are nil-able and nil means free: local CLI, self-hosters
+  with billing off, and tests must keep working with no billing wired.
+  Enforcement lives ONLY at the two session-start chokepoints
+  (`game.Manager.Start`, termbridge start) — a running expedition is never
+  interrupted by the meter.
 
 **Skill graph**
 - Exactly **one root skill**. `skillgraph.Validate()` panics at init on
@@ -166,6 +193,11 @@ endpoint — this is how E2E tests stub the LLM), bare `GEMINI_API_KEY` /
 `MATHIZ_SUPABASE_URL` / `_ANON_KEY` / `_JWT_SECRET`, `MATHIZ_SERVER_ADDR`,
 `MATHIZ_MAX_SESSIONS`, `MATHIZ_SESSION_IDLE_MINUTES`, `MATHIZ_CORS_ORIGINS`,
 `MATHIZ_TRUST_PROXY`.
+
+Billing: `MATHIZ_BILLING_PROVIDER` (empty = billing off/everything free;
+`fake` = dev provider; `stripe` planned), `MATHIZ_PUBLIC_BASE_URL`
+(checkout/webhook redirects), `MATHIZ_BILLING_PRICE_{EXPLORER,VOYAGER,ARMADA,TOPUP_100}`
+(provider price-object IDs; unused by `fake`).
 
 ## Environment Quirks (sandboxes / CI)
 

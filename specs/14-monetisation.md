@@ -93,9 +93,39 @@ Implementations:
 - `fake` (shipped): checkout "succeeds" immediately via a local completion
   endpoint — the entire purchase→grant→play loop is clickable in dev with
   zero external services. Also the test double.
-- `stripe` / `paddle` (planned): adapter files implementing the same three
-  methods. Choosing between them is a deployment decision
-  (`MATHIZ_BILLING_PROVIDER`), not an architectural one.
+- `stripe` (decided, next up) / `paddle` (possible later): adapter files
+  implementing the same three methods. Choosing between them is a
+  deployment decision (`MATHIZ_BILLING_PROVIDER`), not an architectural one.
+
+### Provider decision: Stripe — subscriptions + one-time payments only
+
+Decided 2026-07. How the catalog maps onto Stripe:
+
+| Ours | Stripe |
+|---|---|
+| Plan subscribe | Checkout Session `mode=subscription`, recurring licensed price (`MATHIZ_BILLING_PRICE_{EXPLORER,VOYAGER,ARMADA}`) |
+| Monthly renewal → expire + regrant plan credits | `invoice.paid` webhook → `subscription_renewed` |
+| Cancel / plan change / card update | hosted Customer Portal (our `PortalURL`) |
+| Top-up pack | Checkout Session `mode=payment`, one-time price (`MATHIZ_BILLING_PRICE_TOPUP_100`) |
+| Activation / top-up delivery | `checkout.session.completed` → `subscription_activated` or `topup_purchased` |
+| Cancellation | `customer.subscription.deleted` → `subscription_canceled` |
+| Idempotency | Stripe event ID → `Event.EventID` → the ledger `source` column |
+
+**Explicitly rejected — do not add later without revisiting this spec:**
+- **Stripe metered/usage-based billing.** It bills in arrears; buyer ≠ user
+  means a kid's usage could produce a surprise parent bill, and we gate at
+  zero balance so there is never unbilled overage to meter anyway.
+- **Stripe Billing credit grants.** Would make Stripe a second entitlement
+  ledger, breaking the invariant above and making any future Paddle adapter
+  asymmetric. Stripe is a money pipe, nothing more.
+
+The "usage-based beyond the plan" leg of the pricing is realized as
+**prepaid top-up packs**. Future, opt-in **auto top-up** stays within this
+model: save the card at first checkout (`setup_future_usage: 'off_session'`),
+then charge an off-session PaymentIntent when *our* ledger balance crosses a
+parent-configured threshold — the trigger lives in `credits`, not Stripe,
+and spending stays prepaid and capped. Not built yet; requires a
+parent-facing toggle before shipping.
 
 `billing_states` (one row per family space): provider, customer ID,
 subscription ID, plan, status, current period end — updated only by
