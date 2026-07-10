@@ -441,7 +441,12 @@ func (s *Service) ResolveDeviceToken(ctx context.Context, plaintext string) (*en
 	if child.Archived {
 		return nil, nil, ErrTokenInvalid
 	}
-	_ = dt.Update().SetLastUsedAt(time.Now()).Exec(ctx)
+	// last_used_at is display-only (parent devices page); refreshing it at
+	// most once a minute keeps the hot auth path from writing on every
+	// request (the game client polls sub-second during lessons).
+	if dt.LastUsedAt == nil || time.Since(*dt.LastUsedAt) > time.Minute {
+		_ = dt.Update().SetLastUsedAt(time.Now()).Exec(ctx)
+	}
 	return dt, child, nil
 }
 

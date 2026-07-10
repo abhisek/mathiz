@@ -164,3 +164,37 @@ func TestExpirePlanCredits(t *testing.T) {
 		t.Errorf("starter granted %d, want exactly once (+%d)", bal2-bal, StarterCredits)
 	}
 }
+
+func TestRenewPlanCreditsReplaySafe(t *testing.T) {
+	s := newTestService(t)
+	ctx := context.Background()
+
+	if err := s.RenewPlanCredits(ctx, "fam-1", 150, nil, "sub:ev1"); err != nil {
+		t.Fatalf("period 1: %v", err)
+	}
+	if err := s.Debit(ctx, "fam-1", 20, "session:a"); err != nil {
+		t.Fatalf("debit: %v", err)
+	}
+	if err := s.Grant(ctx, "fam-1", KindTopup, 40, nil, "topup:1"); err != nil {
+		t.Fatalf("topup: %v", err)
+	}
+
+	// Renewal retires the old plan leftover (130), keeps the top-up.
+	if err := s.RenewPlanCredits(ctx, "fam-1", 150, nil, "sub:ev2"); err != nil {
+		t.Fatalf("renewal: %v", err)
+	}
+	bal, _ := s.Balance(ctx, "fam-1")
+	if bal != 190 {
+		t.Fatalf("balance after renewal = %d, want 190 (150 plan + 40 topup)", bal)
+	}
+
+	// A replayed renewal webhook must be a complete no-op: it must NOT
+	// re-expire the grant its own first delivery created.
+	if err := s.RenewPlanCredits(ctx, "fam-1", 150, nil, "sub:ev2"); err != nil {
+		t.Fatalf("replay: %v", err)
+	}
+	bal, _ = s.Balance(ctx, "fam-1")
+	if bal != 190 {
+		t.Errorf("balance after replay = %d, want 190 — replay wiped plan credits", bal)
+	}
+}

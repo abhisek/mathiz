@@ -139,6 +139,9 @@ func applyPragmas(db *sql.DB) error {
 // 3. ~/.local/share/mathiz/mathiz.db
 func DefaultDBPath() (string, error) {
 	if p := os.Getenv("MATHIZ_DB"); p != "" {
+		if IsPostgresDSN(p) {
+			return p, nil // a DSN is not a filesystem path
+		}
 		return p, EnsureDir(p)
 	}
 

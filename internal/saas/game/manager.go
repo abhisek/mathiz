@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -97,6 +98,12 @@ type Manager struct {
 	mu      sync.Mutex
 	byID    map[string]*expedition
 	byChild map[string]*expedition
+
+	// startLocks serializes Start per child: the check-charge-register
+	// sequence spans several critical sections, and two concurrent Starts
+	// for one child must not both pass the byChild check (double debit,
+	// two live expeditions clobbering each other's snapshot).
+	startLocks map[string]*sync.Mutex
 }
 
 func NewManager(cfg Config) *Manager {
@@ -107,10 +114,22 @@ func NewManager(cfg Config) *Manager {
 		cfg.IdleTimeout = 30 * time.Minute
 	}
 	return &Manager{
-		cfg:     cfg,
-		byID:    make(map[string]*expedition),
-		byChild: make(map[string]*expedition),
+		cfg:        cfg,
+		byID:       make(map[string]*expedition),
+		byChild:    make(map[string]*expedition),
+		startLocks: make(map[string]*sync.Mutex),
 	}
+}
+
+func (m *Manager) childStartLock(childUID string) *sync.Mutex {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	l := m.startLocks[childUID]
+	if l == nil {
+		l = &sync.Mutex{}
+		m.startLocks[childUID] = l
+	}
+	return l
 }
 
 // expedition is one live question run for one child on one skill.
@@ -136,8 +155,19 @@ type expedition struct {
 	answered       bool // current question already graded
 	genFailures    int
 	lesson         *lessons.Lesson // delivered lesson awaiting practice
-	lastActivity   time.Time
 	finished       bool
+
+	// lastActivity is atomic (unix nanos) so reapIdle can read it WITHOUT
+	// exp.mu. Taking exp.mu under m.mu deadlocks against handlers that
+	// call m.remove while holding exp.mu, and exp.mu is held across LLM
+	// calls — never acquire it from anything that holds m.mu.
+	lastActivity atomic.Int64
+}
+
+func (e *expedition) touch() { e.lastActivity.Store(time.Now().UnixNano()) }
+
+func (e *expedition) idle(timeout time.Duration) bool {
+	return time.Since(time.Unix(0, e.lastActivity.Load())) > timeout
 }
 
 // ---- Expedition lifecycle ----
@@ -150,17 +180,42 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 		return nil, ErrLocked
 	}
 
+	// One Start at a time per child (see startLocks).
+	start := m.childStartLock(childUID)
+	start.Lock()
+	defer start.Unlock()
+
 	m.reapIdle(ctx)
 
-	// Retire an existing expedition for this child before starting fresh.
+	// An untouched expedition on the same skill is returned as-is instead
+	// of being replaced: a double-click or double-tab must not debit a
+	// second credit or fork the snapshot lineage.
 	m.mu.Lock()
-	if prev := m.byChild[childUID]; prev != nil {
-		m.removeLocked(prev)
-		m.mu.Unlock()
-		prev.finish(ctx, false)
-		m.mu.Lock()
-	}
+	prev := m.byChild[childUID]
 	m.mu.Unlock()
+	if prev != nil {
+		prev.mu.Lock()
+		reuse := !prev.finished && prev.skill.ID == skillID && prev.questionsAsked == 0
+		var view *ExpeditionView
+		if reuse {
+			prev.touch()
+			view = &ExpeditionView{
+				ID:             prev.id,
+				SkillID:        prev.skill.ID,
+				SkillName:      prev.skill.Name,
+				TotalQuestions: QuestionsPerExpedition,
+				Tier:           sess.TierString(prev.state.Plan.Slots[0].Tier),
+				Category:       string(prev.category),
+			}
+		}
+		prev.mu.Unlock()
+		if reuse {
+			return view, nil
+		}
+		// Retire the existing expedition before starting fresh.
+		m.remove(prev)
+		prev.finish(ctx, false)
+	}
 
 	eventRepo := m.cfg.Store.EventRepoFor(childUID)
 	snapRepo := m.cfg.Store.SnapshotRepoFor(childUID)
@@ -220,18 +275,21 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 		}
 	}
 
-	// Charge before any LLM tooling spins up. The session ID is generated
-	// here so the debit is idempotent per expedition.
-	sessionID := uuid.NewString()
-	if m.cfg.Charge != nil {
-		if err := m.cfg.Charge(ctx, childUID, sessionID); err != nil {
-			return nil, err
-		}
-	}
-
+	// Build the toolset BEFORE charging: a misconfigured or down LLM must
+	// not cost the family a credit for an expedition that can never start.
 	tools, err := m.cfg.Toolset(ctx, eventRepo)
 	if err != nil {
 		return nil, err
+	}
+
+	sessionID := uuid.NewString()
+	if m.cfg.Charge != nil {
+		if err := m.cfg.Charge(ctx, childUID, sessionID); err != nil {
+			if tools.Diagnosis != nil {
+				tools.Diagnosis.Close()
+			}
+			return nil, err
+		}
 	}
 
 	plan := &sess.Plan{
@@ -283,8 +341,8 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 		eventRepo:      eventRepo,
 		snapRepo:       snapRepo,
 		learnerProfile: learnerProfile,
-		lastActivity:   time.Now(),
 	}
+	exp.touch()
 
 	m.mu.Lock()
 	m.byID[exp.id] = exp
@@ -320,7 +378,7 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 	}
 	exp.mu.Lock()
 	defer exp.mu.Unlock()
-	exp.lastActivity = time.Now()
+	exp.touch()
 
 	if exp.finished {
 		return nil, ErrExpeditionOver
@@ -396,7 +454,7 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 	}
 	exp.mu.Lock()
 	defer exp.mu.Unlock()
-	exp.lastActivity = time.Now()
+	exp.touch()
 
 	if exp.finished {
 		return nil, ErrExpeditionOver
@@ -473,9 +531,8 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 	// when the chest opens (skill mastered).
 	mastered := masteredAfter[exp.skill.ID] && !masteredBefore[exp.skill.ID]
 	if exp.questionsAsked >= QuestionsPerExpedition || mastered {
-		completed := exp.questionsAsked >= QuestionsPerExpedition || mastered
 		m.remove(exp)
-		summary := exp.finishLocked(ctx, completed)
+		summary := exp.finishLocked(ctx, true)
 		summary.Mastered = mastered
 		result.Done = true
 		result.Summary = summary
@@ -494,7 +551,7 @@ func (m *Manager) Lesson(ctx context.Context, childUID, expID string) (*LessonVi
 	}
 	exp.mu.Lock()
 	defer exp.mu.Unlock()
-	exp.lastActivity = time.Now()
+	exp.touch()
 
 	if exp.lesson != nil {
 		return lessonView(exp.lesson, true), nil
@@ -533,7 +590,7 @@ func (m *Manager) AnswerLesson(ctx context.Context, childUID, expID, answer stri
 	}
 	exp.mu.Lock()
 	defer exp.mu.Unlock()
-	exp.lastActivity = time.Now()
+	exp.touch()
 
 	lesson := exp.lesson
 	if lesson == nil {
@@ -578,7 +635,7 @@ func (m *Manager) Hint(ctx context.Context, childUID, expID string) (*HintView, 
 	}
 	exp.mu.Lock()
 	defer exp.mu.Unlock()
-	exp.lastActivity = time.Now()
+	exp.touch()
 
 	state := exp.state
 	q := state.CurrentQuestion
@@ -622,15 +679,15 @@ func (m *Manager) removeLocked(exp *expedition) {
 }
 
 // reapIdle finishes expeditions that went quiet, saving their progress.
+// lastActivity is read atomically — never take exp.mu here (m.mu is held,
+// and handlers acquire the locks in the opposite order).
 func (m *Manager) reapIdle(ctx context.Context) {
 	m.mu.Lock()
 	var idle []*expedition
 	for _, exp := range m.byID {
-		exp.mu.Lock()
-		if time.Since(exp.lastActivity) > m.cfg.IdleTimeout {
+		if exp.idle(m.cfg.IdleTimeout) {
 			idle = append(idle, exp)
 		}
-		exp.mu.Unlock()
 	}
 	for _, exp := range idle {
 		m.removeLocked(exp)
@@ -666,10 +723,8 @@ func (e *expedition) finishLocked(ctx context.Context, completed bool) *SummaryV
 
 	if completed && state.TotalQuestions > 0 {
 		accuracy := float64(state.TotalCorrect) / float64(state.TotalQuestions)
-		if award := e.gemSvc.AwardSession(ctx, accuracy, state.SessionID); award != nil {
-			// surfaced through the summary's gem list
-			_ = award
-		}
+		// Awarded for its side effect; summaryLocked reads SessionGems.
+		e.gemSvc.AwardSession(ctx, accuracy, state.SessionID)
 	}
 
 	e.saveSnapshot(ctx)
@@ -706,9 +761,11 @@ func (e *expedition) saveSnapshot(ctx context.Context) {
 	snapData.Gems = e.gemSvc.SnapshotData(ctx)
 
 	// Preserve the existing learner profile until the compressor refreshes it.
-	if prev, err := e.snapRepo.Latest(ctx); err == nil && prev != nil && prev.Data.LearnerProfile != nil {
-		snapData.LearnerProfile = prev.Data.LearnerProfile
+	var prevProfile *store.LearnerProfileData
+	if prev, err := e.snapRepo.Latest(ctx); err == nil && prev != nil {
+		prevProfile = prev.Data.LearnerProfile
 	}
+	snapData.LearnerProfile = prevProfile
 
 	if err := e.snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now(), Data: snapData}); err != nil {
 		log.Printf("game: save snapshot for %s: %v", e.childUID, err)
@@ -737,11 +794,10 @@ func (e *expedition) saveSnapshot(ctx context.Context) {
 		input.ErrorHistory[id] = append([]string(nil), errs...)
 	}
 	e.state.ErrorMu.Unlock()
-	if prev, err := e.snapRepo.Latest(ctx); err == nil && prev != nil && prev.Data.LearnerProfile != nil {
-		lp := prev.Data.LearnerProfile
+	if prevProfile != nil {
 		input.PreviousProfile = &lessons.LearnerProfile{
-			Summary: lp.Summary, Strengths: lp.Strengths,
-			Weaknesses: lp.Weaknesses, Patterns: lp.Patterns,
+			Summary: prevProfile.Summary, Strengths: prevProfile.Strengths,
+			Weaknesses: prevProfile.Weaknesses, Patterns: prevProfile.Patterns,
 		}
 	}
 

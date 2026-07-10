@@ -124,6 +124,13 @@ func (s *Server) routes() http.Handler {
 		mux.Handle("GET /api/v1/terminal", s.terminal)
 	}
 
+	// Unmatched API paths must 404 as JSON, never fall through to the SPA:
+	// a 200 index.html for a missing endpoint (e.g. billing routes when
+	// billing is off) silently poisons API clients with HTML.
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, http.StatusNotFound, "not found")
+	})
+
 	// Embedded SPA for everything else.
 	if s.webui != nil {
 		mux.Handle("/", s.webui)

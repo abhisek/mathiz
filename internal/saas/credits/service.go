@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -96,11 +97,24 @@ func (s *Service) Grant(ctx context.Context, spaceUID, kind string, amount int, 
 	return nil
 }
 
-// EnsureStarterGrant gives a family its one-time free credits. Safe to call
-// on every request path that could be "first contact".
+// EnsureStarterGrant gives a family its one-time free credits. Safe and
+// cheap to call on every request path that could be "first contact" — it
+// runs at the charge chokepoint so families that predate billing being
+// enabled still receive their credits without a parent having to visit the
+// billing page first.
 func (s *Service) EnsureStarterGrant(ctx context.Context, spaceUID string) error {
+	source := "starter:" + spaceUID
+	exists, err := s.client.CreditEntry.Query().
+		Where(creditentry.Source(source)).
+		Exist(ctx)
+	if err != nil {
+		return fmt.Errorf("check starter grant: %w", err)
+	}
+	if exists {
+		return nil
+	}
 	expiry := time.Now().Add(StarterExpiry)
-	return s.Grant(ctx, spaceUID, KindStarter, StarterCredits, &expiry, "starter:"+spaceUID)
+	return s.Grant(ctx, spaceUID, KindStarter, StarterCredits, &expiry, source)
 }
 
 // Debit consumes credits FIFO from unexpired grants, soonest expiry first
@@ -188,6 +202,64 @@ func (s *Service) Debit(ctx context.Context, spaceUID string, amount int, source
 	return tx.Commit()
 }
 
+// RenewPlanCredits retires the previous period's plan credits and grants the
+// new period's batch as one idempotent unit. The source-existence check gates
+// BOTH steps: a replayed renewal webhook must not re-expire the grant its own
+// first delivery created. Everything runs in one transaction, so a concurrent
+// replay that loses the source-uniqueness race rolls its expiry back too.
+func (s *Service) RenewPlanCredits(ctx context.Context, spaceUID string, amount int, expiresAt *time.Time, source string) error {
+	if amount <= 0 {
+		return fmt.Errorf("grant amount must be positive")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return fmt.Errorf("begin renew tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	exists, err := tx.CreditEntry.Query().
+		Where(creditentry.Source(source)).
+		Exist(ctx)
+	if err != nil {
+		return fmt.Errorf("check renewal source: %w", err)
+	}
+	if exists {
+		return tx.Commit() // replay — the whole renewal is a no-op
+	}
+
+	if _, err := tx.CreditEntry.Update().
+		Where(
+			creditentry.FamilySpaceID(spaceUID),
+			creditentry.Kind(KindPlan),
+			creditentry.RemainingGT(0),
+		).
+		SetRemaining(0).
+		Save(ctx); err != nil {
+		return fmt.Errorf("expire plan credits: %w", err)
+	}
+
+	create := tx.CreditEntry.Create().
+		SetUID(uuid.NewString()).
+		SetFamilySpaceID(spaceUID).
+		SetKind(KindPlan).
+		SetAmount(amount).
+		SetRemaining(amount).
+		SetSource(source)
+	if expiresAt != nil {
+		create.SetExpiresAt(*expiresAt)
+	}
+	if err := create.Exec(ctx); err != nil {
+		if ent.IsConstraintError(err) {
+			return nil // concurrent replay won; our expiry rolls back with the tx
+		}
+		return fmt.Errorf("grant plan credits: %w", err)
+	}
+	return tx.Commit()
+}
+
 // ExpirePlanCredits zeroes any remaining credits from a previous plan grant
 // when a new period's grant arrives (plan credits roll over at most one
 // period; the previous period's leftover is retired by the next renewal's
@@ -211,12 +283,16 @@ func (s *Service) ExpirePlanCredits(ctx context.Context, spaceUID string, before
 }
 
 func sortByExpiry(grants []*ent.CreditEntry) {
-	// Insertion sort — the live-grant list is tiny.
-	for i := 1; i < len(grants); i++ {
-		for j := i; j > 0 && expiresBefore(grants[j], grants[j-1]); j-- {
-			grants[j], grants[j-1] = grants[j-1], grants[j]
+	slices.SortStableFunc(grants, func(a, b *ent.CreditEntry) int {
+		switch {
+		case expiresBefore(a, b):
+			return -1
+		case expiresBefore(b, a):
+			return 1
+		default:
+			return 0
 		}
-	}
+	})
 }
 
 func expiresBefore(a, b *ent.CreditEntry) bool {

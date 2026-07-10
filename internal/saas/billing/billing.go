@@ -89,13 +89,10 @@ func (s *Service) Apply(ctx context.Context, ev Event) error {
 			return fmt.Errorf("%w: %q", ErrUnknownPlan, ev.PlanID)
 		}
 		// Previous period's leftover plan credits retire when the new
-		// period's grant lands (top-ups are never touched).
-		if ev.Type == EventSubscriptionRenewed {
-			if err := s.credits.ExpirePlanCredits(ctx, ev.FamilySpaceID, time.Now()); err != nil {
-				return err
-			}
-		}
-		if err := s.credits.Grant(ctx, ev.FamilySpaceID, credits.KindPlan,
+		// period's grant lands (top-ups are never touched). Expiry + grant
+		// are one idempotent unit keyed on the event ID: a replayed webhook
+		// must not re-expire the grant its first delivery created.
+		if err := s.credits.RenewPlanCredits(ctx, ev.FamilySpaceID,
 			plan.MonthlyCredits, nil, "sub:"+ev.EventID); err != nil {
 			return err
 		}
