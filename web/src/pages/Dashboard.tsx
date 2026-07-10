@@ -264,7 +264,9 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
 }
 
 // BillingCard shows the expedition wallet. Hidden entirely when the server
-// runs without billing (self-hosted free mode → the endpoint 404s).
+// runs without billing (self-hosted free mode → the endpoint 404s; the
+// plans guard also covers any malformed response so a billing hiccup can
+// never blank the whole dashboard).
 function BillingCard({ token, familyId }: { token: string; familyId: string }) {
   const [info, setInfo] = useState<BillingInfo | null>(null)
   const [hidden, setHidden] = useState(false)
@@ -278,7 +280,7 @@ function BillingCard({ token, familyId }: { token: string; familyId: string }) {
       .catch(() => setHidden(true))
   }, [token, familyId])
 
-  if (hidden || !info) return null
+  if (hidden || !info || !Array.isArray(info.plans)) return null
 
   const currentPlan = info.plans.find((p) => p.id === info.plan)
 

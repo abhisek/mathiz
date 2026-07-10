@@ -18,14 +18,23 @@ import (
 // with zero external services.
 type FakeProvider struct {
 	mu       sync.Mutex
-	sessions map[string]CheckoutParams // token → what's being bought
+	sessions map[string]fakeCheckout // token → what's being bought
 
 	// BaseURL is the server's own origin (e.g. http://localhost:8080).
 	BaseURL string
 }
 
+type fakeCheckout struct {
+	params  CheckoutParams
+	created time.Time
+}
+
+// fakeCheckoutTTL bounds abandoned checkouts: entries older than this are
+// evicted lazily so the map can't grow forever on a long-running server.
+const fakeCheckoutTTL = time.Hour
+
 func NewFakeProvider(baseURL string) *FakeProvider {
-	return &FakeProvider{sessions: make(map[string]CheckoutParams), BaseURL: baseURL}
+	return &FakeProvider{sessions: make(map[string]fakeCheckout), BaseURL: baseURL}
 }
 
 func (f *FakeProvider) Name() string { return "fake" }
@@ -36,7 +45,12 @@ func (f *FakeProvider) CreateCheckout(_ context.Context, p CheckoutParams) (stri
 	}
 	token := uuid.NewString()
 	f.mu.Lock()
-	f.sessions[token] = p
+	for t, c := range f.sessions {
+		if time.Since(c.created) > fakeCheckoutTTL {
+			delete(f.sessions, t)
+		}
+	}
+	f.sessions[token] = fakeCheckout{params: p, created: time.Now()}
 	f.mu.Unlock()
 	return f.BaseURL + "/api/v1/billing/fake/complete?token=" + url.QueryEscape(token), nil
 }
@@ -51,7 +65,7 @@ func (f *FakeProvider) PortalURL(_ context.Context, _ string) (string, error) {
 func (f *FakeProvider) ParseWebhook(r *http.Request) ([]Event, error) {
 	token := r.URL.Query().Get("token")
 	f.mu.Lock()
-	params, ok := f.sessions[token]
+	checkout, ok := f.sessions[token]
 	if ok {
 		delete(f.sessions, token) // single use
 	}
@@ -59,6 +73,7 @@ func (f *FakeProvider) ParseWebhook(r *http.Request) ([]Event, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown fake checkout token")
 	}
+	params := checkout.params
 
 	plan, _ := PlanByID(params.PlanID)
 	ev := Event{

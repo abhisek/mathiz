@@ -3,6 +3,7 @@ package server
 import (
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/abhisek/mathiz/ent"
@@ -240,16 +241,31 @@ func (s *Server) handleListChildren(w http.ResponseWriter, r *http.Request, p au
 		writeServiceError(w, err)
 		return
 	}
+	// Each child's summary is three queries; run the children concurrently
+	// so dashboard latency doesn't grow linearly with family size.
 	out := make([]map[string]any, len(children))
+	errs := make([]error, len(children))
+	var wg sync.WaitGroup
 	for i, c := range children {
-		summary, err := s.childSummary(r.Context(), c.UID)
+		wg.Add(1)
+		go func(i int, c *ent.ChildProfile) {
+			defer wg.Done()
+			summary, err := s.childSummary(r.Context(), c.UID)
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			out[i] = map[string]any{
+				"profile": toChildJSON(c),
+				"summary": summary,
+			}
+		}(i, c)
+	}
+	wg.Wait()
+	for _, err := range errs {
 		if err != nil {
 			writeServiceError(w, err)
 			return
-		}
-		out[i] = map[string]any{
-			"profile": toChildJSON(c),
-			"summary": summary,
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"children": out})

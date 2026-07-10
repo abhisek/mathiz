@@ -529,3 +529,42 @@ func findSpot(t *testing.T, mv *MapView, id string) SpotView {
 	t.Fatalf("spot %s not found", id)
 	return SpotView{}
 }
+
+func TestStartDoubleClickReusesExpedition(t *testing.T) {
+	// A second Start before any question is asked (a double-click or a
+	// second tab) returns the SAME expedition and must not debit again.
+	st, err := store.Open("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	charges := 0
+	m := NewManager(Config{
+		Store: st,
+		Toolset: func(ctx context.Context, eventRepo store.EventRepo) (*Toolset, error) {
+			return &Toolset{Generator: &fakeGenerator{}}, nil
+		},
+		Charge: func(_ context.Context, _, _ string) error {
+			charges++
+			return nil
+		},
+	})
+	ctx := context.Background()
+	root := rootSkillID(t)
+
+	first, err := m.Start(ctx, "child-1", root)
+	if err != nil {
+		t.Fatalf("start 1: %v", err)
+	}
+	second, err := m.Start(ctx, "child-1", root)
+	if err != nil {
+		t.Fatalf("start 2: %v", err)
+	}
+	if second.ID != first.ID {
+		t.Errorf("double-click created a second expedition (%s != %s)", second.ID, first.ID)
+	}
+	if charges != 1 {
+		t.Errorf("charges = %d, want 1 — double-click debited twice", charges)
+	}
+}

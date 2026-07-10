@@ -102,6 +102,11 @@ func runServe(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
+			// Families created before billing was enabled get their free
+			// credits here, at the chokepoint — not only on dashboard views.
+			if err := creditsSvc.EnsureStarterGrant(ctx, child.FamilySpaceID); err != nil {
+				return err
+			}
 			err = creditsSvc.Debit(ctx, child.FamilySpaceID, 1, "session:"+sessionID)
 			if errors.Is(err, credits.ErrInsufficient) {
 				return game.ErrNoCredits

@@ -96,21 +96,31 @@ func (s *Server) handleBillingPortal(w http.ResponseWriter, r *http.Request, p a
 	writeJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
-// handleBillingWebhook is the provider's server-to-server channel. The
-// provider implementation verifies authenticity (signature / issued token);
-// event application is idempotent via ledger sources.
-func (s *Server) handleBillingWebhook(w http.ResponseWriter, r *http.Request) {
+// applyProviderEvents parses the provider request and applies its events.
+// Shared by the webhook and the fake completion redirect so error handling
+// can't drift between them. Returns false when an error response was written.
+func (s *Server) applyProviderEvents(w http.ResponseWriter, r *http.Request, parseErrMsg string) bool {
 	events, err := s.billing.Provider().ParseWebhook(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid webhook")
-		return
+		writeError(w, http.StatusBadRequest, parseErrMsg)
+		return false
 	}
 	for _, ev := range events {
 		if err := s.billing.Apply(r.Context(), ev); err != nil {
 			log.Printf("billing: apply %s (%s): %v", ev.Type, ev.EventID, err)
 			writeError(w, http.StatusInternalServerError, "event application failed")
-			return
+			return false
 		}
+	}
+	return true
+}
+
+// handleBillingWebhook is the provider's server-to-server channel. The
+// provider implementation verifies authenticity (signature / issued token);
+// event application is idempotent via ledger sources.
+func (s *Server) handleBillingWebhook(w http.ResponseWriter, r *http.Request) {
+	if !s.applyProviderEvents(w, r, "invalid webhook") {
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -118,17 +128,8 @@ func (s *Server) handleBillingWebhook(w http.ResponseWriter, r *http.Request) {
 // handleFakeBillingComplete simulates the provider redirecting the parent
 // back after a successful payment (fake provider / dev only).
 func (s *Server) handleFakeBillingComplete(w http.ResponseWriter, r *http.Request) {
-	events, err := s.billing.Provider().ParseWebhook(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid or used checkout token")
+	if !s.applyProviderEvents(w, r, "invalid or used checkout token") {
 		return
-	}
-	for _, ev := range events {
-		if err := s.billing.Apply(r.Context(), ev); err != nil {
-			log.Printf("billing: apply fake %s: %v", ev.Type, err)
-			writeError(w, http.StatusInternalServerError, "event application failed")
-			return
-		}
 	}
 	http.Redirect(w, r, "/dashboard?billing=success", http.StatusSeeOther)
 }

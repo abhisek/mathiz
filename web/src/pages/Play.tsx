@@ -587,7 +587,6 @@ function ExpeditionOverlay({
                 {hint && <p className="hint-box">🗺️ {hint}</p>}
               </>
             )}
-            {result.mastery?.to === 'learning' && result.mastery.from === 'new' && null}
             {result.mastery && result.mastery.to !== 'mastered' && result.mastery.from === 'learning' && (
               <p className="tier-up">🗝️ You found the vault — now prove it to open the chest!</p>
             )}

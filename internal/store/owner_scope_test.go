@@ -237,3 +237,41 @@ func TestLocalOwnerIsDefault(t *testing.T) {
 		t.Errorf("scoped owner sees %d local gems, want 0", total)
 	}
 }
+
+func TestOwnerIsolationLessonEvents(t *testing.T) {
+	s := openIsolationStore(t)
+	ctx := context.Background()
+
+	alice := s.EventRepoFor(testOwner(t, "alice"))
+	bob := s.EventRepoFor(testOwner(t, "bob"))
+
+	lesson := LessonEventData{
+		SessionID: "sess-a", SkillID: "add-1", LessonTitle: "Alice's tip",
+		Explanation: "carry the one", WorkedExample: "12+9",
+		PracticeText: "13+8?", PracticeAnswer: "21",
+	}
+	if err := alice.AppendLessonEvent(ctx, lesson); err != nil {
+		t.Fatalf("alice append: %v", err)
+	}
+	bobLesson := lesson
+	bobLesson.LessonTitle = "Bob's tip"
+	if err := bob.AppendLessonEvent(ctx, bobLesson); err != nil {
+		t.Fatalf("bob append: %v", err)
+	}
+
+	// The notebook query must only surface the owner's own lessons.
+	got, err := alice.QueryLessonEvents(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("alice query: %v", err)
+	}
+	if len(got) != 1 || got[0].LessonTitle != "Alice's tip" {
+		t.Errorf("alice sees %d lessons (%v), want only her own", len(got), got)
+	}
+	got, err = s.EventRepoFor(testOwner(t, "carol")).QueryLessonEvents(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("carol query: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("carol sees %d lessons, want 0", len(got))
+	}
+}

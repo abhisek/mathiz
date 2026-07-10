@@ -133,8 +133,28 @@ func DiscoverConfig() (Config, bool) {
 	cfg := ConfigFromEnv()
 
 	// An explicit MATHIZ_LLM_PROVIDER wins: honor the full MATHIZ_* config
-	// (API key, model, base URL) exactly as documented.
+	// (API key, model, base URL), falling back to the provider's bare key
+	// env var — MATHIZ_LLM_PROVIDER=openai + OPENAI_API_KEY is documented
+	// and worked before this branch existed.
 	if os.Getenv("MATHIZ_LLM_PROVIDER") != "" {
+		switch cfg.Provider {
+		case "gemini":
+			if cfg.Gemini.APIKey == "" {
+				cfg.Gemini.APIKey = os.Getenv("GEMINI_API_KEY")
+			}
+		case "openai":
+			if cfg.OpenAI.APIKey == "" {
+				cfg.OpenAI.APIKey = os.Getenv("OPENAI_API_KEY")
+			}
+		case "anthropic":
+			if cfg.Anthropic.APIKey == "" {
+				cfg.Anthropic.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+			}
+		case "openrouter":
+			if cfg.OpenRouter.APIKey == "" {
+				cfg.OpenRouter.APIKey = os.Getenv("OPENROUTER_API_KEY")
+			}
+		}
 		if cfg.Provider == "mock" || cfg.Validate() == nil {
 			return cfg, true
 		}

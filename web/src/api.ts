@@ -122,7 +122,7 @@ export interface BillingInfo {
   plans: BillingPlan[]
 }
 
-async function request<T>(
+export async function request<T>(
   method: string,
   path: string,
   token: string | null,

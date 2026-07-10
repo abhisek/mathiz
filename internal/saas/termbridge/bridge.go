@@ -17,6 +17,7 @@ package termbridge
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net"
@@ -35,6 +36,7 @@ import (
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/family"
+	"github.com/abhisek/mathiz/internal/saas/game"
 	"github.com/abhisek/mathiz/internal/store"
 )
 
@@ -212,9 +214,15 @@ func (s *session) run(ctx context.Context) {
 	defer b.playing.Delete(child.UID)
 
 	// Credits: one debit per terminal session, before the program spins up.
+	// Only a genuine zero balance shows the kid the resting ship — any other
+	// failure (DB blip, lookup error) must not read as "buy more credits".
 	if b.opts.Charge != nil {
 		if err := b.opts.Charge(ctx, child.UID, "terminal:"+uuid.NewString()); err != nil {
-			s.fail("The ship needs to rest! Ask your grown-up for more expeditions.")
+			if errors.Is(err, game.ErrNoCredits) {
+				s.fail("The ship needs to rest! Ask your grown-up for more expeditions.")
+			} else {
+				s.fail("Something went wrong starting your session — try again in a moment.")
+			}
 			return
 		}
 	}

@@ -1,5 +1,5 @@
 // Typed client for the treasure-map game API.
-import { deviceToken } from './api'
+import { deviceToken, request } from './api'
 
 export type SpotState = 'locked' | 'ready' | 'digging' | 'proving' | 'treasure' | 'sinking'
 
@@ -107,28 +107,12 @@ export interface Notebook {
   tips: NotebookTip[]
 }
 
-export class GameApiError extends Error {
-  status: number
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
+// One fetch wrapper for the whole SPA: game calls reuse api.ts's request
+// (and its error type) with the device token instead of a parent JWT.
+export { ApiError as GameApiError } from './api'
 
-async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const token = deviceToken.get()
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
-  const resp = await fetch(path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
-  const data = await resp.json().catch(() => ({}))
-  if (!resp.ok) {
-    throw new GameApiError(resp.status, (data as { error?: string }).error ?? `HTTP ${resp.status}`)
-  }
-  return data as T
+function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  return request<T>(method, path, deviceToken.get(), body)
 }
 
 export const gameApi = {
