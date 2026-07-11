@@ -635,13 +635,7 @@ func (s *SessionScreen) handleLessonKey(key string, msg tea.KeyMsg) (screen.Scre
 			return s, nil
 		}
 		// Check the practice answer.
-		pq := s.currentLesson.PracticeQuestion
-		tmpQ := &problemgen.Question{
-			Answer:     pq.Answer,
-			AnswerType: problemgen.AnswerType(pq.AnswerType),
-			Format:     problemgen.FormatNumeric,
-		}
-		s.practiceCorrect = problemgen.CheckAnswer(answer, tmpQ)
+		s.practiceCorrect = s.currentLesson.GradePractice(answer)
 		s.practicePhase = practiceShowingResult
 		s.persistLessonEvent(true, s.practiceCorrect, false)
 		return s, nil
@@ -656,20 +650,8 @@ func (s *SessionScreen) persistLessonEvent(attempted, correct, skipped bool) {
 	if s.currentLesson == nil {
 		return
 	}
-	_ = s.eventRepo.AppendLessonEvent(context.Background(), store.LessonEventData{
-		SessionID:         s.state.SessionID,
-		SkillID:           s.currentLesson.SkillID,
-		LessonTitle:       s.currentLesson.Title,
-		PracticeAttempted: attempted,
-		PracticeCorrect:   correct,
-		PracticeSkipped:   skipped,
-		// Full content so hosted mode's notebook can revisit local tips too.
-		Explanation:         s.currentLesson.Explanation,
-		WorkedExample:       s.currentLesson.WorkedExample,
-		PracticeText:        s.currentLesson.PracticeQuestion.Text,
-		PracticeAnswer:      s.currentLesson.PracticeQuestion.Answer,
-		PracticeExplanation: s.currentLesson.PracticeQuestion.Explanation,
-	})
+	_ = s.eventRepo.AppendLessonEvent(context.Background(),
+		s.currentLesson.EventData(s.state.SessionID, s.currentLesson.SkillID, attempted, correct, skipped))
 }
 
 func (s *SessionScreen) finishLesson() {
@@ -818,32 +800,24 @@ func (s *SessionScreen) generateNextQuestion() tea.Cmd {
 	}
 }
 
-// saveSnapshot persists the current mastery state.
-func (s *SessionScreen) saveSnapshot(ctx context.Context) *store.SnapshotData {
-	snapData := store.SnapshotData{
-		Version: 4,
-	}
+// saveSnapshotWithProfile saves the snapshot and triggers async profile
+// generation through the shared end-of-session path
+// (sess.SaveSnapshotWithProfile) — the same code the game manager runs.
+func (s *SessionScreen) saveSnapshotWithProfile(ctx context.Context) {
+	snapData := store.SnapshotData{Version: 4}
 
 	if s.state.MasteryService != nil {
 		snapData.Mastery = s.state.MasteryService.SnapshotData()
 	}
-
 	if s.scheduler != nil {
 		snapData.SpacedRep = s.scheduler.SnapshotData()
 	}
-
 	if s.gemService != nil {
 		snapData.Gems = s.gemService.SnapshotData(ctx)
 	}
 
-	// Preserve existing learner profile from previous snapshot.
-	prevSnap, err := s.snapRepo.Latest(ctx)
-	if err == nil && prevSnap != nil && prevSnap.Data.LearnerProfile != nil {
-		snapData.LearnerProfile = prevSnap.Data.LearnerProfile
-	}
-
 	if s.state.MasteryService == nil {
-		// Legacy fallback.
+		// Legacy fallback: persist raw tier progress and mastered set.
 		tierProgressData := make(map[string]*store.TierProgressData)
 		for id, tp := range s.state.TierProgress {
 			tierProgressData[id] = &store.TierProgressData{
@@ -861,79 +835,7 @@ func (s *SessionScreen) saveSnapshot(ctx context.Context) *store.SnapshotData {
 		snapData.MasteredSet = masteredSet
 	}
 
-	snap := &store.Snapshot{
-		Timestamp: time.Now(),
-		Data:      snapData,
-	}
-	_ = s.snapRepo.Save(ctx, snap)
-	return &snapData
-}
-
-// saveSnapshotWithProfile saves the snapshot and triggers async profile generation.
-func (s *SessionScreen) saveSnapshotWithProfile(ctx context.Context) {
-	snapData := s.saveSnapshot(ctx)
-
-	// Generate learner profile asynchronously if compressor is available.
-	if s.compressor == nil {
-		return
-	}
-
-	// Build profile input from session state.
-	perSkillResults := make(map[string]lessons.SkillResultSummary)
-	for id, sr := range s.state.PerSkillResults {
-		perSkillResults[id] = lessons.SkillResultSummary{
-			Attempted: sr.Attempted,
-			Correct:   sr.Correct,
-		}
-	}
-
-	masteryData := make(map[string]lessons.MasteryDataSummary)
-	if snapData.Mastery != nil {
-		for id, sm := range snapData.Mastery.Skills {
-			masteryData[id] = lessons.MasteryDataSummary{
-				State:        sm.State,
-				FluencyScore: 0, // Simplified — fluency is derived, not stored directly.
-			}
-		}
-	}
-
-	var prevProfile *lessons.LearnerProfile
-	if snapData.LearnerProfile != nil {
-		prevProfile = &lessons.LearnerProfile{
-			Summary:    snapData.LearnerProfile.Summary,
-			Strengths:  snapData.LearnerProfile.Strengths,
-			Weaknesses: snapData.LearnerProfile.Weaknesses,
-			Patterns:   snapData.LearnerProfile.Patterns,
-		}
-	}
-
-	input := lessons.ProfileInput{
-		PerSkillResults: perSkillResults,
-		MasteryData:     masteryData,
-		ErrorHistory:    s.state.RecentErrors,
-		PreviousProfile: prevProfile,
-	}
-
-	go func() {
-		profile, err := s.compressor.GenerateProfile(ctx, input)
-		if err != nil || profile == nil {
-			return
-		}
-		profileData := &store.LearnerProfileData{
-			Summary:     profile.Summary,
-			Strengths:   profile.Strengths,
-			Weaknesses:  profile.Weaknesses,
-			Patterns:    profile.Patterns,
-			GeneratedAt: profile.GeneratedAt.Format(time.RFC3339),
-		}
-		// Re-load and update snapshot with profile.
-		latestSnap, err := s.snapRepo.Latest(ctx)
-		if err != nil || latestSnap == nil {
-			return
-		}
-		latestSnap.Data.LearnerProfile = profileData
-		_ = s.snapRepo.Save(ctx, latestSnap)
-	}()
+	_ = sess.SaveSnapshotWithProfile(ctx, s.snapRepo, s.compressor, s.state, snapData)
 }
 
 // tickCmd returns a 1-second tick command.

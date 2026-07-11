@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/abhisek/mathiz/internal/diagnosis"
 	"github.com/abhisek/mathiz/internal/gems"
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/llm"
@@ -30,6 +29,7 @@ import (
 	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/spacedrep"
 	"github.com/abhisek/mathiz/internal/store"
+	"github.com/abhisek/mathiz/internal/tutor"
 )
 
 var (
@@ -56,13 +56,9 @@ const QuestionsPerExpedition = 5
 // generation failures (mirrors the TUI's circuit breaker).
 const maxGenFailures = 3
 
-// Toolset is the per-child AI tooling for an expedition.
-type Toolset struct {
-	Generator  problemgen.Generator
-	Diagnosis  *diagnosis.Service  // optional
-	Lessons    *lessons.Service    // optional — micro-lessons when a kid struggles
-	Compressor *lessons.Compressor // optional
-}
+// Toolset is the per-child AI tooling for an expedition. It is the shared
+// tutor.Toolset — the same bundle the terminal app wires in app.BuildOptions.
+type Toolset = tutor.Toolset
 
 // ToolsetFactory builds AI tooling wired to a child's event stream.
 // Production uses NewLLMToolset; tests inject deterministic fakes.
@@ -75,12 +71,7 @@ func NewLLMToolset(ctx context.Context, eventRepo store.EventRepo) (*Toolset, er
 	if err != nil {
 		return nil, fmt.Errorf("LLM provider: %w", err)
 	}
-	return &Toolset{
-		Generator:  problemgen.New(provider, problemgen.DefaultConfig()),
-		Diagnosis:  diagnosis.NewService(provider),
-		Lessons:    lessons.NewService(provider, lessons.DefaultConfig()),
-		Compressor: lessons.NewCompressor(provider, lessons.DefaultCompressorConfig()),
-	}, nil
+	return tutor.New(provider), nil
 }
 
 // Config configures a Manager.
@@ -631,26 +622,9 @@ func (m *Manager) AnswerLesson(ctx context.Context, childUID, expID, answer stri
 
 	correct := false
 	if !skip {
-		correct = problemgen.CheckAnswer(answer, &problemgen.Question{
-			Answer:     lesson.PracticeQuestion.Answer,
-			AnswerType: problemgen.AnswerType(lesson.PracticeQuestion.AnswerType),
-			Format:     problemgen.FormatNumeric,
-		})
+		correct = lesson.GradePractice(answer)
 	}
-	_ = exp.eventRepo.AppendLessonEvent(ctx, store.LessonEventData{
-		SessionID:         exp.state.SessionID,
-		SkillID:           lesson.SkillID,
-		LessonTitle:       lesson.Title,
-		PracticeAttempted: !skip,
-		PracticeCorrect:   correct,
-		PracticeSkipped:   skip,
-		// Full content: past tips live on in the guide's notebook.
-		Explanation:         lesson.Explanation,
-		WorkedExample:       lesson.WorkedExample,
-		PracticeText:        lesson.PracticeQuestion.Text,
-		PracticeAnswer:      lesson.PracticeQuestion.Answer,
-		PracticeExplanation: lesson.PracticeQuestion.Explanation,
-	})
+	_ = exp.eventRepo.AppendLessonEvent(ctx, lesson.EventData(exp.state.SessionID, lesson.SkillID, !skip, correct, skip))
 	return &LessonAnswerView{
 		Correct:       correct,
 		CorrectAnswer: lesson.PracticeQuestion.Answer,
@@ -788,78 +762,21 @@ func (e *expedition) summaryLocked() *SummaryView {
 	return s
 }
 
-// saveSnapshot mirrors the terminal driver's snapshot save + async profile
-// compression (session.go saveSnapshotWithProfile).
+// saveSnapshot persists the expedition's progress through the shared
+// end-of-session path (sess.SaveSnapshotWithProfile) — the same code the
+// terminal session screen runs.
 func (e *expedition) saveSnapshot(ctx context.Context) {
 	snapData := store.SnapshotData{Version: 4}
 	snapData.Mastery = e.masterySvc.SnapshotData()
 	snapData.SpacedRep = e.scheduler.SnapshotData()
 	snapData.Gems = e.gemSvc.SnapshotData(ctx)
 
-	// Preserve the existing learner profile until the compressor refreshes it.
-	var prevProfile *store.LearnerProfileData
-	if prev, err := e.snapRepo.Latest(ctx); err == nil && prev != nil {
-		prevProfile = prev.Data.LearnerProfile
+	// No profile refresh for an expedition that never asked a question.
+	var compressor *lessons.Compressor
+	if e.tools != nil && e.state.TotalQuestions > 0 {
+		compressor = e.tools.Compressor
 	}
-	snapData.LearnerProfile = prevProfile
-
-	if err := e.snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now(), Data: snapData}); err != nil {
+	if err := sess.SaveSnapshotWithProfile(ctx, e.snapRepo, compressor, e.state, snapData); err != nil {
 		log.Printf("game: save snapshot for %s: %v", e.childUID, err)
-		return
 	}
-	_ = e.snapRepo.Prune(ctx, 10)
-
-	if e.tools == nil || e.tools.Compressor == nil || e.state.TotalQuestions == 0 {
-		return
-	}
-
-	// Async learner-profile refresh from this expedition's performance.
-	input := lessons.ProfileInput{
-		PerSkillResults: make(map[string]lessons.SkillResultSummary),
-		MasteryData:     make(map[string]lessons.MasteryDataSummary),
-		ErrorHistory:    make(map[string][]string),
-	}
-	for id, r := range e.state.PerSkillResults {
-		input.PerSkillResults[id] = lessons.SkillResultSummary{Attempted: r.Attempted, Correct: r.Correct}
-	}
-	for id, skm := range snapData.Mastery.Skills {
-		input.MasteryData[id] = lessons.MasteryDataSummary{State: skm.State}
-	}
-	e.state.ErrorMu.Lock()
-	for id, errs := range e.state.RecentErrors {
-		input.ErrorHistory[id] = append([]string(nil), errs...)
-	}
-	e.state.ErrorMu.Unlock()
-	if prevProfile != nil {
-		input.PreviousProfile = &lessons.LearnerProfile{
-			Summary: prevProfile.Summary, Strengths: prevProfile.Strengths,
-			Weaknesses: prevProfile.Weaknesses, Patterns: prevProfile.Patterns,
-		}
-	}
-
-	compressor := e.tools.Compressor
-	snapRepo := e.snapRepo
-	childUID := e.childUID
-	go func() {
-		bg, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancel()
-		profile, err := compressor.GenerateProfile(bg, input)
-		if err != nil || profile == nil {
-			return
-		}
-		latest, err := snapRepo.Latest(bg)
-		if err != nil || latest == nil {
-			return
-		}
-		latest.Data.LearnerProfile = &store.LearnerProfileData{
-			Summary:     profile.Summary,
-			Strengths:   profile.Strengths,
-			Weaknesses:  profile.Weaknesses,
-			Patterns:    profile.Patterns,
-			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		}
-		if err := snapRepo.Save(bg, &store.Snapshot{Timestamp: time.Now(), Data: latest.Data}); err != nil {
-			log.Printf("game: save learner profile for %s: %v", childUID, err)
-		}
-	}()
 }
