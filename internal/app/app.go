@@ -20,6 +20,7 @@ import (
 	"github.com/abhisek/mathiz/internal/screens/welcome"
 	"github.com/abhisek/mathiz/internal/selfupdate"
 	"github.com/abhisek/mathiz/internal/store"
+	"github.com/abhisek/mathiz/internal/tutor"
 	"github.com/abhisek/mathiz/internal/ui/layout"
 	"github.com/abhisek/mathiz/internal/ui/theme"
 )
@@ -257,13 +258,13 @@ func BuildOptions(eventRepo store.EventRepo, snapRepo store.SnapshotRepo, provid
 	}
 	cleanup := func() {}
 	if provider != nil {
+		tools := tutor.New(provider)
 		opts.LLMProvider = provider
-		opts.Generator = problemgen.New(provider, problemgen.DefaultConfig())
-		diagService := diagnosis.NewService(provider)
-		opts.DiagnosisService = diagService
-		opts.LessonService = lessons.NewService(provider, lessons.DefaultConfig())
-		opts.Compressor = lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
-		cleanup = func() { diagService.Close() }
+		opts.Generator = tools.Generator
+		opts.DiagnosisService = tools.Diagnosis
+		opts.LessonService = tools.Lessons
+		opts.Compressor = tools.Compressor
+		cleanup = func() { tools.Diagnosis.Close() }
 	}
 	return opts, cleanup
 }
