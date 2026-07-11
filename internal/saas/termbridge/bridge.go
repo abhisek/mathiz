@@ -29,7 +29,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	"github.com/abhisek/mathiz/internal/app"
@@ -37,6 +36,7 @@ import (
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/family"
 	"github.com/abhisek/mathiz/internal/saas/game"
+	"github.com/abhisek/mathiz/internal/saas/playslot"
 	"github.com/abhisek/mathiz/internal/store"
 )
 
@@ -59,6 +59,12 @@ type Options struct {
 
 	// MaxSessions caps concurrent sessions. Zero means 100.
 	MaxSessions int
+
+	// Slots is the cross-surface one-session-per-child registry, shared
+	// with the game manager so a terminal session and an expedition can't
+	// run concurrently over the same snapshot. Nil = a private registry
+	// (standalone/test use).
+	Slots *playslot.Registry
 }
 
 // Bridge is the WebSocket handler for learning sessions.
@@ -66,16 +72,15 @@ type Bridge struct {
 	opts   Options
 	active atomic.Int64
 
-	// playing tracks which children have a live session, so a second tab or
-	// device can't run concurrently and clobber the first session's snapshot.
-	playing sync.Map // child profile UID → struct{}
-
 	upgrader websocket.Upgrader
 }
 
 func New(opts Options) *Bridge {
 	if opts.MaxSessions <= 0 {
 		opts.MaxSessions = 100
+	}
+	if opts.Slots == nil {
+		opts.Slots = playslot.NewRegistry()
 	}
 	b := &Bridge{opts: opts}
 	b.upgrader = websocket.Upgrader{
@@ -194,7 +199,7 @@ func (s *session) run(ctx context.Context) {
 	}
 	_ = s.conn.SetReadDeadline(time.Time{})
 
-	_, child, err := b.opts.Family.ResolveDeviceToken(ctx, hello.Token)
+	device, child, err := b.opts.Family.ResolveDeviceToken(ctx, hello.Token)
 	if err != nil {
 		s.fail("invalid credentials")
 		return
@@ -205,19 +210,23 @@ func (s *session) run(ctx context.Context) {
 		return
 	}
 
-	// One live session per child: a second tab/device would load a stale
-	// snapshot and clobber the first session's progress on save.
-	if _, alreadyPlaying := b.playing.LoadOrStore(child.UID, struct{}{}); alreadyPlaying {
+	// One live session per child across ALL surfaces: a second tab, device,
+	// or a running treasure-map expedition would load a stale snapshot and
+	// clobber this session's progress on save.
+	release, err := b.opts.Slots.Acquire(child.UID, "the terminal")
+	if err != nil {
 		s.fail("Looks like you're already playing on another screen! Close it first.")
 		return
 	}
-	defer b.playing.Delete(child.UID)
+	defer release()
 
-	// Credits: one debit per terminal session, before the program spins up.
+	// Credits: terminal time is metered per device-hour — the charge key is
+	// stable within the hour, so a WebSocket reconnect (flaky wifi, page
+	// reload) is an idempotent no-op on the ledger, never a second debit.
 	// Only a genuine zero balance shows the kid the resting ship — any other
 	// failure (DB blip, lookup error) must not read as "buy more credits".
 	if b.opts.Charge != nil {
-		if err := b.opts.Charge(ctx, child.UID, "terminal:"+uuid.NewString()); err != nil {
+		if err := b.opts.Charge(ctx, child.UID, terminalChargeKey(device.UID, time.Now())); err != nil {
 			if errors.Is(err, game.ErrNoCredits) {
 				s.fail("The ship needs to rest! Ask your grown-up for more expeditions.")
 			} else {
@@ -326,4 +335,11 @@ func buildAppOptions(ctx context.Context, st *store.Store, ownerID string) (app.
 		provider = nil // AI features off; the TUI degrades gracefully
 	}
 	return app.BuildOptions(eventRepo, st.SnapshotRepoFor(ownerID), provider)
+}
+
+// terminalChargeKey is the ledger idempotency key for terminal time: one
+// debit per device per UTC hour. Deterministic — never a fresh UUID — so
+// reconnect retries dedup structurally (CLAUDE.md Money invariants).
+func terminalChargeKey(deviceUID string, now time.Time) string {
+	return "terminal:" + deviceUID + ":" + now.UTC().Format("2006010215")
 }

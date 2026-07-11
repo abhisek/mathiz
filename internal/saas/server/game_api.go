@@ -122,7 +122,8 @@ func writeGameError(w http.ResponseWriter, err error) {
 		errors.Is(err, game.ErrNoQuestion),
 		errors.Is(err, game.ErrExpeditionOver),
 		errors.Is(err, game.ErrNoHint),
-		errors.Is(err, game.ErrNoLesson):
+		errors.Is(err, game.ErrNoLesson),
+		errors.Is(err, game.ErrElsewhere):
 		writeError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, game.ErrNoCredits):
 		// The kid client renders this as "the ship needs to rest" — no

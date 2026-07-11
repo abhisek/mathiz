@@ -25,6 +25,7 @@ import (
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/problemgen"
+	"github.com/abhisek/mathiz/internal/saas/playslot"
 	sess "github.com/abhisek/mathiz/internal/session"
 	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/spacedrep"
@@ -39,6 +40,9 @@ var (
 	ErrNoHint         = errors.New("no hint available")
 	ErrNoLesson       = errors.New("the guide has nothing to show right now")
 	ErrGeneration     = errors.New("could not conjure a question, try again")
+	// ErrElsewhere means the child's play slot is held by another surface
+	// (e.g. a live browser-terminal session).
+	ErrElsewhere = errors.New("you're already playing on another screen — close it first!")
 	// ErrNoCredits means the family's credit balance can't cover the
 	// expedition. The kid-facing surface must never show prices — the API
 	// maps this to out_of_credits and the client shows "the ship rests".
@@ -89,6 +93,12 @@ type Config struct {
 	// is the idempotency key). Return ErrNoCredits to refuse. Nil = free
 	// (local mode, self-hosters without billing, tests).
 	Charge func(ctx context.Context, childUID, sessionID string) error
+
+	// Slots is the cross-surface one-session-per-child registry, shared
+	// with termbridge so an expedition and a terminal session can't run
+	// concurrently over the same snapshot. Nil = a private registry
+	// (standalone/test use).
+	Slots *playslot.Registry
 }
 
 // Manager owns all live expeditions (one per child).
@@ -112,6 +122,9 @@ func NewManager(cfg Config) *Manager {
 	}
 	if cfg.IdleTimeout <= 0 {
 		cfg.IdleTimeout = 30 * time.Minute
+	}
+	if cfg.Slots == nil {
+		cfg.Slots = playslot.NewRegistry()
 	}
 	return &Manager{
 		cfg:        cfg,
@@ -156,6 +169,7 @@ type expedition struct {
 	genFailures    int
 	lesson         *lessons.Lesson // delivered lesson awaiting practice
 	finished       bool
+	releaseSlot    func() // frees the child's cross-surface play slot
 
 	// lastActivity is atomic (unix nanos) so reapIdle can read it WITHOUT
 	// exp.mu. Taking exp.mu under m.mu deadlocks against handlers that
@@ -212,10 +226,25 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 		if reuse {
 			return view, nil
 		}
-		// Retire the existing expedition before starting fresh.
+		// Retire the existing expedition before starting fresh (finish
+		// saves its progress and frees its play slot).
 		m.remove(prev)
 		prev.finish(ctx, false)
 	}
+
+	// Claim the child's cross-surface play slot: a live terminal session
+	// and a map expedition must never run concurrently — both drive the
+	// same snapshot. finishLocked frees the slot after the final save.
+	releaseSlot, err := m.cfg.Slots.Acquire(childUID, "the treasure map")
+	if err != nil {
+		return nil, ErrElsewhere
+	}
+	registered := false
+	defer func() {
+		if !registered {
+			releaseSlot()
+		}
+	}()
 
 	eventRepo := m.cfg.Store.EventRepoFor(childUID)
 	snapRepo := m.cfg.Store.SnapshotRepoFor(childUID)
@@ -341,6 +370,7 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 		eventRepo:      eventRepo,
 		snapRepo:       snapRepo,
 		learnerProfile: learnerProfile,
+		releaseSlot:    releaseSlot,
 	}
 	exp.touch()
 
@@ -348,6 +378,7 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 	m.byID[exp.id] = exp
 	m.byChild[childUID] = exp
 	m.mu.Unlock()
+	registered = true
 
 	return &ExpeditionView{
 		ID:             exp.id,
@@ -731,6 +762,11 @@ func (e *expedition) finishLocked(ctx context.Context, completed bool) *SummaryV
 
 	if e.tools != nil && e.tools.Diagnosis != nil {
 		e.tools.Diagnosis.Close()
+	}
+	// Free the cross-surface play slot only now, after the final snapshot
+	// save — earlier would reopen the concurrent-write window.
+	if e.releaseSlot != nil {
+		e.releaseSlot()
 	}
 	return e.summaryLocked()
 }

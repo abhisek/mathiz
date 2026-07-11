@@ -109,9 +109,12 @@ user-facing flows — **update it when you add or change one**.
   render. Decay events persist only at expedition/session start.
 - Never call `tea.Program.Kill()` from another goroutine — it races program
   startup. Cancel the program's context instead (`tea.WithContext`).
-- One live session per child is enforced (termbridge `playing` map; game
-  manager `byChild`) because concurrent sessions clobber each other's
-  snapshot on save. Keep that property.
+- One live session per child is enforced ACROSS surfaces by the shared
+  `internal/saas/playslot.Registry` (wired in cmd/serve.go into both
+  termbridge and the game manager) because concurrent sessions clobber
+  each other's snapshot on save. New play surfaces MUST acquire a slot
+  from the same registry, and release it only after the final snapshot
+  save.
 
 **Money (credits / billing)**
 - Entitlements live in OUR ledger (`internal/saas/credits`), never in the

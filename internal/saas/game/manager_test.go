@@ -11,6 +11,7 @@ import (
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
+	"github.com/abhisek/mathiz/internal/saas/playslot"
 	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/store"
 )
@@ -567,4 +568,52 @@ func TestStartDoubleClickReusesExpedition(t *testing.T) {
 	if charges != 1 {
 		t.Errorf("charges = %d, want 1 — double-click debited twice", charges)
 	}
+}
+
+func TestPlaySlotBlocksSecondSurface(t *testing.T) {
+	// A held play slot (e.g. a live terminal session) refuses expedition
+	// Start with ErrElsewhere; releasing it unblocks the map.
+	st, err := store.Open("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	slots := playslot.NewRegistry()
+	m := NewManager(Config{
+		Store: st,
+		Toolset: func(ctx context.Context, eventRepo store.EventRepo) (*Toolset, error) {
+			return &Toolset{Generator: &fakeGenerator{}}, nil
+		},
+		Slots: slots,
+	})
+	ctx := context.Background()
+	root := rootSkillID(t)
+
+	release, err := slots.Acquire("child-1", "the terminal")
+	if err != nil {
+		t.Fatalf("terminal acquire: %v", err)
+	}
+	if _, err := m.Start(ctx, "child-1", root); !errors.Is(err, ErrElsewhere) {
+		t.Fatalf("start with slot held: got %v, want ErrElsewhere", err)
+	}
+
+	release()
+	exp, err := m.Start(ctx, "child-1", root)
+	if err != nil {
+		t.Fatalf("start after release: %v", err)
+	}
+	// While the expedition lives, the terminal is refused...
+	if _, err := slots.Acquire("child-1", "the terminal"); err == nil {
+		t.Fatal("terminal acquired while expedition live")
+	}
+	// ...and ending the expedition frees the slot again.
+	if _, err := m.End(ctx, "child-1", exp.ID); err != nil {
+		t.Fatalf("end: %v", err)
+	}
+	rel2, err := slots.Acquire("child-1", "the terminal")
+	if err != nil {
+		t.Fatalf("terminal after end: %v", err)
+	}
+	rel2()
 }
