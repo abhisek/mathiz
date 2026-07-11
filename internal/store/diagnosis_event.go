@@ -6,6 +6,7 @@ import (
 )
 
 func (r *eventRepo) AppendDiagnosisEvent(ctx context.Context, data DiagnosisEventData) error {
+	ctx = r.scope(ctx)
 	seqNum, err := r.seq.Next(ctx)
 	if err != nil {
 		return fmt.Errorf("next sequence: %w", err)

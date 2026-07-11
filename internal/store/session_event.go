@@ -11,6 +11,7 @@ import (
 )
 
 func (r *eventRepo) AppendSessionEvent(ctx context.Context, data SessionEventData) error {
+	ctx = r.scope(ctx)
 	seqNum, err := r.seq.Next(ctx)
 	if err != nil {
 		return fmt.Errorf("next sequence: %w", err)
@@ -46,6 +47,7 @@ func (r *eventRepo) AppendSessionEvent(ctx context.Context, data SessionEventDat
 }
 
 func (r *eventRepo) AppendAnswerEvent(ctx context.Context, data AnswerEventData) error {
+	ctx = r.scope(ctx)
 	seqNum, err := r.seq.Next(ctx)
 	if err != nil {
 		return fmt.Errorf("next sequence: %w", err)
@@ -72,6 +74,7 @@ func (r *eventRepo) AppendAnswerEvent(ctx context.Context, data AnswerEventData)
 }
 
 func (r *eventRepo) LatestAnswerTime(ctx context.Context, skillID string) (time.Time, error) {
+	ctx = r.scope(ctx)
 	ae, err := r.client.AnswerEvent.Query().
 		Where(answerevent.OwnerID(r.owner), answerevent.SkillID(skillID)).
 		Order(ent.Desc(answerevent.FieldTimestamp)).
@@ -86,6 +89,7 @@ func (r *eventRepo) LatestAnswerTime(ctx context.Context, skillID string) (time.
 }
 
 func (r *eventRepo) SkillAccuracy(ctx context.Context, skillID string) (float64, error) {
+	ctx = r.scope(ctx)
 	events, err := r.client.AnswerEvent.Query().
 		Where(answerevent.OwnerID(r.owner), answerevent.SkillID(skillID)).
 		All(ctx)

@@ -10,6 +10,7 @@ import (
 )
 
 func (r *eventRepo) AppendGemEvent(ctx context.Context, data GemEventData) error {
+	ctx = r.scope(ctx)
 	seqNum, err := r.seq.Next(ctx)
 	if err != nil {
 		return fmt.Errorf("next sequence: %w", err)
@@ -38,6 +39,7 @@ func (r *eventRepo) AppendGemEvent(ctx context.Context, data GemEventData) error
 }
 
 func (r *eventRepo) QueryGemEvents(ctx context.Context, opts QueryOpts) ([]GemEventRecord, error) {
+	ctx = r.scope(ctx)
 	query := r.client.GemEvent.Query().
 		Where(gemevent.OwnerID(r.owner)).
 		Order(ent.Desc(gemevent.FieldSequence))
@@ -80,6 +82,7 @@ func (r *eventRepo) QueryGemEvents(ctx context.Context, opts QueryOpts) ([]GemEv
 }
 
 func (r *eventRepo) GemCounts(ctx context.Context) (map[string]int, int, error) {
+	ctx = r.scope(ctx)
 	// Aggregate in SQL: loading every gem row just to count grows without
 	// bound as a learner accumulates history.
 	var rows []struct {
@@ -105,6 +108,7 @@ func (r *eventRepo) GemCounts(ctx context.Context) (map[string]int, int, error) 
 }
 
 func (r *eventRepo) QuerySessionSummaries(ctx context.Context, opts QueryOpts) ([]SessionSummaryRecord, error) {
+	ctx = r.scope(ctx)
 	query := r.client.SessionEvent.Query().
 		Where(sessionevent.OwnerID(r.owner), sessionevent.Action("end")).
 		Order(ent.Desc(sessionevent.FieldSequence))

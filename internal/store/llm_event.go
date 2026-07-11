@@ -23,6 +23,13 @@ type eventRepo struct {
 	owner   string
 }
 
+// scope stamps the repo's owner into ctx so the store-level owner guard
+// (see ownerguard.go) scopes every ent call made during the request. Every
+// exported repo method must wrap its ctx with this at entry.
+func (r *eventRepo) scope(ctx context.Context) context.Context {
+	return withOwner(ctx, r.owner)
+}
+
 // ownerPlaceholder returns the SQL bind placeholder for the owner parameter
 // in raw (non-ent) queries, per dialect.
 func (r *eventRepo) ownerPlaceholder() string {
@@ -33,6 +40,7 @@ func (r *eventRepo) ownerPlaceholder() string {
 }
 
 func (r *eventRepo) AppendLLMRequest(ctx context.Context, data LLMRequestEventData) error {
+	ctx = r.scope(ctx)
 	seqNum, err := r.seq.Next(ctx)
 	if err != nil {
 		return fmt.Errorf("next sequence: %w", err)
@@ -60,6 +68,7 @@ func (r *eventRepo) AppendLLMRequest(ctx context.Context, data LLMRequestEventDa
 }
 
 func (r *eventRepo) QueryLLMEvents(ctx context.Context, opts QueryOpts) ([]LLMRequestEventRecord, error) {
+	ctx = r.scope(ctx)
 	q := r.client.LLMRequestEvent.Query().
 		Where(llmrequestevent.OwnerID(r.owner))
 
@@ -91,6 +100,7 @@ func (r *eventRepo) QueryLLMEvents(ctx context.Context, opts QueryOpts) ([]LLMRe
 }
 
 func (r *eventRepo) GetLLMEvent(ctx context.Context, id int) (*LLMRequestEventRecord, error) {
+	ctx = r.scope(ctx)
 	row, err := r.client.LLMRequestEvent.Query().
 		Where(llmrequestevent.ID(id), llmrequestevent.OwnerID(r.owner)).
 		Only(ctx)
@@ -105,6 +115,7 @@ func (r *eventRepo) GetLLMEvent(ctx context.Context, id int) (*LLMRequestEventRe
 }
 
 func (r *eventRepo) LLMUsageByPurpose(ctx context.Context) ([]LLMUsageStats, error) {
+	ctx = r.scope(ctx) // raw SQL bypasses the guard; parameterizes owner explicitly below
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT purpose,
 		       COUNT(*) as calls,
@@ -132,6 +143,7 @@ func (r *eventRepo) LLMUsageByPurpose(ctx context.Context) ([]LLMUsageStats, err
 }
 
 func (r *eventRepo) LLMUsageByModel(ctx context.Context) ([]LLMModelUsage, error) {
+	ctx = r.scope(ctx) // raw SQL bypasses the guard; parameterizes owner explicitly below
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT model,
 		       COUNT(*) as calls,
