@@ -59,9 +59,11 @@ Exactly the two chokepoints that start LLM-consuming sessions:
 
 - `game.Manager.Start` — charges **1 credit** per expedition (source =
   session ID). Mastery ending an expedition early still costs 1 (generous).
-- `termbridge` session start — charges **1 credit** per terminal session
-  (v1 simplification; terminal sessions are longer than expeditions, revisit
-  toward per-5-questions metering if terminal usage becomes material).
+- `termbridge` session start — charges **1 credit per device per UTC
+  hour** (source `terminal:<deviceUID>:<yyyymmddhh>`), so reconnects and
+  page reloads within the hour are idempotent no-ops instead of fresh
+  debits. Open-ended terminal time is bounded at 1 credit/hour; revisit
+  toward per-5-questions metering if terminal usage becomes material.
 
 Both accept a nil `Charge` hook → free. Local CLI, self-hosters, and tests
 are unaffected; only `mathiz serve` wires the hook (and only when billing

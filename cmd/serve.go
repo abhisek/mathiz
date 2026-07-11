@@ -18,6 +18,7 @@ import (
 	"github.com/abhisek/mathiz/internal/saas/credits"
 	"github.com/abhisek/mathiz/internal/saas/family"
 	"github.com/abhisek/mathiz/internal/saas/game"
+	"github.com/abhisek/mathiz/internal/saas/playslot"
 	"github.com/abhisek/mathiz/internal/saas/server"
 	"github.com/abhisek/mathiz/internal/saas/termbridge"
 	"github.com/abhisek/mathiz/internal/saas/webui"
@@ -115,6 +116,10 @@ func runServe(ctx context.Context) error {
 		}
 	}
 
+	// One play slot per child, shared across the terminal and the map so
+	// the two surfaces can never write the same child's snapshot at once.
+	slots := playslot.NewRegistry()
+
 	bridge := termbridge.New(termbridge.Options{
 		Store:          st,
 		Family:         svc,
@@ -123,11 +128,13 @@ func runServe(ctx context.Context) error {
 		IdleTimeout:    cfg.SessionIdleTimeout,
 		MaxSessions:    cfg.MaxSessions,
 		Charge:         charge,
+		Slots:          slots,
 	})
 	gameMgr := game.NewManager(game.Config{
 		Store:       st,
 		IdleTimeout: cfg.SessionIdleTimeout,
 		Charge:      charge,
+		Slots:       slots,
 	})
 	srv := server.New(server.Deps{
 		Config:   cfg,
