@@ -61,6 +61,7 @@ func open(dsn, entDialect, driver string) (*Store, error) {
 
 	drv := entsql.OpenDB(entDialect, db)
 	client := ent.NewClient(ent.Driver(drv))
+	registerOwnerGuard(client)
 
 	if err := client.Schema.Create(context.Background()); err != nil {
 		client.Close()

@@ -6,6 +6,7 @@ import (
 )
 
 func (r *eventRepo) AppendHintEvent(ctx context.Context, data HintEventData) error {
+	ctx = r.scope(ctx)
 	seqNum, err := r.seq.Next(ctx)
 	if err != nil {
 		return fmt.Errorf("next sequence: %w", err)

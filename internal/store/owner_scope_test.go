@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/abhisek/mathiz/ent"
 )
 
 // openIsolationStore returns a store for owner-isolation tests. It uses
@@ -273,5 +276,123 @@ func TestOwnerIsolationLessonEvents(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Errorf("carol sees %d lessons, want 0", len(got))
+	}
+}
+
+// TestOwnerGuardQueryFailsClosed proves the structural safety net: a query
+// through the ent client directly (bypassing the repos) on an owner-scoped
+// table with a bare context must error, not silently return all tenants'
+// rows.
+func TestOwnerGuardQueryFailsClosed(t *testing.T) {
+	s := openIsolationStore(t)
+	ctx := context.Background()
+
+	if _, err := s.Client().AnswerEvent.Query().All(ctx); err == nil || !strings.Contains(err.Error(), "unscoped query") {
+		t.Errorf("bare-context AnswerEvent query err = %v, want unscoped-query error", err)
+	}
+	if _, err := s.Client().Snapshot.Query().Count(ctx); err == nil || !strings.Contains(err.Error(), "unscoped query") {
+		t.Errorf("bare-context Snapshot count err = %v, want unscoped-query error", err)
+	}
+	// Aggregate/GroupBy paths are intercepted too.
+	var rows []struct {
+		GemType string `json:"gem_type"`
+		Count   int    `json:"count"`
+	}
+	err := s.Client().GemEvent.Query().GroupBy("gem_type").Aggregate(ent.Count()).Scan(ctx, &rows)
+	if err == nil || !strings.Contains(err.Error(), "unscoped query") {
+		t.Errorf("bare-context GemEvent group-by err = %v, want unscoped-query error", err)
+	}
+
+	// Family-scoped control-plane tables are not owner-scoped and must stay
+	// reachable without an owner in ctx.
+	if _, err := s.Client().Account.Query().Count(ctx); err != nil {
+		t.Errorf("bare-context Account count err = %v, want nil", err)
+	}
+}
+
+// TestOwnerGuardMutationFailsClosed proves mutations on owner-scoped tables
+// require an owner in the context and reject conflicting explicit owners.
+func TestOwnerGuardMutationFailsClosed(t *testing.T) {
+	s := openIsolationStore(t)
+	ctx := context.Background()
+
+	seqNum, err := s.seq.Next(ctx)
+	if err != nil {
+		t.Fatalf("next sequence: %v", err)
+	}
+	_, err = s.Client().GemEvent.Create().
+		SetSequence(seqNum).
+		SetGemType("ruby").SetRarity("rare").SetSessionID("s").SetReason("r").
+		Save(ctx)
+	if err == nil || !strings.Contains(err.Error(), "unscoped mutation") {
+		t.Errorf("bare-context create err = %v, want unscoped-mutation error", err)
+	}
+
+	// Explicit owner conflicting with the context owner is rejected.
+	alice := testOwner(t, "alice")
+	seqNum, err = s.seq.Next(ctx)
+	if err != nil {
+		t.Fatalf("next sequence: %v", err)
+	}
+	_, err = s.Client().GemEvent.Create().
+		SetSequence(seqNum).
+		SetOwnerID(testOwner(t, "bob")).
+		SetGemType("ruby").SetRarity("rare").SetSessionID("s").SetReason("r").
+		Save(withOwner(ctx, alice))
+	if err == nil || !strings.Contains(err.Error(), "owner conflict") {
+		t.Errorf("conflicting-owner create err = %v, want owner-conflict error", err)
+	}
+
+	// Nothing was written for either owner.
+	_, total, err := s.EventRepoFor(alice).GemCounts(ctx)
+	if err != nil {
+		t.Fatalf("gem counts: %v", err)
+	}
+	if total != 0 {
+		t.Errorf("alice gem count = %d, want 0 after failed writes", total)
+	}
+}
+
+// TestOwnerGuardStampsAndScopes proves the guard stamps owner_id on creates
+// that don't set it and adds the owner predicate to queries that don't
+// filter — the isolation holds even when per-method discipline is forgotten.
+func TestOwnerGuardStampsAndScopes(t *testing.T) {
+	s := openIsolationStore(t)
+	ctx := context.Background()
+	alice := testOwner(t, "alice")
+	bob := testOwner(t, "bob")
+
+	for _, owner := range []string{alice, bob} {
+		seqNum, err := s.seq.Next(ctx)
+		if err != nil {
+			t.Fatalf("next sequence: %v", err)
+		}
+		// No SetOwnerID: the mutation hook must stamp it from ctx.
+		_, err = s.Client().GemEvent.Create().
+			SetSequence(seqNum).
+			SetGemType("ruby").SetRarity("rare").SetSessionID("s").SetReason("r").
+			Save(withOwner(ctx, owner))
+		if err != nil {
+			t.Fatalf("create for %s: %v", owner, err)
+		}
+	}
+
+	// The repo (explicit Where) sees exactly the stamped row.
+	_, total, err := s.EventRepoFor(alice).GemCounts(ctx)
+	if err != nil {
+		t.Fatalf("gem counts: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("alice gem count = %d, want 1", total)
+	}
+
+	// A client query with owner ctx but NO explicit Where is still scoped by
+	// the interceptor's added predicate.
+	n, err := s.Client().GemEvent.Query().Count(withOwner(ctx, alice))
+	if err != nil {
+		t.Fatalf("client count: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("unfiltered client count for alice = %d, want 1", n)
 	}
 }

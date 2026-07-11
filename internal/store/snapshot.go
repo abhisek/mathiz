@@ -16,7 +16,15 @@ type snapshotRepo struct {
 	owner  string
 }
 
+// scope stamps the repo's owner into ctx so the store-level owner guard
+// (see ownerguard.go) scopes every ent call made during the request. Every
+// exported repo method must wrap its ctx with this at entry.
+func (r *snapshotRepo) scope(ctx context.Context) context.Context {
+	return withOwner(ctx, r.owner)
+}
+
 func (r *snapshotRepo) Save(ctx context.Context, snap *Snapshot) error {
+	ctx = r.scope(ctx)
 	dataMap, err := snapshotDataToMap(snap.Data)
 	if err != nil {
 		return fmt.Errorf("marshal snapshot data: %w", err)
@@ -35,6 +43,7 @@ func (r *snapshotRepo) Save(ctx context.Context, snap *Snapshot) error {
 }
 
 func (r *snapshotRepo) Latest(ctx context.Context) (*Snapshot, error) {
+	ctx = r.scope(ctx)
 	s, err := r.client.Snapshot.Query().
 		Where(snapshot.OwnerID(r.owner)).
 		Order(ent.Desc(snapshot.FieldTimestamp)).
@@ -49,6 +58,7 @@ func (r *snapshotRepo) Latest(ctx context.Context) (*Snapshot, error) {
 }
 
 func (r *snapshotRepo) Prune(ctx context.Context, keep int) error {
+	ctx = r.scope(ctx)
 	// Find the ID threshold: get the Nth most recent snapshot.
 	snapshots, err := r.client.Snapshot.Query().
 		Where(snapshot.OwnerID(r.owner)).

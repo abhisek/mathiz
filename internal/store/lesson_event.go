@@ -9,6 +9,7 @@ import (
 )
 
 func (r *eventRepo) AppendLessonEvent(ctx context.Context, data LessonEventData) error {
+	ctx = r.scope(ctx)
 	seqNum, err := r.seq.Next(ctx)
 	if err != nil {
 		return fmt.Errorf("next sequence: %w", err)
@@ -36,6 +37,7 @@ func (r *eventRepo) AppendLessonEvent(ctx context.Context, data LessonEventData)
 }
 
 func (r *eventRepo) QueryLessonEvents(ctx context.Context, opts QueryOpts) ([]LessonEventRecord, error) {
+	ctx = r.scope(ctx)
 	query := r.client.LessonEvent.Query().
 		Where(lessonevent.OwnerID(r.owner)).
 		Order(ent.Desc(lessonevent.FieldSequence))

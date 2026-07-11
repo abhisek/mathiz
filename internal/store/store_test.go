@@ -142,8 +142,9 @@ func TestSnapshotPrune(t *testing.T) {
 		t.Fatalf("prune: %v", err)
 	}
 
-	// Count remaining snapshots.
-	count, err := s.Client().Snapshot.Query().Count(ctx)
+	// Count remaining snapshots. Direct client access needs the owner in ctx
+	// or the owner guard fails the query closed.
+	count, err := s.Client().Snapshot.Query().Count(withOwner(ctx, LocalOwner))
 	if err != nil {
 		t.Fatalf("count: %v", err)
 	}
@@ -184,7 +185,7 @@ func TestSnapshotPruneWithFewerThanKeep(t *testing.T) {
 		t.Fatalf("prune: %v", err)
 	}
 
-	count, err := s.Client().Snapshot.Query().Count(ctx)
+	count, err := s.Client().Snapshot.Query().Count(withOwner(ctx, LocalOwner))
 	if err != nil {
 		t.Fatalf("count: %v", err)
 	}

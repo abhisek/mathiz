@@ -9,6 +9,7 @@ import (
 )
 
 func (r *eventRepo) AppendMasteryEvent(ctx context.Context, data MasteryEventData) error {
+	ctx = r.scope(ctx)
 	seqNum, err := r.seq.Next(ctx)
 	if err != nil {
 		return fmt.Errorf("next sequence: %w", err)
@@ -35,6 +36,7 @@ func (r *eventRepo) AppendMasteryEvent(ctx context.Context, data MasteryEventDat
 }
 
 func (r *eventRepo) RecentReviewAccuracy(ctx context.Context, skillID string, lastN int) (float64, int, error) {
+	ctx = r.scope(ctx)
 	events, err := r.client.AnswerEvent.Query().
 		Where(
 			answerevent.OwnerID(r.owner),

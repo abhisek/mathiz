@@ -80,9 +80,13 @@ user-facing flows — **update it when you add or change one**.
 **Tenant isolation**
 - Every event/snapshot row is scoped by `owner_id` (child profile UID; `""`
   = local CLI). Every repo append must `SetOwnerID(r.owner)`; every repo
-  query must filter `OwnerID(r.owner)`. There is no central enforcement —
-  a forgotten `Where` silently leaks another family's data and single-owner
-  tests will still pass. Add an owner-isolation test for any new query
+  query must filter `OwnerID(r.owner)`. Enforcement is central and
+  fail-closed: a query interceptor + mutation hooks registered in
+  `store.Open` (`internal/store/ownerguard.go`) stamp/filter `owner_id` from
+  the context (repos wrap ctx via `withOwner` at method entry); an ent query
+  or mutation on an owner-scoped table without an owner in ctx errors instead
+  of leaking. Raw SQL bypasses the guard — keep parameterizing the owner
+  there — and still add an owner-isolation test for any new query
   (see `internal/store/owner_scope_test.go`).
 - Server-side code must only use `Store.EventRepoFor(childUID)` /
   `SnapshotRepoFor(childUID)` — never the unscoped `EventRepo()` /
