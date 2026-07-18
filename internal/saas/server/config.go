@@ -44,6 +44,11 @@ type Config struct {
 	// the self-hoster default), "fake" (dev), "stripe"/"paddle" (planned).
 	BillingProvider string
 
+	// StripeSecretKey / StripeWebhookSecret configure the stripe provider
+	// (secret API key; webhook signing secret from the endpoint config).
+	StripeSecretKey     string
+	StripeWebhookSecret string
+
 	// PublicBaseURL is this server's externally reachable origin, used for
 	// billing redirect URLs (defaults to http://localhost + Addr).
 	PublicBaseURL string
@@ -52,16 +57,18 @@ type Config struct {
 // ConfigFromEnv builds a Config from MATHIZ_* environment variables.
 func ConfigFromEnv() (*Config, error) {
 	cfg := &Config{
-		Addr:               envOr("MATHIZ_SERVER_ADDR", ":8080"),
-		DatabaseURL:        os.Getenv("MATHIZ_DATABASE_URL"),
-		SupabaseURL:        strings.TrimRight(os.Getenv("MATHIZ_SUPABASE_URL"), "/"),
-		SupabaseAnonKey:    os.Getenv("MATHIZ_SUPABASE_ANON_KEY"),
-		SupabaseJWTSecret:  os.Getenv("MATHIZ_SUPABASE_JWT_SECRET"),
-		MaxSessions:        envIntOr("MATHIZ_MAX_SESSIONS", 100),
-		SessionIdleTimeout: time.Duration(envIntOr("MATHIZ_SESSION_IDLE_MINUTES", 30)) * time.Minute,
-		TrustProxy:         os.Getenv("MATHIZ_TRUST_PROXY") == "true",
-		BillingProvider:    os.Getenv("MATHIZ_BILLING_PROVIDER"),
-		PublicBaseURL:      os.Getenv("MATHIZ_PUBLIC_BASE_URL"),
+		Addr:                envOr("MATHIZ_SERVER_ADDR", ":8080"),
+		DatabaseURL:         os.Getenv("MATHIZ_DATABASE_URL"),
+		SupabaseURL:         strings.TrimRight(os.Getenv("MATHIZ_SUPABASE_URL"), "/"),
+		SupabaseAnonKey:     os.Getenv("MATHIZ_SUPABASE_ANON_KEY"),
+		SupabaseJWTSecret:   os.Getenv("MATHIZ_SUPABASE_JWT_SECRET"),
+		MaxSessions:         envIntOr("MATHIZ_MAX_SESSIONS", 100),
+		SessionIdleTimeout:  time.Duration(envIntOr("MATHIZ_SESSION_IDLE_MINUTES", 30)) * time.Minute,
+		TrustProxy:          os.Getenv("MATHIZ_TRUST_PROXY") == "true",
+		BillingProvider:     os.Getenv("MATHIZ_BILLING_PROVIDER"),
+		StripeSecretKey:     os.Getenv("MATHIZ_STRIPE_SECRET_KEY"),
+		StripeWebhookSecret: os.Getenv("MATHIZ_STRIPE_WEBHOOK_SECRET"),
+		PublicBaseURL:       os.Getenv("MATHIZ_PUBLIC_BASE_URL"),
 	}
 	if origins := os.Getenv("MATHIZ_CORS_ORIGINS"); origins != "" {
 		for _, o := range strings.Split(origins, ",") {

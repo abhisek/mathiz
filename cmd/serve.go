@@ -92,8 +92,18 @@ func runServe(ctx context.Context) error {
 		}
 		creditsSvc = credits.New(st.Client())
 		billingSvc = billing.NewService(st.Client(), creditsSvc, billing.NewFakeProvider(baseURL))
+	case "stripe":
+		if cfg.PublicBaseURL == "" {
+			return fmt.Errorf("stripe billing requires MATHIZ_PUBLIC_BASE_URL (checkout redirect target)")
+		}
+		provider, err := billing.NewStripeProvider(cfg.StripeSecretKey, cfg.StripeWebhookSecret, cfg.PublicBaseURL)
+		if err != nil {
+			return err
+		}
+		creditsSvc = credits.New(st.Client())
+		billingSvc = billing.NewService(st.Client(), creditsSvc, provider)
 	default:
-		return fmt.Errorf("unsupported MATHIZ_BILLING_PROVIDER %q (available: fake; stripe/paddle planned)", cfg.BillingProvider)
+		return fmt.Errorf("unsupported MATHIZ_BILLING_PROVIDER %q (available: fake, stripe; paddle possible later)", cfg.BillingProvider)
 	}
 	if creditsSvc != nil {
 		// One credit per learning session, debited at start. The session ID

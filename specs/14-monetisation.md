@@ -95,9 +95,17 @@ Implementations:
 - `fake` (shipped): checkout "succeeds" immediately via a local completion
   endpoint — the entire purchase→grant→play loop is clickable in dev with
   zero external services. Also the test double.
-- `stripe` (decided, next up) / `paddle` (possible later): adapter files
-  implementing the same three methods. Choosing between them is a
-  deployment decision (`MATHIZ_BILLING_PROVIDER`), not an architectural one.
+- `stripe` (shipped, `internal/saas/billing/stripe.go`): checkout sessions
+  (`mode=subscription`/`payment`, `allow_promotion_codes` on), hosted
+  Customer Portal, signature-verified webhook. Subscription credits flow
+  EXCLUSIVELY from `invoice.paid` (`billing_reason=subscription_create` →
+  activated, else renewed); `checkout.session.completed` maps only top-ups
+  — mapping activation there too would double-grant new subscriptions,
+  since Stripe delivers both events on signup. Config:
+  `MATHIZ_STRIPE_SECRET_KEY`, `MATHIZ_STRIPE_WEBHOOK_SECRET`,
+  `MATHIZ_PUBLIC_BASE_URL`, `MATHIZ_BILLING_PRICE_*`.
+- `paddle` (possible later): same three methods; a deployment decision,
+  not an architectural one.
 
 ### Provider decision: Stripe — subscriptions + one-time payments only
 
