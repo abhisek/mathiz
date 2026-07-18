@@ -61,7 +61,7 @@ Two deployment modes, one engine:
   (Supabase JWT verify), `server` (REST API), `game` (treasure-map
   expeditions), `termbridge` (TUI over WebSocket), `webui` (embedded SPA),
   `credits` (prepaid credit ledger — THE entitlement source of truth),
-  `billing` (thin payment-provider abstraction; `fake` shipped, Stripe next).
+  `billing` (thin payment-provider abstraction; `fake` + `stripe` shipped).
 - **`web/`** — Vite + React SPA. `npm run build` emits into
   `internal/saas/webui/dist` (gitignored except `.gitkeep`).
 - **`cmd/run.go` / `cmd/serve.go`** — wiring. Shared dependency graph lives
@@ -202,7 +202,9 @@ endpoint — this is how E2E tests stub the LLM), bare `GEMINI_API_KEY` /
 `MATHIZ_TRUST_PROXY`.
 
 Billing: `MATHIZ_BILLING_PROVIDER` (empty = billing off/everything free;
-`fake` = dev provider; `stripe` planned), `MATHIZ_PUBLIC_BASE_URL`
+`fake` = dev provider; `stripe` = real payments — also needs
+`MATHIZ_STRIPE_SECRET_KEY` + `MATHIZ_STRIPE_WEBHOOK_SECRET`),
+`MATHIZ_PUBLIC_BASE_URL`
 (checkout/webhook redirects), `MATHIZ_BILLING_PRICE_{EXPLORER,VOYAGER,ARMADA,TOPUP_100}`
 (provider price-object IDs; unused by `fake`).
 

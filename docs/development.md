@@ -173,9 +173,8 @@ MATHIZ_BILLING_PROVIDER=       # empty = billing OFF: everything free,
 ```
 
 `make dev-up` sets `fake` for you (see `docker-compose.yml`). Host-native,
-export it before `./bin/mathiz serve`. Anything other than `fake` or empty
-is rejected at startup (Stripe/Paddle adapters are planned — the `billing.Provider`
-interface is where they'll plug in).
+export it before `./bin/mathiz serve`. `stripe` enables real payments (see
+the Stripe section below); anything else is rejected at startup.
 
 **The clickable loop (recommended).** Sign in on the dashboard → the wallet
 card shows "⛵ 30 expeditions left" → pick a plan (Explorer $5/150 ·
@@ -214,12 +213,20 @@ to 1–2 and recreate the family. When the wallet hits zero the next
 expedition returns HTTP 402 and the kid sees the ship-resting screen;
 subscribing or topping up from the dashboard unblocks them immediately.
 
-**Real providers (when you're ready).** Set `MATHIZ_BILLING_PROVIDER` to the
-provider, `MATHIZ_PUBLIC_BASE_URL` to your public origin (checkout/webhook
-redirects), and map the catalog to provider price objects via
-`MATHIZ_BILLING_PRICE_EXPLORER` / `_VOYAGER` / `_ARMADA` / `_TOPUP_100`
-(see `.env.example`). The webhook endpoint is `POST /api/v1/billing/webhook`;
-event application is idempotent, so provider retries are safe.
+**Stripe (real payments).** In the Stripe dashboard create three recurring
+prices (Explorer/Voyager/Armada) and one one-time price (top-up pack), then
+set: `MATHIZ_BILLING_PROVIDER=stripe`, `MATHIZ_STRIPE_SECRET_KEY`,
+`MATHIZ_STRIPE_WEBHOOK_SECRET` (from the webhook endpoint you create for
+`POST <public-base-url>/api/v1/billing/webhook` with events
+`checkout.session.completed`, `invoice.paid`,
+`customer.subscription.deleted`), `MATHIZ_PUBLIC_BASE_URL`, and the four
+`MATHIZ_BILLING_PRICE_*` price IDs. Local testing:
+`stripe listen --forward-to localhost:8080/api/v1/billing/webhook` (use the
+CLI's printed `whsec_...` as the webhook secret). Event application is
+idempotent — resending a webhook from the Stripe dashboard must not (and
+does not) double-grant. Promotion codes work out of the box: create one in
+Stripe and the checkout page shows a code field (that's the early-adopter
+comp path).
 
 ## 3. Code generation
 
