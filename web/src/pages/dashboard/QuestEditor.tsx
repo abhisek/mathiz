@@ -648,7 +648,7 @@ function GenerateBox({
             <input
               value={brief}
               onChange={(e) => setBrief(e.target.value)}
-              placeholder="e.g. 10 HCF word problems, grade 5"
+              placeholder="e.g. HCF word problems, grade 5 — the count comes from the box below"
               required
             />
           </label>
