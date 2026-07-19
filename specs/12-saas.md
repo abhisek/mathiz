@@ -247,3 +247,23 @@ Routes:
 - API: `httptest` end-to-end — parent onboarding → add child → mint code → preview →
   redeem → child stats visible to parent; cross-tenant denial cases.
 - Termbridge: unit tests for the framing/resize protocol with a fake program transport.
+
+## Co-parents (membership model)
+
+A Family Space supports multiple parent accounts via `family_member` rows
+(space, account [unique — one family per account in v1], role).
+
+- **Roles (exactly two):** `owner` — everything, plus billing and managing
+  parents (the Stripe customer is the payer's identity; purchase actions
+  and parent removal stay with them). `parent` — everything else: progress,
+  quests, join codes, child management. Kid surfaces are role-agnostic.
+- **Invites without email infra:** the owner records a co-parent's email
+  (`parent_invite` row, pending, revocable). The invitee signs in normally
+  (OTP); when `/me` finds a pending invite matching the account email, the
+  dashboard shows an accept banner; accepting creates the membership.
+  A typo'd email simply never matches. No SMTP anywhere.
+- **Migration is lazy:** on `/me`, an owner without a member row gets one.
+- **Authz:** membership checks replace owner checks at the single
+  `internal/saas/authz` chokepoint; `CanManageBilling` / `CanManageParents`
+  are owner-only. Cross-family denials remain 404.
+- Quests record `created_by` (account UID) for the future activity log.
