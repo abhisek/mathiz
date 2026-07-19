@@ -292,11 +292,21 @@ func (s *Service) AcceptInvite(ctx context.Context, inviteUID, accountUID string
 		}
 		return nil, fmt.Errorf("create membership: %w", err)
 	}
-	if err := tx.ParentInvite.Update().
-		Where(parentinvite.UID(inv.UID)).
+	// Conditional on status=pending so a concurrent accept (two accounts,
+	// same email — member rows don't conflict) or a concurrent revoke can't
+	// both win: whoever loses matches 0 rows and rolls its membership back.
+	n, err := tx.ParentInvite.Update().
+		Where(
+			parentinvite.UID(inv.UID),
+			parentinvite.Status(ParentInvitePending),
+		).
 		SetStatus(ParentInviteAccepted).
-		Exec(ctx); err != nil {
+		Save(ctx)
+	if err != nil {
 		return nil, fmt.Errorf("mark invite accepted: %w", err)
+	}
+	if n == 0 {
+		return nil, ErrParentInviteInvalid
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit accept tx: %w", err)
@@ -313,7 +323,23 @@ func (s *Service) RevokeParentInvite(ctx context.Context, inviteUID string) erro
 	if inv.Status != ParentInvitePending {
 		return ErrParentInviteInvalid
 	}
-	return inv.Update().SetStatus(ParentInviteRevoked).Exec(ctx)
+	// Conditional on status=pending: a revoke racing an accept must not
+	// overwrite "accepted" (the membership would survive with the invite
+	// marked revoked).
+	n, err := s.client.ParentInvite.Update().
+		Where(
+			parentinvite.UID(inv.UID),
+			parentinvite.Status(ParentInvitePending),
+		).
+		SetStatus(ParentInviteRevoked).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrParentInviteInvalid
+	}
+	return nil
 }
 
 // RemoveParent deletes a co-parent's membership. The owner can never be
