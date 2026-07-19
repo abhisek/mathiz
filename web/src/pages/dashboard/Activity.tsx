@@ -158,7 +158,9 @@ export default function Activity() {
         {kids.map((k) => (
           <button
             key={k.id}
+            type="button"
             className={`chip${childId === k.id ? ' chip-active' : ''}`}
+            aria-pressed={childId === k.id}
             onClick={() => setChildId(k.id)}
           >
             {k.name}
@@ -424,7 +426,7 @@ function ExpeditionRow({
         <div className="timeline-main">
           <strong>
             {what}
-            {exp.quest && (
+            {exp.quest && exp.quest.createdBy && (
               <span className="muted timeline-quest-by"> quest by {exp.quest.createdBy}</span>
             )}
           </strong>

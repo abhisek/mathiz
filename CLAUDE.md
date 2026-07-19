@@ -213,9 +213,9 @@ Billing: `MATHIZ_BILLING_PROVIDER` (empty = billing off/everything free;
 
 ## Environment Quirks (sandboxes / CI)
 
-- `internal/selfupdate` tests fail in proxied sandboxes (httptest + proxy
-  interception). Pre-existing, unrelated to your change — confirm your
-  packages pass and move on.
+- `internal/selfupdate` tests pass everywhere since the platform-asset fix
+  (they used to 404 off-macOS because the test server hardcoded the Darwin
+  asset name). If they fail for you, that's a real regression — investigate.
 - The repo is historically not 100% gofmt-clean. Run `gofmt -w` on files you
   touched only; do not reformat untouched files (diff noise).
 - No Docker daemon in some sandboxes: bootstrap Postgres directly with the
