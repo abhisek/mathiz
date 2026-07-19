@@ -9,6 +9,7 @@ import Join from './pages/Join'
 import Play from './pages/Play'
 import TerminalPage from './pages/Terminal'
 import { Contact, Privacy, Terms } from './pages/Legal'
+import Pricing from './pages/Pricing'
 import BusyBar from './components/BusyBar'
 
 export default function App() {
@@ -25,7 +26,8 @@ export default function App() {
         {/* The front door: static, Supabase-free, routes each persona. */}
         <Route path="/" element={<Landing />} />
 
-        {/* Legal pages: static, Supabase-free. */}
+        {/* Pricing + legal pages: static, Supabase-free. */}
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/contact" element={<Contact />} />

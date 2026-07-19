@@ -1786,6 +1786,147 @@ table.sessions th {
   }
 }
 
+/* ---- Pricing page (/pricing) ---- */
+
+.pricing-page {
+  min-height: 100vh;
+  padding: 3rem 1.5rem 3.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.pricing-title {
+  font-size: 2rem;
+  margin: 0 0 1rem;
+}
+
+/* Warm beta banner (shown only while billing is off — the public beta). */
+.pricing-beta {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.85rem 1.15rem;
+  max-width: 34rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0 0 1.5rem;
+}
+
+.pricing-explainer {
+  max-width: 34rem;
+  margin: 0 0 2rem;
+}
+
+.pricing-explainer h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.4rem;
+}
+
+.pricing-explainer p {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.pricing-plans {
+  width: 100%;
+  max-width: 46rem;
+}
+
+.pricing-plans .plan-card {
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+
+.pricing-credits {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+/* The top-up pack: deliberately quieter than the subscriptions. */
+.pricing-topup {
+  margin: 0.9rem auto 0;
+  max-width: 30rem;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 0.8rem 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 0.75rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.pricing-topup-price {
+  font-weight: 700;
+}
+
+.pricing-trust {
+  list-style: none;
+  padding: 0;
+  margin: 2rem 0 1.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1rem;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.pricing-trust li + li::before {
+  content: '·';
+  margin-right: 1rem;
+}
+
+.pricing-cta {
+  margin-bottom: 0.75rem;
+}
+
+/* ---- "Public beta" pill (landing hero) ---- */
+
+.beta-pill {
+  display: inline-block;
+  margin-top: 0.85rem;
+  padding: 0.22rem 0.75rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---- Dashboard billing: public-beta card (billing off) ---- */
+
+.beta-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem 1.75rem;
+  max-width: 30rem;
+}
+
+.beta-card h3 {
+  margin: 0 0 0.4rem;
+}
+
+.beta-card p {
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.beta-card a {
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
 /* ---- OTP sign-in ---- */
 
 .otp-input {

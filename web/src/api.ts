@@ -262,6 +262,14 @@ export interface BillingInfo {
   plans: BillingPlan[]
 }
 
+// Public pricing catalog (GET /api/v1/pricing — served even when the server
+// runs without a billing provider; billingEnabled drives beta messaging).
+export interface PricingInfo {
+  billingEnabled: boolean
+  starterCredits: number
+  plans: BillingPlan[]
+}
+
 // ---- Global API activity (drives the BusyBar) ----
 // Module-level in-flight counter: every request() bumps it, and subscribers
 // are notified only on 0↔1 transitions, so the UI sees "anything in flight?"
@@ -312,6 +320,8 @@ export async function request<T>(
 
 export const api = {
   bootConfig: () => request<BootConfig>('GET', '/api/v1/config', null),
+  // Public: plan catalog + beta flag for the /pricing page (no auth).
+  pricing: () => request<PricingInfo>('GET', '/api/v1/pricing', null),
 
   // Parent (Supabase JWT)
   me: (token: string) =>

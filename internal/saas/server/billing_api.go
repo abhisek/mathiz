@@ -7,9 +7,24 @@ import (
 	"github.com/abhisek/mathiz/ent"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/billing"
+	"github.com/abhisek/mathiz/internal/saas/credits"
 )
 
 // Billing API — parent-only. The kid surface never sees prices or balances.
+
+// handlePricing serves the public plan catalog. Registered unconditionally
+// (even with no billing provider configured): the catalog is static, and the
+// SPA's /pricing page uses billingEnabled to drive its beta messaging —
+// flipping the provider on in prod flips the messaging with no frontend
+// change. Plan.ProviderPriceID is json:"-", so nothing provider-specific
+// leaks here.
+func (s *Server) handlePricing(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"billingEnabled": s.billing != nil,
+		"starterCredits": credits.StarterCredits,
+		"plans":          billing.Plans(),
+	})
+}
 
 func (s *Server) handleGetBilling(w http.ResponseWriter, r *http.Request, p authz.Principal, acct *ent.Account) {
 	spaceID := r.PathValue("id")
