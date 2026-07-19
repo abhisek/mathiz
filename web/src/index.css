@@ -1296,38 +1296,124 @@ table.sessions th {
 /* ---- Landing (the front door at /) ---- */
 
 .landing {
+  position: relative;
   min-height: 100vh;
-  max-width: 52rem;
-  margin: 0 auto;
-  padding: 3.5rem 1.5rem 4rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  overflow: hidden;
+}
+
+/* Faint nautical scenery behind everything (≤6% contrast against --bg). */
+
+.landing-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  color: var(--ink);
+  z-index: 0;
+}
+
+.landing > :not(.landing-backdrop) {
+  position: relative;
+  z-index: 1;
+}
+
+.bd-route {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.05;
+}
+
+.bd-compass {
+  position: absolute;
+  top: -3.5rem;
+  right: -3.5rem;
+  width: clamp(13rem, 22vw, 20rem);
+  height: auto;
+  opacity: 0.045;
+}
+
+.bd-island {
+  position: absolute;
+  height: auto;
+  opacity: 0.04;
+}
+
+.bd-island-left {
+  left: -2.5rem;
+  top: 36%;
+  width: 17rem;
+}
+
+.bd-island-right {
+  right: -3.5rem;
+  top: 64%;
+  width: 21rem;
+}
+
+.bd-island-far {
+  left: 5%;
+  bottom: 1.5rem;
+  width: 13rem;
+}
+
+/* Full-viewport hero: brand + tagline + the two persona doors, centered. */
+
+.landing-hero {
+  min-height: 100vh;
+  width: 100%;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .landing-brand h1 {
-  font-size: 2.4rem;
+  font-size: 3rem;
+}
+
+.landing-brand .brand-mark {
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.8rem;
+  border-radius: 0.9rem;
 }
 
 .landing-tag {
   color: var(--ink-soft);
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   line-height: 1.55;
-  max-width: 34rem;
-  margin: 1rem 0 2.5rem;
+  max-width: 36rem;
+  margin: 1.1rem 0 2.75rem;
 }
 
 .landing-doors {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+  gap: 1.5rem;
   width: 100%;
 }
 
 @media (max-width: 40rem) {
   .landing-doors {
     grid-template-columns: 1fr;
+  }
+
+  .landing-hero {
+    min-height: 0;
+    padding-top: 3.5rem;
+  }
+
+  .landing-brand h1 {
+    font-size: 2.4rem;
   }
 }
 
@@ -1336,7 +1422,7 @@ table.sessions th {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 1.75rem 1.5rem;
+  padding: 2.25rem 1.75rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1352,20 +1438,27 @@ table.sessions th {
 }
 
 .door-emoji {
-  font-size: 2.6rem;
+  font-size: 3.1rem;
   line-height: 1;
 }
 
 .door h2 {
-  font-size: 1.25rem;
+  font-size: 1.45rem;
   margin: 0.25rem 0 0;
 }
 
 .door p {
   color: var(--ink-soft);
-  font-size: 0.95rem;
+  font-size: 1rem;
   line-height: 1.5;
   margin: 0 0 0.9rem;
+}
+
+.door-note {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin-top: 0.65rem;
+  line-height: 1.4;
 }
 
 .door .btn {
@@ -1379,6 +1472,68 @@ table.sessions th {
 
 .door-kid {
   border-top: 4px solid var(--kid);
+}
+
+/* Below the fold: the "why Mathiz" band. */
+
+.landing-why {
+  width: 100%;
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 3rem;
+}
+
+.landing-why-title {
+  font-size: 1.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.why-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 46rem) {
+  .why-tiles {
+    grid-template-columns: 1fr;
+  }
+}
+
+.why-tile {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.why-emoji {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.why-tile h3 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.why-tile p {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .landing-how {
@@ -1410,6 +1565,111 @@ table.sessions th {
   font-weight: 700;
   font-size: 0.8rem;
   margin-right: 0.45rem;
+}
+
+/* ---- Landing footer ---- */
+
+.landing-footer {
+  width: 100%;
+  margin-top: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem 1.75rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.landing-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.landing-footer a:hover {
+  color: var(--accent-deep);
+  text-decoration: underline;
+}
+
+/* ---- Legal pages (/terms, /privacy, /contact) ---- */
+
+.legal-page {
+  min-height: 100vh;
+  padding: 3rem 1.5rem 3.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.legal-brand {
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 1.75rem;
+}
+
+.legal-brand-name {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.legal-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2.25rem 2.5rem;
+  width: 100%;
+  max-width: 42rem;
+  line-height: 1.6;
+}
+
+.legal-card h1 {
+  font-size: 1.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.legal-card h2 {
+  font-size: 1.05rem;
+  margin: 1.5rem 0 0.4rem;
+}
+
+.legal-card p, .legal-card ul {
+  margin: 0.5rem 0;
+  font-size: 0.95rem;
+}
+
+.legal-card li {
+  margin-bottom: 0.35rem;
+}
+
+.legal-card .legal-meta {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.legal-mail {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent-deep);
+}
+
+.legal-back {
+  margin-top: 1.5rem;
+}
+
+.legal-back a {
+  color: inherit;
+}
+
+@media (max-width: 34rem) {
+  .legal-card {
+    padding: 1.5rem 1.25rem;
+  }
 }
 
 /* ---- OTP sign-in ---- */

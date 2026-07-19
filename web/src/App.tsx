@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import Join from './pages/Join'
 import Play from './pages/Play'
 import TerminalPage from './pages/Terminal'
+import { Contact, Privacy, Terms } from './pages/Legal'
 
 export default function App() {
   return (
@@ -19,6 +20,11 @@ export default function App() {
 
       {/* The front door: static, Supabase-free, routes each persona. */}
       <Route path="/" element={<Landing />} />
+
+      {/* Legal pages: static, Supabase-free. */}
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/contact" element={<Contact />} />
 
       <Route path="/login" element={<ParentArea page="login" />} />
       <Route path="/dashboard" element={<ParentArea page="dashboard" />} />
