@@ -23,20 +23,21 @@ parents — those stay with the owner. One family per account.
 |---|---|---|
 | Land on the front door, pick the parent path | `/` (static landing, parent + kid CTAs) | no backend — routes to `/login` or `/join` |
 | Sign in — email code (OTP) first; the emailed magic link also works; email+password behind a fallback link. Account auto-created on first sign-in | `/login` (SPA, supabase-js) | Supabase Auth (`signInWithOtp`/`verifyOtp`, password fallback); server verifies JWT locally (HS256 secret or JWKS) |
-| Create / rename Family Space (one per account) | `/dashboard` | `POST/PATCH /api/v1/family` |
-| Add child (name, grade 2–5, optional 4–6 digit PIN) | `/dashboard` | `POST /api/v1/family/{id}/children` |
-| Edit / archive child (archiving revokes their devices) | `/dashboard` child card | `PATCH /api/v1/children/{id}` |
-| Set / change a child's PIN any time; with 2+ kids and a PIN missing, the dashboard nudges (never forces) | `/dashboard` child card + tip banner | `PATCH /api/v1/children/{id}` (`pin`) |
-| Mint / list / revoke join codes — parent picks expiry (7/30/90 days; default 7, server caps at 90) | `/dashboard` join codes panel | `POST/GET /api/v1/family/{id}/invites` (`ttlHours`), `DELETE /api/v1/invites/{id}` |
-| See per-child progress: island bars, mastered/learning counts, gems, recent sessions | `/dashboard` child card | `GET /api/v1/family/{id}/children`, `GET /api/v1/children/{id}/stats` |
-| Read the AI tutor's learner profile ("what the tutor has learned about X") | `/dashboard` child card | learner profile from latest snapshot |
-| List / sign out child devices | `/dashboard` child card | `GET /api/v1/children/{id}/devices`, `DELETE /api/v1/devices/{id}` |
-| Invite a co-parent by email — no email is sent; the invitee sees an accept banner after signing in normally (**owner only**) | `/dashboard` parents panel | `POST /api/v1/family/{id}/parents` (`email`) |
-| See the parent roster (members + pending invites) — any member | `/dashboard` parents panel | `GET /api/v1/family/{id}/parents` |
-| Accept a pending co-parent invite matching the account email → join the family with role `parent` | `/dashboard` accept banner | `GET /api/v1/me` (`pendingInvite`), `POST /api/v1/invites/parent/{id}/accept` |
-| Revoke a pending co-parent invite / remove a co-parent — the owner can never be removed (**owner only**) | `/dashboard` parents panel | `DELETE /api/v1/parent-invites/{id}`, `DELETE /api/v1/family/{id}/parents/{accountId}` |
-| Expedition wallet: balance, plans, subscribe / top-up, manage billing (**owner only** — the payment provider's customer is the payer's identity) | `/dashboard` billing card | `GET/POST /api/v1/family/{id}/billing*` (only when a billing provider is configured; 30 free starter credits on space creation) |
-| Author quests: one-off question sets ("HCF revision this week") for one child or all — manual authoring (free, with a math-recompute typo warning) or AI generation from a brief (debits ceil(count/5) credits, 402 on empty wallet); publish flips draft → active | `/dashboard` quests panel | `POST/GET /api/v1/family/{id}/quests`, `GET/PATCH/DELETE /api/v1/quests/{id}`, `POST/PATCH/DELETE .../questions[/{qid}]`, `POST .../generate`, `POST .../publish` — see [specs/15-quests.md](../specs/15-quests.md) |
+| Create / rename Family Space (one per account) | `/dashboard` (Kids) | `POST/PATCH /api/v1/family` |
+| Add child (name, grade 2–5, optional 4–6 digit PIN) | `/dashboard` (Kids) | `POST /api/v1/family/{id}/children` |
+| Edit / archive child (archiving revokes their devices) | `/dashboard` (Kids) child card | `PATCH /api/v1/children/{id}` |
+| Set / change a child's PIN any time; with 2+ kids and a PIN missing, the dashboard nudges (never forces) | `/dashboard` (Kids) child card + tip banner | `PATCH /api/v1/children/{id}` (`pin`) |
+| Mint / list / revoke join codes — parent picks expiry (7/30/90 days; default 7, server caps at 90) | `/dashboard/family` join codes panel | `POST/GET /api/v1/family/{id}/invites` (`ttlHours`), `DELETE /api/v1/invites/{id}` |
+| See per-child progress: island bars, mastered/learning counts, gems, recent sessions | `/dashboard` (Kids) child card | `GET /api/v1/family/{id}/children`, `GET /api/v1/children/{id}/stats` |
+| Activity timeline per child: expeditions (expandable to every question, her answer, hints used), mastery milestones (mastered / rusty), guide's lessons — filterable by kind and date range, "Load more" paging | `/dashboard/activity` | `GET /api/v1/children/{id}/activity` (cursor `before`, `kinds`, `from`/`to`), `GET /api/v1/children/{id}/activity/sessions/{sessionId}` |
+| Read the AI tutor's learner profile ("what the tutor has learned about X") | `/dashboard` (Kids) child card | learner profile from latest snapshot |
+| List / sign out child devices | `/dashboard` (Kids) child card | `GET /api/v1/children/{id}/devices`, `DELETE /api/v1/devices/{id}` |
+| Invite a co-parent by email — no email is sent; the invitee sees an accept banner after signing in normally (**owner only**) | `/dashboard/family` parents panel | `POST /api/v1/family/{id}/parents` (`email`) |
+| See the parent roster (members + pending invites) — any member | `/dashboard/family` parents panel | `GET /api/v1/family/{id}/parents` |
+| Accept a pending co-parent invite matching the account email → join the family with role `parent` | `/dashboard` accept banner (shown on every dashboard route while the account has no family) | `GET /api/v1/me` (`pendingInvite`), `POST /api/v1/invites/parent/{id}/accept` |
+| Revoke a pending co-parent invite / remove a co-parent — the owner can never be removed (**owner only**) | `/dashboard/family` parents panel | `DELETE /api/v1/parent-invites/{id}`, `DELETE /api/v1/family/{id}/parents/{accountId}` |
+| Expedition wallet: balance, plans, subscribe / top-up, manage billing (**owner only** — the payment provider's customer is the payer's identity; a co-parent deep-linking here is bounced to Kids; checkout success returns to `/dashboard/billing?billing=success`) | `/dashboard/billing` | `GET/POST /api/v1/family/{id}/billing*` (only when a billing provider is configured; 30 free starter credits on space creation) |
+| Author quests: one-off question sets ("HCF revision this week") for one child or all — manual authoring (free, with a math-recompute typo warning) or AI generation from a brief (debits ceil(count/5) credits, 402 on empty wallet); publish flips draft → active; the list keeps archived quests behind a toggle | `/dashboard/quests` (list + create) + `/dashboard/quests/{id}` (full-page editor) | `POST/GET /api/v1/family/{id}/quests`, `GET/PATCH/DELETE /api/v1/quests/{id}`, `POST/PATCH/DELETE .../questions[/{qid}]`, `POST .../generate`, `POST .../publish` — see [specs/15-quests.md](../specs/15-quests.md) |
 
 Authorization: a parent can only ever see and manage the Family Space they
 are a **member** of (owner or co-parent); billing and parent management are

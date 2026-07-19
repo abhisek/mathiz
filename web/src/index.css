@@ -2098,6 +2098,390 @@ table.sessions th {
   width: auto;
 }
 
+/* ---- Dashboard shell (sidebar nav + routed pages) ---- */
+
+.dash-shell {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  max-width: 72rem;
+  min-height: 100vh;
+  margin: 0 auto;
+}
+
+.dash-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem 1.1rem;
+  border-right: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  align-self: start;
+}
+
+.dash-nav-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.dash-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.dash-nav-link:hover {
+  background: rgb(36 31 51 / 0.05);
+  color: var(--ink);
+}
+
+.dash-nav-active,
+.dash-nav-active:hover {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.dash-nav-emoji {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.dash-nav-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.dash-email {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.dash-main {
+  min-width: 0;
+  padding: 1.5rem 2rem 4rem;
+}
+
+/* Mobile: compact header + a horizontal scrollable tab bar under it. */
+@media (max-width: 45rem) {
+  .dash-shell {
+    display: block;
+  }
+
+  .dash-nav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    height: auto;
+    background: var(--bg);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'brand foot'
+      'items items';
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+    padding: 0.7rem 1rem 0.5rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .dash-brand {
+    grid-area: brand;
+  }
+
+  .dash-nav-foot {
+    grid-area: foot;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .dash-email {
+    display: none;
+  }
+
+  .dash-nav-items {
+    grid-area: items;
+    flex-direction: row;
+    gap: 0.3rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .dash-nav-items::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dash-nav-link {
+    white-space: nowrap;
+    padding: 0.45rem 0.75rem;
+  }
+
+  .dash-main {
+    padding: 1.25rem 1rem 4rem;
+  }
+}
+
+/* ---- Family rename (Kids page header) ---- */
+
+.family-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.family-name .linklike {
+  font-size: 0.85rem;
+}
+
+.family-rename-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.family-rename-form input {
+  width: 16rem;
+  max-width: 100%;
+  margin-top: 0;
+}
+
+/* ---- Quest editor page (/dashboard/quests/:id) ---- */
+
+.quest-back {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.quest-back:hover {
+  color: var(--accent-deep);
+}
+
+.quest-editor-head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 0.5rem 0 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.quest-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.quest-details-form {
+  margin-bottom: 1rem;
+}
+
+.quests-archived {
+  margin-top: 1rem;
+}
+
+/* ---- Activity timeline ---- */
+
+.chip {
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+}
+
+.chip-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.chip-small {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.82rem;
+}
+
+.activity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.activity-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.timeline-day-head {
+  margin: 1.4rem 0 0.3rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0.4rem;
+}
+
+.timeline-day > .timeline-row,
+.timeline-expedition {
+  border-bottom: 1px solid var(--line);
+}
+
+.timeline-expedition .timeline-row {
+  border-bottom: 0;
+}
+
+.timeline-time {
+  flex: none;
+  width: 4rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+}
+
+.timeline-icon {
+  flex: none;
+  line-height: 1;
+}
+
+.timeline-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.timeline-row-btn {
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.timeline-row-btn:hover {
+  background: rgb(36 31 51 / 0.03);
+}
+
+.timeline-caret {
+  color: var(--ink-soft);
+  flex: none;
+}
+
+.timeline-quest-by {
+  font-weight: 400;
+}
+
+.timeline-milestone {
+  background: var(--accent-soft);
+  border-radius: 10px;
+  margin: 0.25rem 0;
+}
+
+.timeline-day > .timeline-milestone {
+  border-bottom: 0;
+}
+
+.timeline-detail {
+  padding: 0 0.4rem 0.9rem 5.9rem;
+}
+
+@media (max-width: 45rem) {
+  .timeline-detail {
+    padding-left: 1rem;
+  }
+}
+
+.timeline-answers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 0.92rem;
+}
+
+.answer-good {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.answer-bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.timeline-answer-skill {
+  font-size: 0.78rem;
+}
+
+.timeline-hints {
+  margin: 0.6rem 0 0;
+}
+
+.activity-more {
+  margin-top: 1.25rem;
+  text-align: center;
+}
+
 /* Brand-as-home-link (login/legal cards) + unwrappable CTA pills. */
 .brand-link {
   text-decoration: none;

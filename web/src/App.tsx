@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { getSupabase } from './supa'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
+import Dashboard from './pages/dashboard/Layout'
 import Join from './pages/Join'
 import Play from './pages/Play'
 import TerminalPage from './pages/Terminal'
@@ -31,7 +31,7 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
 
         <Route path="/login" element={<ParentArea page="login" />} />
-        <Route path="/dashboard" element={<ParentArea page="dashboard" />} />
+        <Route path="/dashboard/*" element={<ParentArea page="dashboard" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
