@@ -1,5 +1,9 @@
 name: CI
 
+# CI only reads the repo; never grant the default write token.
+permissions:
+  contents: read
+
 on:
   pull_request:
   push:
