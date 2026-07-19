@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   api,
@@ -45,19 +45,41 @@ export default function QuestEditor() {
   const [busy, setBusy] = useState(false)
   const [editingDetails, setEditingDetails] = useState(false)
 
+  // The page stays mounted when navigating quest → quest (only :id changes),
+  // so responses must be dropped once questId moves on — otherwise quest A's
+  // data (or its 404) bleeds into quest B's editor.
+  const activeQuestId = useRef(questId)
+
   const load = useCallback(async () => {
     if (!questId) return
     try {
       const res = await api.getQuest(token, questId)
+      if (activeQuestId.current !== questId) return
       setQuest(res.quest)
       setQuestions(res.questions ?? [])
       setError(null)
     } catch (err) {
+      if (activeQuestId.current !== questId) return
       // Cross-tenant and missing both 404 — same friendly dead end.
       if (err instanceof ApiError && err.status === 404) setNotFound(true)
       else setError(err instanceof Error ? err.message : String(err))
     }
   }, [token, questId])
+
+  // Fresh quest, fresh page: clear everything carried over from the
+  // previous :id (loaded quest, sticky notFound, open forms, warnings).
+  // Keyed on questId alone — a token refresh must not wipe an open form.
+  useEffect(() => {
+    activeQuestId.current = questId
+    setQuest(null)
+    setQuestions([])
+    setNotFound(false)
+    setError(null)
+    setEditing(null)
+    setWarnings({})
+    setPublishError(null)
+    setEditingDetails(false)
+  }, [questId])
 
   useEffect(() => {
     void load()
@@ -249,6 +271,7 @@ export default function QuestEditor() {
 
       {editingDetails && (
         <QuestDetailsForm
+          key={quest.id}
           token={token}
           quest={quest}
           kids={kids}
