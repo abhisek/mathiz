@@ -106,10 +106,10 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="brand">
+        <Link to="/" className="brand brand-link" title="Back to the front page">
           <span className="brand-mark">∑</span>
           <h1>Mathiz</h1>
-        </div>
+        </Link>
         <p className="tagline">
           An AI math playground for kids. Adaptive practice, questions generated
           for <em>your</em> child — never from a worksheet.
