@@ -101,6 +101,11 @@ export function Privacy() {
         <li>No advertising, and no ad trackers.</li>
         <li>We never sell or share your data with third parties.</li>
       </ul>
+      <p>
+        We use privacy-respecting product analytics (PostHog) to understand
+        how Mathiz is used and improve it; no child identity — names, profile
+        identifiers, or PINs — is ever collected by analytics.
+      </p>
       <h2>Deletion</h2>
       <p>
         Contact us any time to delete your family's account and all associated

@@ -5,6 +5,7 @@ import {
   type ActivityItem,
   type ActivitySessionDetail,
 } from '../../api'
+import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
 import { useDashboard } from './context'
@@ -28,6 +29,10 @@ export default function Activity() {
     () => children.filter((c) => !c.profile.archived).map((c) => c.profile),
     [children],
   )
+
+  useEffect(() => {
+    track.activityViewed()
+  }, [])
 
   const [childId, setChildId] = useState<string | null>(null)
   // First child is the default pick once the roster lands.

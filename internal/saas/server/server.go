@@ -4,6 +4,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/abhisek/mathiz/internal/saas/activity"
@@ -162,6 +163,18 @@ func (s *Server) routes() http.Handler {
 	// Terminal WebSocket (authenticates in-protocol via first message).
 	if s.terminal != nil {
 		mux.Handle("GET /api/v1/terminal", s.terminal)
+	}
+
+	// Same-origin analytics relay — registered ONLY when analytics is on.
+	// The SPA's posthog client points at /relay (see handleBootConfig), so
+	// events survive ad-blocker domain lists and the upstream host never
+	// reaches the browser.
+	if s.cfg.PostHogAPIKey != "" {
+		if relay, err := newPostHogRelay(s.cfg.PostHogHost); err == nil {
+			mux.Handle(relayPrefix+"/", relay)
+		} else {
+			log.Printf("posthog relay disabled: bad MATHIZ_POSTHOG_HOST %q: %v", s.cfg.PostHogHost, err)
+		}
 	}
 
 	// Unmatched API paths must 404 as JSON, never fall through to the SPA:

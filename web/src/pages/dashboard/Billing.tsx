@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { api, type BillingInfo } from '../../api'
+import { track } from '../../analytics'
 import Skeleton from '../../components/Skeleton'
 import { useDashboard } from './context'
 
@@ -12,6 +13,12 @@ export default function Billing() {
   // Checkout success lands on this route (?billing=success). Read the flag
   // once, then scrub it from the URL so a refresh doesn't re-celebrate.
   const [justPaid, setJustPaid] = useState(false)
+
+  // Only owners actually see the page — a redirected co-parent must not
+  // count as a billing view.
+  useEffect(() => {
+    if (role === 'owner') track.billingViewed()
+  }, [role])
 
   useEffect(() => {
     if (searchParams.get('billing') !== 'success') return
@@ -107,6 +114,7 @@ function BillingCard({ token, familyId }: { token: string; familyId: string }) {
     setError(null)
     try {
       const { url } = await api.billingCheckout(token, familyId, planId)
+      track.checkoutStarted(planId)
       window.location.href = url
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

@@ -52,6 +52,19 @@ type Config struct {
 	// PublicBaseURL is this server's externally reachable origin, used for
 	// billing redirect URLs (defaults to http://localhost + Addr).
 	PublicBaseURL string
+
+	// PostHogAPIKey enables product analytics in the SPA (served via
+	// /api/v1/config, public by design — PostHog project keys are client
+	// keys). Empty = analytics fully off: the config response omits the
+	// posthog fields, the /relay proxy is not mounted, and the SPA never
+	// loads the analytics module.
+	PostHogAPIKey string
+
+	// PostHogHost is the PostHog ingestion host the server-side /relay
+	// proxy forwards to; defaults to the US cloud when a key is set but the
+	// host is empty. Never served to the browser — the SPA is handed the
+	// same-origin /relay path instead.
+	PostHogHost string
 }
 
 // ConfigFromEnv builds a Config from MATHIZ_* environment variables.
@@ -69,6 +82,11 @@ func ConfigFromEnv() (*Config, error) {
 		StripeSecretKey:     os.Getenv("MATHIZ_STRIPE_SECRET_KEY"),
 		StripeWebhookSecret: os.Getenv("MATHIZ_STRIPE_WEBHOOK_SECRET"),
 		PublicBaseURL:       os.Getenv("MATHIZ_PUBLIC_BASE_URL"),
+		PostHogAPIKey:       os.Getenv("MATHIZ_POSTHOG_API_KEY"),
+		PostHogHost:         strings.TrimRight(os.Getenv("MATHIZ_POSTHOG_HOST"), "/"),
+	}
+	if cfg.PostHogAPIKey != "" && cfg.PostHogHost == "" {
+		cfg.PostHogHost = "https://us.i.posthog.com"
 	}
 	if origins := os.Getenv("MATHIZ_CORS_ORIGINS"); origins != "" {
 		for _, o := range strings.Split(origins, ",") {

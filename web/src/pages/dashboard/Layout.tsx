@@ -8,6 +8,7 @@ import {
   type PendingParentInvite,
 } from '../../api'
 import { useAction } from '../../hooks'
+import { identifyFamilyGroup, identifyParent, resetAnalytics, track } from '../../analytics'
 import { getSupabase } from '../../supa'
 import { type DashboardContext } from './context'
 import Kids from './Kids'
@@ -57,6 +58,15 @@ function DashboardLayout({ session }: Props) {
       setRole(me.role ?? null)
       setPendingInvite(me.pendingInvite ?? null)
       setError(null)
+      // Parents consented by signing up: identify by account UID (never
+      // email as the id) and attach the family group parent-side — the only
+      // place the family NAME may enter analytics.
+      identifyParent(me.account.id, {
+        email: me.account.email,
+        name: me.account.displayName,
+        role: me.role,
+      })
+      if (me.family) identifyFamilyGroup(me.family.id, me.family.name)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -92,6 +102,7 @@ function DashboardLayout({ session }: Props) {
   }, [refreshChildren])
 
   async function signOut() {
+    resetAnalytics()
     const supa = await getSupabase()
     await supa.auth.signOut()
   }
@@ -191,6 +202,7 @@ function CreateFamily({ token, onCreated }: { token: string; onCreated: () => Pr
     setError(null)
     try {
       await api.createFamily(token, name)
+      track.familyCreated()
       await onCreated()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -241,6 +253,7 @@ function AcceptInviteBanner({
   const [accept, accepting] = useAction(async () => {
     try {
       await api.acceptParentInvite(token, invite.id)
+      track.coparentAccepted()
       await onAccepted()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

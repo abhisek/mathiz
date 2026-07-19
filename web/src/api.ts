@@ -3,6 +3,11 @@
 export interface BootConfig {
   supabaseUrl: string
   supabaseAnonKey: string
+  // Present only when the operator configured analytics; absent = fully off.
+  // posthogHost is the server's same-origin relay path ("/relay"), never an
+  // external domain. Consumed exclusively by src/analytics.ts.
+  posthogKey?: string
+  posthogHost?: string
 }
 
 export interface Account {
@@ -454,17 +459,28 @@ export const api = {
     request<{ familyName: string; children: ChildProfile[] }>('POST', '/api/v1/join/preview', null, {
       code,
     }),
+  // familyId (both responses below): the child's own family space UID — used
+  // only as the family-level analytics group key (never any child identity).
   joinRedeem: (code: string, childProfileId: string, pin: string, deviceLabel: string) =>
-    request<{ token: string; child: ChildProfile }>('POST', '/api/v1/join/redeem', null, {
-      code,
-      childProfileId,
-      pin,
-      deviceLabel,
-    }),
+    request<{ token: string; child: ChildProfile; familyId: string }>(
+      'POST',
+      '/api/v1/join/redeem',
+      null,
+      {
+        code,
+        childProfileId,
+        pin,
+        deviceLabel,
+      },
+    ),
 
   // Child (device token)
   childMe: (deviceToken: string) =>
-    request<{ profile: ChildProfile; familyName: string }>('GET', '/api/v1/child/me', deviceToken),
+    request<{ profile: ChildProfile; familyName: string; familyId: string }>(
+      'GET',
+      '/api/v1/child/me',
+      deviceToken,
+    ),
 }
 
 // Device token persistence for the kid's browser.

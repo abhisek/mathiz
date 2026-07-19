@@ -7,6 +7,7 @@ import {
   type ChildWithSummary,
   type Device,
 } from '../../api'
+import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
 import { useDashboard } from './context'
@@ -196,6 +197,7 @@ function AddChildModal({
     setError(null)
     try {
       await api.addChild(token, familyId, name, grade, pin)
+      track.childAdded(grade)
       await onAdded()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

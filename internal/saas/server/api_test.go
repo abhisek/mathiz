@@ -51,6 +51,11 @@ type testEnv struct {
 }
 
 func newTestEnv(t *testing.T) *testEnv {
+	return newTestEnvWith(t, nil)
+}
+
+// newTestEnvWith lets a test tweak the server config before wiring.
+func newTestEnvWith(t *testing.T, mutate func(*Config)) *testEnv {
 	t.Helper()
 	st, err := store.Open("file::memory:?cache=shared")
 	if err != nil {
@@ -67,6 +72,9 @@ func newTestEnv(t *testing.T) *testEnv {
 		DatabaseURL:     "test",
 		SupabaseURL:     "https://example.supabase.co",
 		SupabaseAnonKey: "anon-key",
+	}
+	if mutate != nil {
+		mutate(cfg)
 	}
 	creditsSvc := credits.New(st.Client())
 	// Quests + game are wired with deterministic fakes: a mock LLM for
@@ -172,6 +180,28 @@ func TestBootConfigIsPublic(t *testing.T) {
 	if cfg["supabaseUrl"] != "https://example.supabase.co" || cfg["supabaseAnonKey"] != "anon-key" {
 		t.Errorf("config = %v", cfg)
 	}
+	// No PostHog key configured → the posthog fields are OMITTED entirely,
+	// so a key-less deployment (self-hosters, tests) ships zero analytics.
+	for _, k := range []string{"posthogKey", "posthogHost"} {
+		if _, ok := cfg[k]; ok {
+			t.Errorf("config leaks %q with analytics off: %v", k, cfg)
+		}
+	}
+}
+
+func TestBootConfigServesPostHogWhenConfigured(t *testing.T) {
+	e := newTestEnvWith(t, func(cfg *Config) {
+		cfg.PostHogAPIKey = "phc_test"
+		cfg.PostHogHost = "https://eu.i.posthog.com"
+	})
+	var cfg map[string]string
+	resp := e.call(t, "GET", "/api/v1/config", "", nil, &cfg)
+	expectStatus(t, resp, 200, "config")
+	// posthogHost is the same-origin relay path — the upstream host
+	// (cfg.PostHogHost) must never reach the browser.
+	if cfg["posthogKey"] != "phc_test" || cfg["posthogHost"] != "/relay" {
+		t.Errorf("config = %v", cfg)
+	}
 }
 
 func TestParentEndpointsRequireAuth(t *testing.T) {
@@ -250,21 +280,26 @@ func TestFullOnboardingFlow(t *testing.T) {
 	expectStatus(t, resp, 422, "wrong pin")
 
 	var redeemed struct {
-		Token string    `json:"token"`
-		Child childJSON `json:"child"`
+		Token    string    `json:"token"`
+		Child    childJSON `json:"child"`
+		FamilyID string    `json:"familyId"`
 	}
 	resp = e.call(t, "POST", "/api/v1/join/redeem", "",
 		map[string]string{"code": invite.Code, "childProfileId": child.ID, "pin": "1234", "deviceLabel": "iPad"}, &redeemed)
 	expectStatus(t, resp, 200, "redeem")
+	if redeemed.FamilyID != space.ID {
+		t.Fatalf("redeem familyId = %q, want %q", redeemed.FamilyID, space.ID)
+	}
 
 	// The device token authenticates the child.
 	var childMe struct {
 		Profile    childJSON `json:"profile"`
 		FamilyName string    `json:"familyName"`
+		FamilyID   string    `json:"familyId"`
 	}
 	resp = e.call(t, "GET", "/api/v1/child/me", redeemed.Token, nil, &childMe)
 	expectStatus(t, resp, 200, "child me")
-	if childMe.Profile.ID != child.ID || childMe.FamilyName != "The As" {
+	if childMe.Profile.ID != child.ID || childMe.FamilyName != "The As" || childMe.FamilyID != space.ID {
 		t.Fatalf("child me = %+v", childMe)
 	}
 

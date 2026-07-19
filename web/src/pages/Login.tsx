@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { track } from '../analytics'
 import { getSupabase } from '../supa'
 
 // OTP-first parent sign-in: email → emailed code (6–10 digits depending on
@@ -68,6 +69,7 @@ export default function Login() {
         type: 'email',
       })
       if (error) throw error
+      track.signinCompleted()
       // Session lands via onAuthStateChange; ParentArea redirects.
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -92,10 +94,13 @@ export default function Login() {
         if (error) throw error
         if (!data.session) {
           setNotice('Check your inbox to confirm your email, then sign in.')
+        } else {
+          track.signinCompleted()
         }
       } else {
         const { error } = await supa.auth.signInWithPassword({ email, password })
         if (error) throw error
+        track.signinCompleted()
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

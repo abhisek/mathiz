@@ -1,8 +1,14 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { ensureAnalyticsBooted, track } from '../analytics'
 
 // The front door: Supabase-free (kids never pay the auth boot cost), just
 // two clearly-signed paths — parents to sign-in, kids to the join code.
 export default function Landing() {
+  useEffect(() => {
+    void ensureAnalyticsBooted('public')
+  }, [])
+
   return (
     <div className="landing">
       <Backdrop />
@@ -21,7 +27,11 @@ export default function Landing() {
         </p>
 
         <div className="landing-doors">
-          <Link to="/login" className="door door-parent">
+          <Link
+            to="/login"
+            className="door door-parent"
+            onClick={() => track.landingCtaClicked('parent')}
+          >
             <span className="door-emoji" aria-hidden>
               🧭
             </span>
@@ -36,7 +46,7 @@ export default function Landing() {
             </span>
           </Link>
 
-          <Link to="/join" className="door door-kid">
+          <Link to="/join" className="door door-kid" onClick={() => track.landingCtaClicked('kid')}>
             <span className="door-emoji" aria-hidden>
               🏴‍☠️
             </span>
