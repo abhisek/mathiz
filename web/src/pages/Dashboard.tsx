@@ -145,12 +145,21 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
 
   const [inviteDays, setInviteDays] = useState(7)
 
+  const [minting, setMinting] = useState(false)
+
   async function mintInvite() {
+    if (minting) return
+    setMinting(true)
     try {
       await api.createInvite(token, family.id, inviteDays * 24)
-      await refresh()
+      // Only the invite list changed — don't refetch every child's stats.
+      const invs = await api.listInvites(token, family.id)
+      setInvites(invs.invites ?? [])
+      setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setMinting(false)
     }
   }
 
@@ -230,8 +239,8 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
                 <option value={90}>90 days</option>
               </select>
             </label>
-            <button className="btn btn-secondary" onClick={mintInvite}>
-              New join code
+            <button className="btn btn-secondary" onClick={mintInvite} disabled={minting}>
+              {minting ? 'Minting…' : 'New join code'}
             </button>
           </div>
         </div>
