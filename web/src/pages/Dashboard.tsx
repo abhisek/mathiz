@@ -10,6 +10,9 @@ import {
   type Device,
   type FamilySpace,
   type Invite,
+  type ParentInvite,
+  type ParentMember,
+  type PendingParentInvite,
   type Quest,
   type QuestQuestion,
   type QuestQuestionInput,
@@ -24,6 +27,9 @@ interface Props {
 export default function Dashboard({ session }: Props) {
   const token = session.access_token
   const [family, setFamily] = useState<FamilySpace | null>(null)
+  // 'owner' | 'parent' — only meaningful alongside a family.
+  const [role, setRole] = useState<string | null>(null)
+  const [pendingInvite, setPendingInvite] = useState<PendingParentInvite | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -31,6 +37,8 @@ export default function Dashboard({ session }: Props) {
     try {
       const me = await api.me(token)
       setFamily(me.family)
+      setRole(me.role ?? null)
+      setPendingInvite(me.pendingInvite ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -67,9 +75,17 @@ export default function Dashboard({ session }: Props) {
       {error && <p className="form-error">{error}</p>}
 
       {family ? (
-        <FamilyView token={token} family={family} />
+        <FamilyView token={token} family={family} role={role ?? 'parent'} />
       ) : (
-        <CreateFamily token={token} onCreated={load} />
+        <>
+          {pendingInvite && (
+            <AcceptInviteBanner token={token} invite={pendingInvite} onAccepted={load} />
+          )}
+          {pendingInvite && (
+            <p className="muted invite-or">…or create your own family instead:</p>
+          )}
+          <CreateFamily token={token} onCreated={load} />
+        </>
       )}
     </div>
   )
@@ -141,7 +157,56 @@ function CreateFamily({ token, onCreated }: { token: string; onCreated: () => Pr
   )
 }
 
-function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
+// AcceptInviteBanner: the signed-in account has no family, but a pending
+// co-parent invite matches its email (specs/12-saas.md, "Co-parents").
+// Accepting joins the family; the /me reload then swaps in FamilyView.
+function AcceptInviteBanner({
+  token,
+  invite,
+  onAccepted,
+}: {
+  token: string
+  invite: PendingParentInvite
+  onAccepted: () => Promise<void>
+}) {
+  const [error, setError] = useState<string | null>(null)
+
+  const [accept, accepting] = useAction(async () => {
+    try {
+      await api.acceptParentInvite(token, invite.id)
+      await onAccepted()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  })
+
+  return (
+    <div className="center-card accept-banner">
+      <h2>You're invited! 🎉</h2>
+      <p>
+        <strong>{invite.invitedBy || 'A parent'}</strong> invited you to join{' '}
+        <strong>{invite.familyName || 'their family'}</strong> as a co-parent.
+      </p>
+      <p className="muted">
+        Co-parents can do everything except billing and managing parents.
+      </p>
+      {error && <p className="form-error">{error}</p>}
+      <button className="btn btn-primary" disabled={accepting} onClick={() => void accept()}>
+        {accepting ? 'Joining…' : `Join ${invite.familyName || 'the family'}`}
+      </button>
+    </div>
+  )
+}
+
+function FamilyView({
+  token,
+  family,
+  role,
+}: {
+  token: string
+  family: FamilySpace
+  role: string
+}) {
   const [children, setChildren] = useState<ChildWithSummary[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [showAddChild, setShowAddChild] = useState(false)
@@ -272,7 +337,9 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
         kids={children.filter((c) => !c.profile.archived).map((c) => c.profile)}
       />
 
-      <BillingCard token={token} familyId={family.id} />
+      <ParentsSection token={token} familyId={family.id} isOwner={role === 'owner'} />
+
+      {role === 'owner' && <BillingCard token={token} familyId={family.id} />}
 
       <section className="invites">
         <div className="section-head">
@@ -342,6 +409,177 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
         />
       )}
     </div>
+  )
+}
+
+// ---- Co-parents (specs/12-saas.md, "Co-parents") ----
+// Any member sees the roster; inviting, revoking, and removing are owner-only
+// (the server enforces via authz — the UI just hides the controls).
+
+function ParentsSection({
+  token,
+  familyId,
+  isOwner,
+}: {
+  token: string
+  familyId: string
+  isOwner: boolean
+}) {
+  const [members, setMembers] = useState<ParentMember[]>([])
+  const [pending, setPending] = useState<ParentInvite[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await api.listParents(token, familyId)
+      setMembers(res.parents ?? [])
+      setPending(res.invites ?? [])
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }, [token, familyId])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviting, setInviting] = useState(false)
+
+  async function invite(e: FormEvent) {
+    e.preventDefault()
+    if (inviting) return
+    setInviting(true)
+    setInviteError(null)
+    try {
+      await api.inviteParent(token, familyId, inviteEmail.trim())
+      setInviteEmail('')
+      await refresh()
+    } catch (err) {
+      // 409s carry a human-readable reason (already a member / already
+      // invited) — surface it inline next to the form.
+      setInviteError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  const [revokingId, setRevokingId] = useState<string | null>(null)
+
+  const [revoke, revoking] = useAction(async (id: string) => {
+    setRevokingId(id)
+    try {
+      await api.revokeParentInvite(token, id)
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setRevokingId(null)
+    }
+  })
+
+  const [removingId, setRemovingId] = useState<string | null>(null)
+
+  const [remove, removing] = useAction(async (m: ParentMember) => {
+    const who = m.displayName || m.email
+    if (!window.confirm(`Remove ${who} from the family? They lose access immediately.`)) return
+    setRemovingId(m.accountId)
+    try {
+      await api.removeParent(token, familyId, m.accountId)
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setRemovingId(null)
+    }
+  })
+
+  return (
+    <section className="parents">
+      <div className="section-head">
+        <h3>Parents</h3>
+      </div>
+      <p className="muted">
+        Co-parents can do everything except billing and managing parents.
+      </p>
+      {error && <p className="form-error">{error}</p>}
+      {loading ? (
+        <ul className="parent-list" aria-hidden="true">
+          {[0, 1].map((i) => (
+            <li key={i}>
+              <Skeleton width="11rem" height="0.9rem" />
+              <Skeleton width="4rem" height="1.4rem" />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="parent-list">
+          {members.map((m) => (
+            <li key={m.accountId}>
+              <span className="parent-who">
+                <strong>{m.displayName || m.email}</strong>
+                {m.displayName && <span className="muted"> {m.email}</span>}
+              </span>
+              <span className={`quest-status ${m.role === 'owner' ? 'quest-status-active' : 'quest-status-archived'}`}>
+                {m.role === 'owner' ? 'Owner' : 'Parent'}
+              </span>
+              {isOwner && m.role !== 'owner' && (
+                <button
+                  className="btn btn-ghost btn-danger"
+                  disabled={removing}
+                  onClick={() => void remove(m)}
+                >
+                  {removing && removingId === m.accountId ? 'Removing…' : 'Remove'}
+                </button>
+              )}
+            </li>
+          ))}
+          {pending.map((inv) => (
+            <li key={inv.id}>
+              <span className="parent-who">
+                <span className="muted">{inv.email}</span>
+              </span>
+              <span className="quest-status quest-status-draft">invited</span>
+              {isOwner && (
+                <button
+                  className="btn btn-ghost btn-danger"
+                  disabled={revoking}
+                  onClick={() => void revoke(inv.id)}
+                >
+                  {revoking && revokingId === inv.id ? 'Revoking…' : 'Revoke'}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {isOwner && (
+        <form className="parent-invite-form" onSubmit={invite}>
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="co-parent@example.com"
+            required
+          />
+          <button className="btn btn-secondary" disabled={inviting || !inviteEmail.trim()}>
+            {inviting ? 'Inviting…' : 'Invite parent'}
+          </button>
+        </form>
+      )}
+      {inviteError && <p className="form-error">{inviteError}</p>}
+      {isOwner && (
+        <p className="form-hint">
+          No email is sent — ask them to sign in with this address and they'll
+          see the invite on their dashboard.
+        </p>
+      )}
+    </section>
   )
 }
 
