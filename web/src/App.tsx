@@ -8,7 +8,6 @@ import Login from './pages/Login'
 import Dashboard from './pages/dashboard/Layout'
 import Join from './pages/Join'
 import Play from './pages/Play'
-import TerminalPage from './pages/Terminal'
 import { Contact, Privacy, Terms } from './pages/Legal'
 import Pricing from './pages/Pricing'
 import BusyBar from './components/BusyBar'
@@ -22,7 +21,6 @@ export default function App() {
         {/* Kid routes are Supabase-free: a join code is all a child needs. */}
         <Route path="/join" element={<Join />} />
         <Route path="/play" element={<Play />} />
-        <Route path="/terminal" element={<TerminalPage />} />
 
         {/* The front door: static, Supabase-free, routes each persona. */}
         <Route path="/" element={<Landing />} />

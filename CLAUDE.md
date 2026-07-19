@@ -10,7 +10,7 @@ those rules are load-bearing and violating them ships tenant-data leaks.
 CGO_ENABLED=0 go build ./...    # Build (CGO must stay disabled — no gcc in containers)
 go test ./...                   # All tests
 go test -run TestName ./internal/mastery   # Single test
-go test -race ./internal/saas/...          # Race pass (required for saas/termbridge/game changes)
+go test -race ./internal/saas/...          # Race pass (required for saas/game changes)
 make generate                   # Ent codegen — REQUIRED after any ent/schema change
 make mathiz                     # Binary to bin/mathiz (embeds web SPA if built)
 make web                        # Build the React SPA into internal/saas/webui/dist
@@ -37,8 +37,7 @@ learner profile, recent errors, and mastery tier.
 Two deployment modes, one engine:
 - **Local CLI**: single learner, SQLite file, Bubble Tea TUI.
 - **`mathiz serve` (SaaS)**: multi-tenant PostgreSQL, Supabase-authenticated
-  parents, join-code-authenticated children, browser treasure-map game
-  (plus the TUI streamed over WebSocket at `/terminal`).
+  parents, join-code-authenticated children, browser treasure-map game.
 
 ### Data Flow
 - TUI: `cmd/` → `app.AppModel` → `router` (screen stack) → `screen.Screen` impls → domain packages
@@ -65,16 +64,16 @@ Two deployment modes, one engine:
 - **`internal/saas/`** — `family` (accounts, family spaces, child profiles,
   join codes, device tokens), `authz` (ALL permission decisions), `auth`
   (Supabase JWT verify), `server` (REST API), `game` (treasure-map
-  expeditions), `termbridge` (TUI over WebSocket), `webui` (embedded SPA),
+  expeditions), `webui` (embedded SPA),
   `credits` (prepaid credit ledger — THE entitlement source of truth),
   `billing` (thin payment-provider abstraction; `fake` + `stripe` shipped),
   `quests` (parent-authored one-off question sets played on the map;
   control-plane, specs/15-quests.md).
 - **`web/`** — Vite + React SPA. `npm run build` emits into
   `internal/saas/webui/dist` (gitignored except `.gitkeep`).
-- **`cmd/run.go` / `cmd/serve.go`** — wiring. Shared dependency graph lives
-  in `app.BuildOptions` — add new session dependencies THERE so both the CLI
-  and the SaaS surfaces get them.
+- **`cmd/run.go` / `cmd/serve.go`** — wiring. The CLI's dependency graph
+  lives in `app.BuildOptions`; the game manager wires the same engine in
+  `internal/saas/game`. A new session dependency must reach both.
 
 Specs in `specs/` are the design record (spec-driven repo): `12-saas.md`
 (SaaS layer), `13-treasure-map.md` (game), `14-monetisation.md` (credits,
@@ -115,18 +114,16 @@ user-facing flows — **update it when you add or change one**.
 - Ent schemas use plain string UID fields + indexes, **no ent edges** (house
   style). New event schemas embed `EventMixin`.
 
-**Game / termbridge**
+**Game**
 - Map reads (`game.Manager.Map`) must stay side-effect-free: services built
   with **nil** event repos so the spaced-rep decay check can't persist from a
   render. Decay events persist only at expedition/session start.
-- Never call `tea.Program.Kill()` from another goroutine — it races program
-  startup. Cancel the program's context instead (`tea.WithContext`).
 - One live session per child is enforced ACROSS surfaces by the shared
-  `internal/saas/playslot.Registry` (wired in cmd/serve.go into both
-  termbridge and the game manager) because concurrent sessions clobber
-  each other's snapshot on save. New play surfaces MUST acquire a slot
-  from the same registry, and release it only after the final snapshot
-  save.
+  `internal/saas/playslot.Registry` (wired in cmd/serve.go into the game
+  manager — today's only play surface) because concurrent sessions clobber
+  each other's snapshot on save. Any future play surface MUST acquire a
+  slot from the same registry, and release it only after the final
+  snapshot save.
 
 **Money (credits / billing)**
 - Entitlements live in OUR ledger (`internal/saas/credits`), never in the
@@ -148,9 +145,9 @@ user-facing flows — **update it when you add or change one**.
   only.
 - `Charge` hooks are nil-able and nil means free: local CLI, self-hosters
   with billing off, and tests must keep working with no billing wired.
-  Enforcement lives ONLY at the two session-start chokepoints
-  (`game.Manager.Start`, termbridge start) — a running expedition is never
-  interrupted by the meter.
+  Enforcement lives ONLY at the session-start chokepoint
+  (`game.Manager.Start`) — a running expedition is never interrupted by
+  the meter.
 
 **Skill graph**
 - Exactly **one root skill**. `skillgraph.Validate()` panics at init on
@@ -168,8 +165,7 @@ user-facing flows — **update it when you add or change one**.
 These use v2 APIs that differ significantly from v1:
 - `charm.land/bubbletea/v2`: `View()` returns `tea.View` (not string). Use
   `tea.NewView()` and `v.SetContent()`. AltScreen is a View field, not a
-  program option. Programs run headless fine with `tea.WithInput`/`WithOutput`
-  (that's how termbridge streams the TUI).
+  program option. Programs run headless fine with `tea.WithInput`/`WithOutput`.
 - `charm.land/bubbles/v2/textinput`: No `CursorStyle`/`TextStyle`/
   `PlaceholderStyle` fields. Use `Focus()`.
 - `charm.land/lipgloss/v2`: pinned to a specific beta commit.
@@ -206,7 +202,7 @@ endpoint — this is how E2E tests stub the LLM), bare `GEMINI_API_KEY` /
 
 `mathiz serve`: see `.env.example` — `MATHIZ_DATABASE_URL` (postgres),
 `MATHIZ_SUPABASE_URL` / `_ANON_KEY` / `_JWT_SECRET`, `MATHIZ_SERVER_ADDR`,
-`MATHIZ_MAX_SESSIONS`, `MATHIZ_SESSION_IDLE_MINUTES`, `MATHIZ_CORS_ORIGINS`,
+`MATHIZ_SESSION_IDLE_MINUTES`, `MATHIZ_CORS_ORIGINS`,
 `MATHIZ_TRUST_PROXY`.
 
 Billing: `MATHIZ_BILLING_PROVIDER` (empty = billing off/everything free;

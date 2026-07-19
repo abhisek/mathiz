@@ -571,8 +571,8 @@ func TestStartDoubleClickReusesExpedition(t *testing.T) {
 }
 
 func TestPlaySlotBlocksSecondSurface(t *testing.T) {
-	// A held play slot (e.g. a live terminal session) refuses expedition
-	// Start with ErrElsewhere; releasing it unblocks the map.
+	// A held play slot (e.g. a session on another surface) refuses
+	// expedition Start with ErrElsewhere; releasing it unblocks the map.
 	st, err := store.Open("file::memory:?cache=shared")
 	if err != nil {
 		t.Fatalf("open store: %v", err)
@@ -590,9 +590,9 @@ func TestPlaySlotBlocksSecondSurface(t *testing.T) {
 	ctx := context.Background()
 	root := rootSkillID(t)
 
-	release, err := slots.Acquire("child-1", "the terminal")
+	release, err := slots.Acquire("child-1", "another surface")
 	if err != nil {
-		t.Fatalf("terminal acquire: %v", err)
+		t.Fatalf("other-surface acquire: %v", err)
 	}
 	if _, err := m.Start(ctx, "child-1", root); !errors.Is(err, ErrElsewhere) {
 		t.Fatalf("start with slot held: got %v, want ErrElsewhere", err)
@@ -603,17 +603,17 @@ func TestPlaySlotBlocksSecondSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start after release: %v", err)
 	}
-	// While the expedition lives, the terminal is refused...
-	if _, err := slots.Acquire("child-1", "the terminal"); err == nil {
-		t.Fatal("terminal acquired while expedition live")
+	// While the expedition lives, other surfaces are refused...
+	if _, err := slots.Acquire("child-1", "another surface"); err == nil {
+		t.Fatal("slot acquired while expedition live")
 	}
 	// ...and ending the expedition frees the slot again.
 	if _, err := m.End(ctx, "child-1", exp.ID); err != nil {
 		t.Fatalf("end: %v", err)
 	}
-	rel2, err := slots.Acquire("child-1", "the terminal")
+	rel2, err := slots.Acquire("child-1", "another surface")
 	if err != nil {
-		t.Fatalf("terminal after end: %v", err)
+		t.Fatalf("acquire after end: %v", err)
 	}
 	rel2()
 }

@@ -1,6 +1,6 @@
 // Package server is the HTTP layer of the Mathiz SaaS: parent dashboard API,
-// child join/redeem flow, and mounting points for the terminal WebSocket and
-// the embedded web UI.
+// child join/redeem flow, and mounting points for the game API and the
+// embedded web UI.
 package server
 
 import (
@@ -18,14 +18,13 @@ import (
 	"github.com/abhisek/mathiz/internal/store"
 )
 
-// Deps carries everything a Server needs. Terminal, WebUI, Game, Credits,
-// Billing, and Quests are optional — their routes 404 / fall through when nil.
+// Deps carries everything a Server needs. WebUI, Game, Credits, Billing,
+// and Quests are optional — their routes 404 / fall through when nil.
 type Deps struct {
 	Config   *Config
 	Store    *store.Store
 	Family   *family.Service
 	Verifier *auth.SupabaseVerifier
-	Terminal http.Handler
 	WebUI    http.Handler
 	Game     *game.Manager
 	Credits  *credits.Service
@@ -42,7 +41,6 @@ type Server struct {
 	checker  *authz.Checker
 	verifier *auth.SupabaseVerifier
 
-	terminal http.Handler
 	webui    http.Handler
 	game     *game.Manager
 	credits  *credits.Service
@@ -62,7 +60,6 @@ func New(d Deps) *Server {
 		family:   d.Family,
 		checker:  authz.NewChecker(d.Family),
 		verifier: d.Verifier,
-		terminal: d.Terminal,
 		webui:    d.WebUI,
 		game:     d.Game,
 		credits:  d.Credits,
@@ -158,11 +155,6 @@ func (s *Server) routes() http.Handler {
 			// Dev-only: the fake provider's "payment succeeded" redirect.
 			mux.HandleFunc("GET /api/v1/billing/fake/complete", s.handleFakeBillingComplete)
 		}
-	}
-
-	// Terminal WebSocket (authenticates in-protocol via first message).
-	if s.terminal != nil {
-		mux.Handle("GET /api/v1/terminal", s.terminal)
 	}
 
 	// Same-origin analytics relay — registered ONLY when analytics is on.

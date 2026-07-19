@@ -63,7 +63,7 @@ explicit decision** — no react-query/SWR/Redux. Don't introduce one.
   the UI is cosmetic — the server is the enforcement point. Never build
   UI that assumes hiding equals security.
 
-## Kid surfaces (/join, /play, /terminal)
+## Kid surfaces (/join, /play)
 
 - NEVER show prices, balances, plans, upsell, or links to pricing. Zero
   credits reads as "The ship needs to rest! ⛵ Ask your grown-up".

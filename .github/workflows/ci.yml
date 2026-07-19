@@ -44,7 +44,7 @@ jobs:
         env:
           MATHIZ_TEST_DATABASE_URL: postgres://mathiz:mathiz@localhost:5432/mathiz_test?sslmode=disable
 
-      - name: Race pass (saas / termbridge / game)
+      - name: Race pass (saas / game)
         run: go test -race ./internal/saas/... ./internal/session/...
 
   web:
