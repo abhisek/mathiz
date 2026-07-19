@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError, type ChildProfile, type Quest } from '../../api'
+import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
 import { useDashboard } from './context'
@@ -208,6 +209,7 @@ function CreateQuestModal({
         skillId: skillId.trim(),
         childId,
       })
+      track.questCreated()
       await onCreated(q)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

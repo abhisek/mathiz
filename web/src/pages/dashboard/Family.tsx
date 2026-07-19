@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api, type Invite, type ParentInvite, type ParentMember } from '../../api'
+import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
 import { useDashboard } from './context'
@@ -61,6 +62,7 @@ function ParentsSection({
     setInviteError(null)
     try {
       await api.inviteParent(token, familyId, inviteEmail.trim())
+      track.coparentInvited()
       setInviteEmail('')
       await refresh()
     } catch (err) {
@@ -217,6 +219,7 @@ function InvitesSection({ token, familyId }: { token: string; familyId: string }
     setMinting(true)
     try {
       await api.createInvite(token, familyId, inviteDays * 24)
+      track.joinCodeCreated()
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

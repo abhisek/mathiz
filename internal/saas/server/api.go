@@ -97,11 +97,20 @@ func toDeviceJSON(dt *ent.DeviceToken) deviceJSON {
 
 // handleBootConfig hands the SPA what it needs to initialize supabase-js.
 // The anon key is public by design (it ships in every Supabase frontend).
+// The posthog fields are OMITTED entirely when no key is configured —
+// key unset = analytics fully off (specs/16-analytics.md).
 func (s *Server) handleBootConfig(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{
+	cfg := map[string]string{
 		"supabaseUrl":     s.cfg.SupabaseURL,
 		"supabaseAnonKey": s.cfg.SupabaseAnonKey,
-	})
+	}
+	if s.cfg.PostHogAPIKey != "" {
+		cfg["posthogKey"] = s.cfg.PostHogAPIKey
+		// Same-origin relay path, NOT the upstream URL: the browser only
+		// ever talks to our origin; the real PostHog host stays server-side.
+		cfg["posthogHost"] = relayPrefix
+	}
+	writeJSON(w, http.StatusOK, cfg)
 }
 
 func (s *Server) handleJoinPreview(w http.ResponseWriter, r *http.Request) {
@@ -146,9 +155,13 @@ func (s *Server) handleJoinRedeem(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, err)
 		return
 	}
+	// familyId is the child's own family space UID — the SPA uses it as the
+	// family-level analytics group key. Not sensitive to a child who is IN
+	// that family; no name or other family data rides along here.
 	writeJSON(w, http.StatusOK, map[string]any{
-		"token": plaintext,
-		"child": toChildJSON(child),
+		"token":    plaintext,
+		"child":    toChildJSON(child),
+		"familyId": child.FamilySpaceID,
 	})
 }
 
@@ -426,8 +439,11 @@ func (s *Server) handleChildMe(w http.ResponseWriter, r *http.Request, p authz.P
 		writeServiceError(w, err)
 		return
 	}
+	// familyId: the child's own family space UID, used client-side as the
+	// family-level analytics group key (specs/16-analytics.md).
 	writeJSON(w, http.StatusOK, map[string]any{
 		"profile":    toChildJSON(child),
 		"familyName": sp.Name,
+		"familyId":   sp.UID,
 	})
 }

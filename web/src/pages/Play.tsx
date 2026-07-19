@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, deviceToken } from '../api'
+import { attachChildToFamily, ensureAnalyticsBooted, track } from '../analytics'
 import {
   gameApi,
   GameApiError,
@@ -81,9 +82,15 @@ export default function Play() {
       navigate('/join')
       return
     }
+    // Child surface: anonymous, memory-only analytics attributed to the
+    // family group — never the child's name or id.
+    void ensureAnalyticsBooted('child')
     void api
       .childMe(deviceToken.get()!)
-      .then((me) => setChildName(me.profile.name))
+      .then((me) => {
+        setChildName(me.profile.name)
+        attachChildToFamily(me.familyId)
+      })
       .catch(() => {
         deviceToken.clear()
         navigate('/join')
@@ -110,12 +117,14 @@ export default function Play() {
     setHint(null)
     try {
       const exp = await start()
+      track.expeditionStarted(exp.questId ? 'quest' : 'skill')
       setExpedition(exp)
       await nextQuestion(exp.id)
     } catch (err) {
       setPhase('idle')
       if (err instanceof GameApiError && err.status === 402) {
         // Out of credits: kid-friendly, no prices, no meter.
+        track.outOfCreditsShown()
         setShipResting(true)
         return
       }
@@ -148,7 +157,17 @@ export default function Play() {
       const res = await gameApi.answer(expedition.id, answer)
       setResult(res)
       setPhase(res.done ? 'summary' : 'feedback')
-      if (res.done) await refreshMap()
+      if (res.done) {
+        if (res.summary) {
+          track.expeditionCompleted(
+            res.summary.questions,
+            res.summary.correct,
+            res.summary.questId ? 'quest' : 'skill',
+          )
+          if (res.summary.questComplete) track.questCompletedByChild()
+        }
+        await refreshMap()
+      }
     } catch (err) {
       setExpError(err instanceof Error ? err.message : String(err))
       setPhase('question')

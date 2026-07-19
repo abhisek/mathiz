@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type BillingPlan, type PricingInfo } from '../api'
+import { ensureAnalyticsBooted, track } from '../analytics'
 import Skeleton from '../components/Skeleton'
 
 // Public pricing page (/pricing). Static-feeling and Supabase-free like the
@@ -18,6 +19,7 @@ export default function Pricing() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    void ensureAnalyticsBooted('public').then(() => track.pricingViewed())
     api
       .pricing()
       .then(setInfo)

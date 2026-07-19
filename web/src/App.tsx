@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabase } from './supa'
+import { ensureAnalyticsBooted, track } from './analytics'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Dashboard from './pages/dashboard/Layout'
@@ -45,6 +46,13 @@ function ParentArea({ page }: { page: 'login' | 'dashboard' }) {
   const [session, setSession] = useState<Session | null>(null)
   const [booted, setBooted] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
+  const location = useLocation()
+
+  // Route pageviews for the parent surfaces (/login + /dashboard/*) —
+  // manual SPA tracking, gated on the analytics boot so none get dropped.
+  useEffect(() => {
+    void ensureAnalyticsBooted('parent').then(() => track.pageview(location.pathname))
+  }, [location.pathname])
 
   useEffect(() => {
     let unsub = () => {}

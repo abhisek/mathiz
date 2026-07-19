@@ -9,6 +9,7 @@ import {
   type QuestQuestionInput,
   type QuestStatus,
 } from '../../api'
+import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
 import { useDashboard } from './context'
@@ -131,6 +132,7 @@ export default function QuestEditor() {
     setPublishError(null)
     try {
       await api.publishQuest(token, questId)
+      track.questPublished()
       await load()
     } catch (err) {
       setPublishError(err instanceof Error ? err.message : String(err))
@@ -595,6 +597,7 @@ function GenerateBox({
     setNotice(null)
     try {
       const res = await api.generateQuestQuestions(token, questId, brief.trim(), count, clientKey)
+      track.questAiGenerated(res.questions.length)
       setClientKey(crypto.randomUUID())
       setBrief('')
       setNotice(

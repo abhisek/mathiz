@@ -1,11 +1,17 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, deviceToken, type ChildProfile } from '../api'
+import { attachChildToFamily, ensureAnalyticsBooted, track } from '../analytics'
 
 type Step = 'code' | 'pick' | 'pin'
 
 export default function Join() {
   const navigate = useNavigate()
+
+  // Child surface: anonymous, memory-only analytics — no identity, ever.
+  useEffect(() => {
+    void ensureAnalyticsBooted('child')
+  }, [])
   const [step, setStep] = useState<Step>('code')
   const [code, setCode] = useState('')
   const [familyName, setFamilyName] = useState('')
@@ -52,6 +58,9 @@ export default function Join() {
     try {
       const res = await api.joinRedeem(code, child.id, pinValue, deviceLabel())
       deviceToken.set(res.token)
+      // Family group key only — never the child's name, id, or PIN.
+      attachChildToFamily(res.familyId)
+      track.joinRedeemed()
       navigate('/play')
     } catch {
       setError(child.hasPin ? "That PIN isn't right. Try again!" : 'Something went wrong. Try again!')
