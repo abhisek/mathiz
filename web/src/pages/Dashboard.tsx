@@ -74,6 +74,28 @@ export default function Dashboard({ session }: Props) {
   )
 }
 
+// Skeleton is a shimmering placeholder bar (see .skeleton in index.css).
+// Rendered ONLY while a section's first fetch is in flight, shaped like the
+// content it stands in for so nothing jumps when the data lands. Empty-state
+// copy ("No children yet…") must never show before that first load resolves.
+function Skeleton({
+  width,
+  height = '0.8rem',
+  circle = false,
+}: {
+  width?: string
+  height?: string
+  circle?: boolean
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={circle ? 'skeleton skeleton-circle' : 'skeleton'}
+      style={{ width, height }}
+    />
+  )
+}
+
 function CreateFamily({ token, onCreated }: { token: string; onCreated: () => Promise<void> }) {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -123,6 +145,9 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
   const [invites, setInvites] = useState<Invite[]>([])
   const [showAddChild, setShowAddChild] = useState(false)
   const [openChild, setOpenChild] = useState<string | null>(null)
+  // True until the FIRST refresh resolves — drives the skeletons. Later
+  // refreshes (after mutations) never flip it back.
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
@@ -136,6 +161,8 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
     }
   }, [token, family.id])
 
@@ -197,7 +224,21 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
       })()}
 
       <section className="cards">
-        {children.length === 0 && (
+        {loading &&
+          [0, 1].map((i) => (
+            <div key={i} className="child-card" aria-hidden="true">
+              <div className="child-card-head" style={{ cursor: 'default' }}>
+                <Skeleton circle width="2.6rem" height="2.6rem" />
+                <div className="child-meta" style={{ gap: '0.4rem' }}>
+                  <Skeleton width="7rem" height="0.95rem" />
+                  <Skeleton width="4.5rem" height="0.7rem" />
+                </div>
+                <Skeleton width="5.5rem" height="0.9rem" />
+                <Skeleton width="100%" height="8px" />
+              </div>
+            </div>
+          ))}
+        {!loading && children.length === 0 && (
           <div className="empty">
             <p>No children yet. Add your first learner to get started!</p>
           </div>
@@ -248,7 +289,16 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
           Share a code with your child. They open <code>{window.location.origin}/join</code>,
           type the code, pick their name, and start learning — no email needed.
         </p>
-        {invites.length === 0 ? (
+        {loading ? (
+          <ul className="invite-list" aria-hidden="true">
+            {[0, 1].map((i) => (
+              <li key={i}>
+                <Skeleton width="6.5rem" height="1.8rem" />
+                <Skeleton width="9rem" height="0.8rem" />
+              </li>
+            ))}
+          </ul>
+        ) : invites.length === 0 ? (
           <p className="muted">No active codes.</p>
         ) : (
           <ul className="invite-list">
@@ -304,6 +354,7 @@ function QuestsSection({
 }) {
   const [quests, setQuests] = useState<Quest[]>([])
   const [hidden, setHidden] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -317,6 +368,8 @@ function QuestsSection({
       // Quests disabled server-side → hide the whole section.
       if (err instanceof ApiError && err.status === 404) setHidden(true)
       else setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
     }
   }, [token, familyId])
 
@@ -325,6 +378,31 @@ function QuestsSection({
   }, [refresh])
 
   if (hidden) return null
+
+  // First load: an anonymous skeleton (no "Quests" heading — the section may
+  // turn out to be disabled server-side, and a title that vanishes is worse
+  // than a grey bar that does).
+  if (loading) {
+    return (
+      <section className="quests" aria-hidden="true">
+        <div className="section-head">
+          <Skeleton width="6rem" height="1.2rem" />
+        </div>
+        <ul className="quest-list">
+          <li>
+            <div className="quest-row" style={{ cursor: 'default' }}>
+              <Skeleton circle width="1.5rem" height="1.5rem" />
+              <div className="quest-row-name" style={{ gap: '0.35rem' }}>
+                <Skeleton width="10rem" height="0.95rem" />
+                <Skeleton width="14rem" height="0.7rem" />
+              </div>
+              <Skeleton width="4.5rem" height="1.4rem" />
+            </div>
+          </li>
+        </ul>
+      </section>
+    )
+  }
 
   function targetName(childId: string) {
     if (!childId) return 'All children'
@@ -963,6 +1041,7 @@ function GenerateBox({
 function BillingCard({ token, familyId }: { token: string; familyId: string }) {
   const [info, setInfo] = useState<BillingInfo | null>(null)
   const [hidden, setHidden] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -971,9 +1050,38 @@ function BillingCard({ token, familyId }: { token: string; familyId: string }) {
       .billing(token, familyId)
       .then(setInfo)
       .catch(() => setHidden(true))
+      .finally(() => setLoading(false))
   }, [token, familyId])
 
-  if (hidden || !info || !Array.isArray(info.plans)) return null
+  if (hidden) return null
+
+  // First load: anonymous skeleton shaped like the wallet + plan tiles (no
+  // heading — self-hosted free mode hides this section entirely).
+  if (loading) {
+    return (
+      <section className="billing" aria-hidden="true">
+        <div className="section-head">
+          <Skeleton width="9rem" height="1.2rem" />
+        </div>
+        <div className="wallet">
+          <Skeleton width="4.5rem" height="2.1rem" />
+          <Skeleton width="11rem" height="0.8rem" />
+        </div>
+        <div className="plan-grid">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="plan-card">
+              <Skeleton width="5rem" height="0.95rem" />
+              <Skeleton width="3.5rem" height="1.4rem" />
+              <Skeleton width="100%" height="0.7rem" />
+              <Skeleton width="100%" height="2.2rem" />
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  if (!info || !Array.isArray(info.plans)) return null
 
   const currentPlan = info.plans.find((p) => p.id === info.plan)
 
