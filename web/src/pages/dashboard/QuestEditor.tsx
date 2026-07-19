@@ -7,6 +7,7 @@ import {
   type Quest,
   type QuestQuestion,
   type QuestQuestionInput,
+  type QuestStatus,
 } from '../../api'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
@@ -351,7 +352,9 @@ export default function QuestEditor() {
       <GenerateBox
         token={token}
         questId={questId}
-        enabled={quest.status === 'draft'}
+        status={quest.status}
+        onMakeDraft={() => void setStatus('draft')}
+        makeDraftBusy={busy}
         onGenerated={load}
       />
     </div>
@@ -566,12 +569,16 @@ function QuestionForm({
 function GenerateBox({
   token,
   questId,
-  enabled,
+  status,
+  onMakeDraft,
+  makeDraftBusy,
   onGenerated,
 }: {
   token: string
   questId: string
-  enabled: boolean
+  status: QuestStatus
+  onMakeDraft: () => void
+  makeDraftBusy: boolean
   onGenerated: () => Promise<void>
 }) {
   const [brief, setBrief] = useState('')
@@ -611,11 +618,29 @@ function GenerateBox({
   return (
     <div className="generate-box">
       <h4>✨ Generate with AI</h4>
-      {!enabled ? (
-        <p className="muted">
-          Generation drafts into draft quests only — set the quest back to
-          draft first.
-        </p>
+      {status !== 'draft' ? (
+        // Review-before-publish (specs/15-quests.md): AI questions need the
+        // parent's eyes before kids see them, so generation is paused while
+        // the quest is live. Offer the exit right here, in the UI's own words.
+        <div className="generate-paused">
+          <p className="muted">
+            New AI questions need your review before kids see them, so
+            generating is paused while this quest is{' '}
+            {status === 'archived' ? 'archived' : 'on the map'}.
+          </p>
+          <button className="btn btn-secondary" disabled={makeDraftBusy} onClick={onMakeDraft}>
+            {makeDraftBusy
+              ? 'Working…'
+              : status === 'archived'
+                ? 'Reopen as draft & generate'
+                : 'Take off the map & generate'}
+          </button>
+          {status === 'active' && (
+            <p className="muted generate-paused-note">
+              The quest returns to the map when you publish again.
+            </p>
+          )}
+        </div>
       ) : (
         <form onSubmit={generate}>
           <label>

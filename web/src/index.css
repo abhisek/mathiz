@@ -2133,6 +2133,18 @@ table.sessions th {
   margin: 0 0 0.6rem;
 }
 
+.generate-paused {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.generate-paused-note {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
 .generate-row {
   display: flex;
   align-items: flex-end;
