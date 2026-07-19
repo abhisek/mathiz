@@ -262,12 +262,18 @@ function ChildCard({
 }) {
   const { profile, summary } = child
   const [stats, setStats] = useState<ChildStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(false)
   const [devices, setDevices] = useState<Device[]>([])
   const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
-    void api.childStats(token, profile.id).then(setStats).catch(() => {})
+    setStatsLoading(true)
+    void api
+      .childStats(token, profile.id)
+      .then(setStats)
+      .catch(() => {})
+      .finally(() => setStatsLoading(false))
     void api
       .listDevices(token, profile.id)
       .then((d) => setDevices(d.devices ?? []))
@@ -334,6 +340,20 @@ function ChildCard({
             </p>
           ) : (
             <p className="muted">No practice sessions yet.</p>
+          )}
+
+          {/* First expansion: the stats sections below arrive async — show
+              their shape so the extra content isn't a surprise. Re-opens keep
+              the cached stats visible while the refetch runs. */}
+          {!stats && statsLoading && (
+            <div className="child-detail-loading" aria-hidden="true">
+              <Skeleton width="9rem" height="1rem" />
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} width="100%" height="0.85rem" />
+              ))}
+              <Skeleton width="12rem" height="1rem" />
+              <Skeleton width="100%" height="3.4rem" />
+            </div>
           )}
 
           {stats?.mastery.strands && (
