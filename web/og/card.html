@@ -3,7 +3,7 @@
   OpenGraph share card source — renders to web/public/og.png (1200×630).
 
   Regenerate after editing:
-    node web/og/render.mjs
+    NODE_PATH=$(npm root -g) node web/og/render.cjs
   (uses the sandbox/CI Chromium via Playwright; see the script for the path)
 
   Design rules: poster, not webpage. One huge line, brand colors from
@@ -142,8 +142,8 @@
       <div class="brand-mark">∑</div>
       <div class="brand-name">Mathiz</div>
     </div>
-    <h1>Math adventures,<br /><em>made just for your child</em></h1>
-    <p class="sub">AI-crafted questions · grades 2–5 · <b>free to start</b> ⛵</p>
+    <h1>Not another worksheet.<br /><em>A math adventure.</em></h1>
+    <p class="sub">The AI-powered math playground — every question made just for <b>your child</b> ⛵</p>
   </div>
 </body>
 </html>
