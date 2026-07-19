@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -25,6 +26,12 @@ func newPostHogRelay(upstream string) (http.Handler, error) {
 	target, err := url.Parse(upstream)
 	if err != nil {
 		return nil, err
+	}
+	// url.Parse happily accepts scheme-less values ("us.i.posthog.com") and
+	// bare paths — those produce a proxy that fails obscurely per request.
+	// Fail fast instead: the upstream must be an absolute http(s) URL.
+	if (target.Scheme != "http" && target.Scheme != "https") || target.Host == "" {
+		return nil, fmt.Errorf("upstream must be an absolute http(s) URL, got %q", upstream)
 	}
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
