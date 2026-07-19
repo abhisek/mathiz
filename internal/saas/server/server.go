@@ -173,7 +173,11 @@ func (s *Server) routes() http.Handler {
 		if relay, err := newPostHogRelay(s.cfg.PostHogHost); err == nil {
 			mux.Handle(relayPrefix+"/", relay)
 		} else {
-			log.Printf("posthog relay disabled: bad MATHIZ_POSTHOG_HOST %q: %v", s.cfg.PostHogHost, err)
+			// No relay → analytics must be OFF everywhere: clear the key so
+			// /api/v1/config stops advertising posthogKey/"/relay" — otherwise
+			// the SPA boots analytics against a route that 404s.
+			s.cfg.PostHogAPIKey = ""
+			log.Printf("posthog relay disabled: bad MATHIZ_POSTHOG_HOST %q: %v (analytics off)", s.cfg.PostHogHost, err)
 		}
 	}
 

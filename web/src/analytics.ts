@@ -32,14 +32,18 @@ let currentSurface: AnalyticsSurface | null = null
 export function initAnalytics(cfg: AnalyticsBootConfig, surface: AnalyticsSurface): Promise<void> {
   if (!cfg.posthogKey) return Promise.resolve()
   if (initPromise) {
-    // Already booted (or booting). A kid surface must still never persist:
-    // if the client was inited for another surface first (e.g. landing →
-    // /join in one tab), flip persistence to memory-only.
-    if (surface === 'child' && currentSurface !== 'child') {
-      currentSurface = 'child'
+    // Already booted (or booting). Persistence must follow the surface in
+    // BOTH directions within one tab: a kid surface must never persist
+    // (landing → /join flips to memory-only), and a later parent/public
+    // surface must get durable persistence back (kid plays, parent signs
+    // in — without the flip-back the parent identity would silently drop
+    // on every refresh).
+    if (surface !== currentSurface) {
+      currentSurface = surface
+      const persistence = surface === 'child' ? ('memory' as const) : ('localStorage+cookie' as const)
       void initPromise.then(() => {
         try {
-          client?.set_config({ persistence: 'memory' })
+          client?.set_config({ persistence })
         } catch {
           // analytics must never break the app
         }

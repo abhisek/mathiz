@@ -113,3 +113,45 @@ func TestRelayPrefixIsValidURLPath(t *testing.T) {
 		t.Fatalf("relayPrefix %q must be an absolute path", relayPrefix)
 	}
 }
+
+// TestPostHogRelayRejectsBadUpstream: url.Parse accepts scheme-less hosts and
+// bare paths without error — the relay must fail fast on anything that is not
+// an absolute http(s) URL.
+func TestPostHogRelayRejectsBadUpstream(t *testing.T) {
+	for _, bad := range []string{"us.i.posthog.com", "/some/path", "ftp://x.example", ""} {
+		if _, err := newPostHogRelay(bad); err == nil {
+			t.Errorf("newPostHogRelay(%q): want error, got nil", bad)
+		}
+	}
+	if _, err := newPostHogRelay("https://us.i.posthog.com"); err != nil {
+		t.Errorf("valid upstream rejected: %v", err)
+	}
+}
+
+// TestPostHogBadHostForcesAnalyticsOff: when the relay can't be built the
+// server must stop advertising analytics — a config that hands the SPA
+// posthogKey + "/relay" while the route 404s would strand every event.
+func TestPostHogBadHostForcesAnalyticsOff(t *testing.T) {
+	e := newTestEnvWith(t, func(cfg *Config) {
+		cfg.PostHogAPIKey = "phc_test"
+		cfg.PostHogHost = "us.i.posthog.com" // scheme-less: relay init fails
+	})
+
+	var cfg map[string]any
+	e.call(t, http.MethodGet, "/api/v1/config", "", nil, &cfg)
+	if _, ok := cfg["posthogKey"]; ok {
+		t.Errorf("config still advertises posthogKey with a broken relay: %v", cfg)
+	}
+	if _, ok := cfg["posthogHost"]; ok {
+		t.Errorf("config still advertises posthogHost with a broken relay: %v", cfg)
+	}
+
+	resp, err := e.ts.Client().Post(e.ts.URL+"/relay/e/", "application/json", strings.NewReader("{}"))
+	if err != nil {
+		t.Fatalf("relay probe: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("/relay with broken upstream: want 404, got %d", resp.StatusCode)
+	}
+}
