@@ -56,32 +56,3 @@ func TestShuffleChoicesNoOpCases(t *testing.T) {
 		t.Errorf("single-choice list mutated: %v", single.Choices)
 	}
 }
-
-// Position-dependent options must end up pinned at the end after a shuffle,
-// or "all of the above" can land mid-list and corrupt the question.
-func TestShuffleChoicesPinsPositionDependentOptions(t *testing.T) {
-	for i := 0; i < 40; i++ {
-		q := &Question{
-			Format:  FormatMultipleChoice,
-			Answer:  "All of the above",
-			Choices: []string{"All of the above", "12", "15", "18"},
-		}
-		q.ShuffleChoices()
-		if got := q.Choices[len(q.Choices)-1]; got != "All of the above" {
-			t.Fatalf("run %d: position-dependent option not pinned last: %v", i, q.Choices)
-		}
-	}
-
-	// Two pinned options keep a stable tail; normal options still present.
-	q := &Question{
-		Format:  FormatMultipleChoice,
-		Answer:  "7",
-		Choices: []string{"None of these", "7", "All of the above", "9"},
-	}
-	q.ShuffleChoices()
-	n := len(q.Choices)
-	tail := map[string]bool{q.Choices[n-2]: true, q.Choices[n-1]: true}
-	if !tail["None of these"] || !tail["All of the above"] {
-		t.Fatalf("pinned options not at the tail: %v", q.Choices)
-	}
-}

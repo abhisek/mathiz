@@ -2,7 +2,6 @@ package problemgen
 
 import (
 	"math/rand/v2"
-	"strings"
 
 	"github.com/abhisek/mathiz/internal/skillgraph"
 )
@@ -61,30 +60,13 @@ func (q *Question) ShuffleChoices() {
 	rand.Shuffle(len(q.Choices), func(i, j int) {
 		q.Choices[i], q.Choices[j] = q.Choices[j], q.Choices[i]
 	})
-	// Position-dependent options ("all of the above") are discouraged in the
-	// prompts, but LLMs follow prompts imperfectly — pin any that slip
-	// through to the end (stable order) so they still read sensibly.
-	var normal, pinned []string
-	for _, c := range q.Choices {
-		if referencesOtherOptions(c) {
-			pinned = append(pinned, c)
-		} else {
-			normal = append(normal, c)
-		}
-	}
-	if len(pinned) > 0 {
-		q.Choices = append(normal, pinned...)
-	}
 }
 
-// referencesOtherOptions reports whether a choice's meaning depends on its
-// position relative to the other choices.
-func referencesOtherOptions(choice string) bool {
-	c := strings.ToLower(choice)
-	return strings.Contains(c, "of the above") ||
-		strings.Contains(c, "of these") ||
-		strings.Contains(c, "the above")
-}
+// Position-dependent options ("all of the above") are handled upstream, not
+// here: the prompts forbid them, and quest AI drafts additionally pass
+// parent review before a child sees them. A string-matching guard at this
+// layer was considered and rejected — it misses paraphrases ("both A and
+// B") while implying a reliability it doesn't have.
 
 // AnswerType describes the numeric representation of the correct answer.
 type AnswerType string
