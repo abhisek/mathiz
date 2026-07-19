@@ -94,6 +94,20 @@ func (_c *QuestCreate) SetNillableStatus(v *string) *QuestCreate {
 	return _c
 }
 
+// SetCreatedBy sets the "created_by" field.
+func (_c *QuestCreate) SetCreatedBy(v string) *QuestCreate {
+	_c.mutation.SetCreatedBy(v)
+	return _c
+}
+
+// SetNillableCreatedBy sets the "created_by" field if the given value is not nil.
+func (_c *QuestCreate) SetNillableCreatedBy(v *string) *QuestCreate {
+	if v != nil {
+		_c.SetCreatedBy(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *QuestCreate) SetCreatedAt(v time.Time) *QuestCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -173,6 +187,10 @@ func (_c *QuestCreate) defaults() {
 		v := quest.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.CreatedBy(); !ok {
+		v := quest.DefaultCreatedBy
+		_c.mutation.SetCreatedBy(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := quest.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -205,6 +223,9 @@ func (_c *QuestCreate) check() error {
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Quest.status"`)}
+	}
+	if _, ok := _c.mutation.CreatedBy(); !ok {
+		return &ValidationError{Name: "created_by", err: errors.New(`ent: missing required field "Quest.created_by"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Quest.created_at"`)}
@@ -265,6 +286,10 @@ func (_c *QuestCreate) createSpec() (*Quest, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(quest.FieldStatus, field.TypeString, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.CreatedBy(); ok {
+		_spec.SetField(quest.FieldCreatedBy, field.TypeString, value)
+		_node.CreatedBy = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(quest.FieldCreatedAt, field.TypeTime, value)

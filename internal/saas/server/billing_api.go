@@ -13,7 +13,7 @@ import (
 
 func (s *Server) handleGetBilling(w http.ResponseWriter, r *http.Request, p authz.Principal, acct *ent.Account) {
 	spaceID := r.PathValue("id")
-	if err := s.checker.CanManageSpace(r.Context(), p, spaceID); err != nil {
+	if err := s.checker.CanManageBilling(r.Context(), p, spaceID); err != nil {
 		writeServiceError(w, err)
 		return
 	}
@@ -50,7 +50,7 @@ func (s *Server) handleGetBilling(w http.ResponseWriter, r *http.Request, p auth
 
 func (s *Server) handleBillingCheckout(w http.ResponseWriter, r *http.Request, p authz.Principal, acct *ent.Account) {
 	spaceID := r.PathValue("id")
-	if err := s.checker.CanManageSpace(r.Context(), p, spaceID); err != nil {
+	if err := s.checker.CanManageBilling(r.Context(), p, spaceID); err != nil {
 		writeServiceError(w, err)
 		return
 	}
@@ -79,7 +79,7 @@ func (s *Server) handleBillingCheckout(w http.ResponseWriter, r *http.Request, p
 
 func (s *Server) handleBillingPortal(w http.ResponseWriter, r *http.Request, p authz.Principal, acct *ent.Account) {
 	spaceID := r.PathValue("id")
-	if err := s.checker.CanManageSpace(r.Context(), p, spaceID); err != nil {
+	if err := s.checker.CanManageBilling(r.Context(), p, spaceID); err != nil {
 		writeServiceError(w, err)
 		return
 	}

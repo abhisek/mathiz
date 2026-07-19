@@ -27,6 +27,9 @@ type DeviceToken func(*sql.Selector)
 // DiagnosisEvent is the predicate function for diagnosisevent builders.
 type DiagnosisEvent func(*sql.Selector)
 
+// FamilyMember is the predicate function for familymember builders.
+type FamilyMember func(*sql.Selector)
+
 // FamilySpace is the predicate function for familyspace builders.
 type FamilySpace func(*sql.Selector)
 
@@ -47,6 +50,9 @@ type LessonEvent func(*sql.Selector)
 
 // MasteryEvent is the predicate function for masteryevent builders.
 type MasteryEvent func(*sql.Selector)
+
+// ParentInvite is the predicate function for parentinvite builders.
+type ParentInvite func(*sql.Selector)
 
 // Quest is the predicate function for quest builders.
 type Quest func(*sql.Selector)

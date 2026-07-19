@@ -82,8 +82,10 @@ type QuestInput struct {
 	ChildUID string // "" = all children in the space
 }
 
-// Create adds a draft quest to a family space.
-func (s *Service) Create(ctx context.Context, spaceUID string, in QuestInput) (*ent.Quest, error) {
+// Create adds a draft quest to a family space. createdBy records the
+// authoring parent's account UID for the future activity log ("" is fine —
+// pre-membership rows and internal callers have no author).
+func (s *Service) Create(ctx context.Context, spaceUID, createdBy string, in QuestInput) (*ent.Quest, error) {
 	if strings.TrimSpace(in.Name) == "" {
 		return nil, ErrBadName
 	}
@@ -98,6 +100,7 @@ func (s *Service) Create(ctx context.Context, spaceUID string, in QuestInput) (*
 		SetSkillID(in.SkillID).
 		SetChildUID(in.ChildUID).
 		SetStatus(StatusDraft).
+		SetCreatedBy(createdBy).
 		Save(ctx)
 }
 

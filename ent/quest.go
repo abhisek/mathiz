@@ -31,6 +31,8 @@ type Quest struct {
 	ChildUID string `json:"child_uid,omitempty"`
 	// draft | active | archived
 	Status string `json:"status,omitempty"`
+	// Account UID of the authoring parent ("" for pre-membership quests)
+	CreatedBy string `json:"created_by,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -45,7 +47,7 @@ func (*Quest) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case quest.FieldID:
 			values[i] = new(sql.NullInt64)
-		case quest.FieldUID, quest.FieldFamilySpaceID, quest.FieldName, quest.FieldEmoji, quest.FieldSkillID, quest.FieldChildUID, quest.FieldStatus:
+		case quest.FieldUID, quest.FieldFamilySpaceID, quest.FieldName, quest.FieldEmoji, quest.FieldSkillID, quest.FieldChildUID, quest.FieldStatus, quest.FieldCreatedBy:
 			values[i] = new(sql.NullString)
 		case quest.FieldCreatedAt, quest.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -111,6 +113,12 @@ func (_m *Quest) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = value.String
+			}
+		case quest.FieldCreatedBy:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field created_by", values[i])
+			} else if value.Valid {
+				_m.CreatedBy = value.String
 			}
 		case quest.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -180,6 +188,9 @@ func (_m *Quest) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(_m.Status)
+	builder.WriteString(", ")
+	builder.WriteString("created_by=")
+	builder.WriteString(_m.CreatedBy)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

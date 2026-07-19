@@ -21,6 +21,7 @@ import (
 	"github.com/abhisek/mathiz/ent/creditentry"
 	"github.com/abhisek/mathiz/ent/devicetoken"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/familymember"
 	"github.com/abhisek/mathiz/ent/familyspace"
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
@@ -28,6 +29,7 @@ import (
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
+	"github.com/abhisek/mathiz/ent/parentinvite"
 	"github.com/abhisek/mathiz/ent/quest"
 	"github.com/abhisek/mathiz/ent/questprogress"
 	"github.com/abhisek/mathiz/ent/questquestion"
@@ -54,6 +56,8 @@ type Client struct {
 	DeviceToken *DeviceTokenClient
 	// DiagnosisEvent is the client for interacting with the DiagnosisEvent builders.
 	DiagnosisEvent *DiagnosisEventClient
+	// FamilyMember is the client for interacting with the FamilyMember builders.
+	FamilyMember *FamilyMemberClient
 	// FamilySpace is the client for interacting with the FamilySpace builders.
 	FamilySpace *FamilySpaceClient
 	// GemEvent is the client for interacting with the GemEvent builders.
@@ -68,6 +72,8 @@ type Client struct {
 	LessonEvent *LessonEventClient
 	// MasteryEvent is the client for interacting with the MasteryEvent builders.
 	MasteryEvent *MasteryEventClient
+	// ParentInvite is the client for interacting with the ParentInvite builders.
+	ParentInvite *ParentInviteClient
 	// Quest is the client for interacting with the Quest builders.
 	Quest *QuestClient
 	// QuestProgress is the client for interacting with the QuestProgress builders.
@@ -96,6 +102,7 @@ func (c *Client) init() {
 	c.CreditEntry = NewCreditEntryClient(c.config)
 	c.DeviceToken = NewDeviceTokenClient(c.config)
 	c.DiagnosisEvent = NewDiagnosisEventClient(c.config)
+	c.FamilyMember = NewFamilyMemberClient(c.config)
 	c.FamilySpace = NewFamilySpaceClient(c.config)
 	c.GemEvent = NewGemEventClient(c.config)
 	c.HintEvent = NewHintEventClient(c.config)
@@ -103,6 +110,7 @@ func (c *Client) init() {
 	c.LLMRequestEvent = NewLLMRequestEventClient(c.config)
 	c.LessonEvent = NewLessonEventClient(c.config)
 	c.MasteryEvent = NewMasteryEventClient(c.config)
+	c.ParentInvite = NewParentInviteClient(c.config)
 	c.Quest = NewQuestClient(c.config)
 	c.QuestProgress = NewQuestProgressClient(c.config)
 	c.QuestQuestion = NewQuestQuestionClient(c.config)
@@ -207,6 +215,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		CreditEntry:     NewCreditEntryClient(cfg),
 		DeviceToken:     NewDeviceTokenClient(cfg),
 		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
+		FamilyMember:    NewFamilyMemberClient(cfg),
 		FamilySpace:     NewFamilySpaceClient(cfg),
 		GemEvent:        NewGemEventClient(cfg),
 		HintEvent:       NewHintEventClient(cfg),
@@ -214,6 +223,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
 		LessonEvent:     NewLessonEventClient(cfg),
 		MasteryEvent:    NewMasteryEventClient(cfg),
+		ParentInvite:    NewParentInviteClient(cfg),
 		Quest:           NewQuestClient(cfg),
 		QuestProgress:   NewQuestProgressClient(cfg),
 		QuestQuestion:   NewQuestQuestionClient(cfg),
@@ -245,6 +255,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		CreditEntry:     NewCreditEntryClient(cfg),
 		DeviceToken:     NewDeviceTokenClient(cfg),
 		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
+		FamilyMember:    NewFamilyMemberClient(cfg),
 		FamilySpace:     NewFamilySpaceClient(cfg),
 		GemEvent:        NewGemEventClient(cfg),
 		HintEvent:       NewHintEventClient(cfg),
@@ -252,6 +263,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		LLMRequestEvent: NewLLMRequestEventClient(cfg),
 		LessonEvent:     NewLessonEventClient(cfg),
 		MasteryEvent:    NewMasteryEventClient(cfg),
+		ParentInvite:    NewParentInviteClient(cfg),
 		Quest:           NewQuestClient(cfg),
 		QuestProgress:   NewQuestProgressClient(cfg),
 		QuestQuestion:   NewQuestQuestionClient(cfg),
@@ -287,9 +299,10 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Account, c.AnswerEvent, c.BillingState, c.ChildProfile, c.CreditEntry,
-		c.DeviceToken, c.DiagnosisEvent, c.FamilySpace, c.GemEvent, c.HintEvent,
-		c.Invite, c.LLMRequestEvent, c.LessonEvent, c.MasteryEvent, c.Quest,
-		c.QuestProgress, c.QuestQuestion, c.SessionEvent, c.Snapshot,
+		c.DeviceToken, c.DiagnosisEvent, c.FamilyMember, c.FamilySpace, c.GemEvent,
+		c.HintEvent, c.Invite, c.LLMRequestEvent, c.LessonEvent, c.MasteryEvent,
+		c.ParentInvite, c.Quest, c.QuestProgress, c.QuestQuestion, c.SessionEvent,
+		c.Snapshot,
 	} {
 		n.Use(hooks...)
 	}
@@ -300,9 +313,10 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Account, c.AnswerEvent, c.BillingState, c.ChildProfile, c.CreditEntry,
-		c.DeviceToken, c.DiagnosisEvent, c.FamilySpace, c.GemEvent, c.HintEvent,
-		c.Invite, c.LLMRequestEvent, c.LessonEvent, c.MasteryEvent, c.Quest,
-		c.QuestProgress, c.QuestQuestion, c.SessionEvent, c.Snapshot,
+		c.DeviceToken, c.DiagnosisEvent, c.FamilyMember, c.FamilySpace, c.GemEvent,
+		c.HintEvent, c.Invite, c.LLMRequestEvent, c.LessonEvent, c.MasteryEvent,
+		c.ParentInvite, c.Quest, c.QuestProgress, c.QuestQuestion, c.SessionEvent,
+		c.Snapshot,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -325,6 +339,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.DeviceToken.mutate(ctx, m)
 	case *DiagnosisEventMutation:
 		return c.DiagnosisEvent.mutate(ctx, m)
+	case *FamilyMemberMutation:
+		return c.FamilyMember.mutate(ctx, m)
 	case *FamilySpaceMutation:
 		return c.FamilySpace.mutate(ctx, m)
 	case *GemEventMutation:
@@ -339,6 +355,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.LessonEvent.mutate(ctx, m)
 	case *MasteryEventMutation:
 		return c.MasteryEvent.mutate(ctx, m)
+	case *ParentInviteMutation:
+		return c.ParentInvite.mutate(ctx, m)
 	case *QuestMutation:
 		return c.Quest.mutate(ctx, m)
 	case *QuestProgressMutation:
@@ -1285,6 +1303,139 @@ func (c *DiagnosisEventClient) mutate(ctx context.Context, m *DiagnosisEventMuta
 	}
 }
 
+// FamilyMemberClient is a client for the FamilyMember schema.
+type FamilyMemberClient struct {
+	config
+}
+
+// NewFamilyMemberClient returns a client for the FamilyMember from the given config.
+func NewFamilyMemberClient(c config) *FamilyMemberClient {
+	return &FamilyMemberClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `familymember.Hooks(f(g(h())))`.
+func (c *FamilyMemberClient) Use(hooks ...Hook) {
+	c.hooks.FamilyMember = append(c.hooks.FamilyMember, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `familymember.Intercept(f(g(h())))`.
+func (c *FamilyMemberClient) Intercept(interceptors ...Interceptor) {
+	c.inters.FamilyMember = append(c.inters.FamilyMember, interceptors...)
+}
+
+// Create returns a builder for creating a FamilyMember entity.
+func (c *FamilyMemberClient) Create() *FamilyMemberCreate {
+	mutation := newFamilyMemberMutation(c.config, OpCreate)
+	return &FamilyMemberCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of FamilyMember entities.
+func (c *FamilyMemberClient) CreateBulk(builders ...*FamilyMemberCreate) *FamilyMemberCreateBulk {
+	return &FamilyMemberCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *FamilyMemberClient) MapCreateBulk(slice any, setFunc func(*FamilyMemberCreate, int)) *FamilyMemberCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &FamilyMemberCreateBulk{err: fmt.Errorf("calling to FamilyMemberClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*FamilyMemberCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &FamilyMemberCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for FamilyMember.
+func (c *FamilyMemberClient) Update() *FamilyMemberUpdate {
+	mutation := newFamilyMemberMutation(c.config, OpUpdate)
+	return &FamilyMemberUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *FamilyMemberClient) UpdateOne(_m *FamilyMember) *FamilyMemberUpdateOne {
+	mutation := newFamilyMemberMutation(c.config, OpUpdateOne, withFamilyMember(_m))
+	return &FamilyMemberUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *FamilyMemberClient) UpdateOneID(id int) *FamilyMemberUpdateOne {
+	mutation := newFamilyMemberMutation(c.config, OpUpdateOne, withFamilyMemberID(id))
+	return &FamilyMemberUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for FamilyMember.
+func (c *FamilyMemberClient) Delete() *FamilyMemberDelete {
+	mutation := newFamilyMemberMutation(c.config, OpDelete)
+	return &FamilyMemberDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *FamilyMemberClient) DeleteOne(_m *FamilyMember) *FamilyMemberDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *FamilyMemberClient) DeleteOneID(id int) *FamilyMemberDeleteOne {
+	builder := c.Delete().Where(familymember.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &FamilyMemberDeleteOne{builder}
+}
+
+// Query returns a query builder for FamilyMember.
+func (c *FamilyMemberClient) Query() *FamilyMemberQuery {
+	return &FamilyMemberQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeFamilyMember},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a FamilyMember entity by its id.
+func (c *FamilyMemberClient) Get(ctx context.Context, id int) (*FamilyMember, error) {
+	return c.Query().Where(familymember.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *FamilyMemberClient) GetX(ctx context.Context, id int) *FamilyMember {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *FamilyMemberClient) Hooks() []Hook {
+	return c.hooks.FamilyMember
+}
+
+// Interceptors returns the client interceptors.
+func (c *FamilyMemberClient) Interceptors() []Interceptor {
+	return c.inters.FamilyMember
+}
+
+func (c *FamilyMemberClient) mutate(ctx context.Context, m *FamilyMemberMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&FamilyMemberCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&FamilyMemberUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&FamilyMemberUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&FamilyMemberDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown FamilyMember mutation op: %q", m.Op())
+	}
+}
+
 // FamilySpaceClient is a client for the FamilySpace schema.
 type FamilySpaceClient struct {
 	config
@@ -2216,6 +2367,139 @@ func (c *MasteryEventClient) mutate(ctx context.Context, m *MasteryEventMutation
 	}
 }
 
+// ParentInviteClient is a client for the ParentInvite schema.
+type ParentInviteClient struct {
+	config
+}
+
+// NewParentInviteClient returns a client for the ParentInvite from the given config.
+func NewParentInviteClient(c config) *ParentInviteClient {
+	return &ParentInviteClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `parentinvite.Hooks(f(g(h())))`.
+func (c *ParentInviteClient) Use(hooks ...Hook) {
+	c.hooks.ParentInvite = append(c.hooks.ParentInvite, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `parentinvite.Intercept(f(g(h())))`.
+func (c *ParentInviteClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ParentInvite = append(c.inters.ParentInvite, interceptors...)
+}
+
+// Create returns a builder for creating a ParentInvite entity.
+func (c *ParentInviteClient) Create() *ParentInviteCreate {
+	mutation := newParentInviteMutation(c.config, OpCreate)
+	return &ParentInviteCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ParentInvite entities.
+func (c *ParentInviteClient) CreateBulk(builders ...*ParentInviteCreate) *ParentInviteCreateBulk {
+	return &ParentInviteCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ParentInviteClient) MapCreateBulk(slice any, setFunc func(*ParentInviteCreate, int)) *ParentInviteCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ParentInviteCreateBulk{err: fmt.Errorf("calling to ParentInviteClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ParentInviteCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ParentInviteCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ParentInvite.
+func (c *ParentInviteClient) Update() *ParentInviteUpdate {
+	mutation := newParentInviteMutation(c.config, OpUpdate)
+	return &ParentInviteUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ParentInviteClient) UpdateOne(_m *ParentInvite) *ParentInviteUpdateOne {
+	mutation := newParentInviteMutation(c.config, OpUpdateOne, withParentInvite(_m))
+	return &ParentInviteUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ParentInviteClient) UpdateOneID(id int) *ParentInviteUpdateOne {
+	mutation := newParentInviteMutation(c.config, OpUpdateOne, withParentInviteID(id))
+	return &ParentInviteUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ParentInvite.
+func (c *ParentInviteClient) Delete() *ParentInviteDelete {
+	mutation := newParentInviteMutation(c.config, OpDelete)
+	return &ParentInviteDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ParentInviteClient) DeleteOne(_m *ParentInvite) *ParentInviteDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ParentInviteClient) DeleteOneID(id int) *ParentInviteDeleteOne {
+	builder := c.Delete().Where(parentinvite.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ParentInviteDeleteOne{builder}
+}
+
+// Query returns a query builder for ParentInvite.
+func (c *ParentInviteClient) Query() *ParentInviteQuery {
+	return &ParentInviteQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeParentInvite},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ParentInvite entity by its id.
+func (c *ParentInviteClient) Get(ctx context.Context, id int) (*ParentInvite, error) {
+	return c.Query().Where(parentinvite.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ParentInviteClient) GetX(ctx context.Context, id int) *ParentInvite {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *ParentInviteClient) Hooks() []Hook {
+	return c.hooks.ParentInvite
+}
+
+// Interceptors returns the client interceptors.
+func (c *ParentInviteClient) Interceptors() []Interceptor {
+	return c.inters.ParentInvite
+}
+
+func (c *ParentInviteClient) mutate(ctx context.Context, m *ParentInviteMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ParentInviteCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ParentInviteUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ParentInviteUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ParentInviteDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ParentInvite mutation op: %q", m.Op())
+	}
+}
+
 // QuestClient is a client for the Quest schema.
 type QuestClient struct {
 	config
@@ -2885,14 +3169,14 @@ func (c *SnapshotClient) mutate(ctx context.Context, m *SnapshotMutation) (Value
 type (
 	hooks struct {
 		Account, AnswerEvent, BillingState, ChildProfile, CreditEntry, DeviceToken,
-		DiagnosisEvent, FamilySpace, GemEvent, HintEvent, Invite, LLMRequestEvent,
-		LessonEvent, MasteryEvent, Quest, QuestProgress, QuestQuestion, SessionEvent,
-		Snapshot []ent.Hook
+		DiagnosisEvent, FamilyMember, FamilySpace, GemEvent, HintEvent, Invite,
+		LLMRequestEvent, LessonEvent, MasteryEvent, ParentInvite, Quest, QuestProgress,
+		QuestQuestion, SessionEvent, Snapshot []ent.Hook
 	}
 	inters struct {
 		Account, AnswerEvent, BillingState, ChildProfile, CreditEntry, DeviceToken,
-		DiagnosisEvent, FamilySpace, GemEvent, HintEvent, Invite, LLMRequestEvent,
-		LessonEvent, MasteryEvent, Quest, QuestProgress, QuestQuestion, SessionEvent,
-		Snapshot []ent.Interceptor
+		DiagnosisEvent, FamilyMember, FamilySpace, GemEvent, HintEvent, Invite,
+		LLMRequestEvent, LessonEvent, MasteryEvent, ParentInvite, Quest, QuestProgress,
+		QuestQuestion, SessionEvent, Snapshot []ent.Interceptor
 	}
 )

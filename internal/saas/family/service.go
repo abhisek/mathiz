@@ -114,33 +114,52 @@ func (s *Service) EnsureAccount(ctx context.Context, supabaseUserID, email, disp
 
 // ---- Family spaces ----
 
-// CreateSpace creates the account's family space. V1 allows one per account,
-// enforced by a unique constraint on owner_account_id so concurrent creates
-// can't produce duplicates.
+// CreateSpace creates the account's family space plus its owner membership.
+// V1 allows one family per account: unique constraints on
+// family_space.owner_account_id and family_member.account_id make concurrent
+// creates (and co-parents trying to start a second family) fail closed.
 func (s *Service) CreateSpace(ctx context.Context, ownerAccountUID, name string) (*ent.FamilySpace, error) {
 	if name == "" {
 		return nil, ErrBadName
 	}
-	sp, err := s.client.FamilySpace.Create().
+	inFamily, err := s.accountHasFamily(ctx, ownerAccountUID)
+	if err != nil {
+		return nil, err
+	}
+	if inFamily {
+		return nil, ErrSpaceExists
+	}
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin create space tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	sp, err := tx.FamilySpace.Create().
 		SetUID(uuid.NewString()).
 		SetOwnerAccountID(ownerAccountUID).
 		SetName(name).
 		Save(ctx)
-	if ent.IsConstraintError(err) {
-		return nil, ErrSpaceExists
+	if err != nil {
+		if ent.IsConstraintError(err) {
+			return nil, ErrSpaceExists
+		}
+		return nil, err
 	}
-	return sp, err
-}
-
-// SpaceByOwner returns the space owned by the account, or nil if none exists.
-func (s *Service) SpaceByOwner(ctx context.Context, ownerAccountUID string) (*ent.FamilySpace, error) {
-	sp, err := s.client.FamilySpace.Query().
-		Where(familyspace.OwnerAccountID(ownerAccountUID)).
-		Only(ctx)
-	if ent.IsNotFound(err) {
-		return nil, nil
+	if err := tx.FamilyMember.Create().
+		SetUID(uuid.NewString()).
+		SetFamilySpaceID(sp.UID).
+		SetAccountID(ownerAccountUID).
+		SetRole(RoleOwner).
+		Exec(ctx); err != nil {
+		if ent.IsConstraintError(err) {
+			return nil, ErrSpaceExists
+		}
+		return nil, fmt.Errorf("create owner membership: %w", err)
 	}
-	return sp, err
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit create space tx: %w", err)
+	}
+	return sp, nil
 }
 
 // Space returns a family space by UID.

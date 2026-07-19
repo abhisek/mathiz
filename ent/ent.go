@@ -19,6 +19,7 @@ import (
 	"github.com/abhisek/mathiz/ent/creditentry"
 	"github.com/abhisek/mathiz/ent/devicetoken"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/familymember"
 	"github.com/abhisek/mathiz/ent/familyspace"
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
@@ -26,6 +27,7 @@ import (
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
+	"github.com/abhisek/mathiz/ent/parentinvite"
 	"github.com/abhisek/mathiz/ent/quest"
 	"github.com/abhisek/mathiz/ent/questprogress"
 	"github.com/abhisek/mathiz/ent/questquestion"
@@ -98,6 +100,7 @@ func checkColumn(t, c string) error {
 			creditentry.Table:     creditentry.ValidColumn,
 			devicetoken.Table:     devicetoken.ValidColumn,
 			diagnosisevent.Table:  diagnosisevent.ValidColumn,
+			familymember.Table:    familymember.ValidColumn,
 			familyspace.Table:     familyspace.ValidColumn,
 			gemevent.Table:        gemevent.ValidColumn,
 			hintevent.Table:       hintevent.ValidColumn,
@@ -105,6 +108,7 @@ func checkColumn(t, c string) error {
 			llmrequestevent.Table: llmrequestevent.ValidColumn,
 			lessonevent.Table:     lessonevent.ValidColumn,
 			masteryevent.Table:    masteryevent.ValidColumn,
+			parentinvite.Table:    parentinvite.ValidColumn,
 			quest.Table:           quest.ValidColumn,
 			questprogress.Table:   questprogress.ValidColumn,
 			questquestion.Table:   questquestion.ValidColumn,

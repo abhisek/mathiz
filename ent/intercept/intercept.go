@@ -15,6 +15,7 @@ import (
 	"github.com/abhisek/mathiz/ent/creditentry"
 	"github.com/abhisek/mathiz/ent/devicetoken"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/familymember"
 	"github.com/abhisek/mathiz/ent/familyspace"
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
@@ -22,6 +23,7 @@ import (
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
+	"github.com/abhisek/mathiz/ent/parentinvite"
 	"github.com/abhisek/mathiz/ent/predicate"
 	"github.com/abhisek/mathiz/ent/quest"
 	"github.com/abhisek/mathiz/ent/questprogress"
@@ -275,6 +277,33 @@ func (f TraverseDiagnosisEvent) Traverse(ctx context.Context, q ent.Query) error
 	return fmt.Errorf("unexpected query type %T. expect *ent.DiagnosisEventQuery", q)
 }
 
+// The FamilyMemberFunc type is an adapter to allow the use of ordinary function as a Querier.
+type FamilyMemberFunc func(context.Context, *ent.FamilyMemberQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f FamilyMemberFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.FamilyMemberQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.FamilyMemberQuery", q)
+}
+
+// The TraverseFamilyMember type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseFamilyMember func(context.Context, *ent.FamilyMemberQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseFamilyMember) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseFamilyMember) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.FamilyMemberQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.FamilyMemberQuery", q)
+}
+
 // The FamilySpaceFunc type is an adapter to allow the use of ordinary function as a Querier.
 type FamilySpaceFunc func(context.Context, *ent.FamilySpaceQuery) (ent.Value, error)
 
@@ -464,6 +493,33 @@ func (f TraverseMasteryEvent) Traverse(ctx context.Context, q ent.Query) error {
 	return fmt.Errorf("unexpected query type %T. expect *ent.MasteryEventQuery", q)
 }
 
+// The ParentInviteFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ParentInviteFunc func(context.Context, *ent.ParentInviteQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ParentInviteFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ParentInviteQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ParentInviteQuery", q)
+}
+
+// The TraverseParentInvite type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseParentInvite func(context.Context, *ent.ParentInviteQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseParentInvite) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseParentInvite) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ParentInviteQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ParentInviteQuery", q)
+}
+
 // The QuestFunc type is an adapter to allow the use of ordinary function as a Querier.
 type QuestFunc func(context.Context, *ent.QuestQuery) (ent.Value, error)
 
@@ -616,6 +672,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.DeviceTokenQuery, predicate.DeviceToken, devicetoken.OrderOption]{typ: ent.TypeDeviceToken, tq: q}, nil
 	case *ent.DiagnosisEventQuery:
 		return &query[*ent.DiagnosisEventQuery, predicate.DiagnosisEvent, diagnosisevent.OrderOption]{typ: ent.TypeDiagnosisEvent, tq: q}, nil
+	case *ent.FamilyMemberQuery:
+		return &query[*ent.FamilyMemberQuery, predicate.FamilyMember, familymember.OrderOption]{typ: ent.TypeFamilyMember, tq: q}, nil
 	case *ent.FamilySpaceQuery:
 		return &query[*ent.FamilySpaceQuery, predicate.FamilySpace, familyspace.OrderOption]{typ: ent.TypeFamilySpace, tq: q}, nil
 	case *ent.GemEventQuery:
@@ -630,6 +688,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.LessonEventQuery, predicate.LessonEvent, lessonevent.OrderOption]{typ: ent.TypeLessonEvent, tq: q}, nil
 	case *ent.MasteryEventQuery:
 		return &query[*ent.MasteryEventQuery, predicate.MasteryEvent, masteryevent.OrderOption]{typ: ent.TypeMasteryEvent, tq: q}, nil
+	case *ent.ParentInviteQuery:
+		return &query[*ent.ParentInviteQuery, predicate.ParentInvite, parentinvite.OrderOption]{typ: ent.TypeParentInvite, tq: q}, nil
 	case *ent.QuestQuery:
 		return &query[*ent.QuestQuery, predicate.Quest, quest.OrderOption]{typ: ent.TypeQuest, tq: q}, nil
 	case *ent.QuestProgressQuery:

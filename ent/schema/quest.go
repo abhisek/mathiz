@@ -38,6 +38,10 @@ func (Quest) Fields() []ent.Field {
 		field.String("status").
 			Default("draft").
 			Comment("draft | active | archived"),
+		field.String("created_by").
+			Default("").
+			Immutable().
+			Comment("Account UID of the authoring parent (\"\" for pre-membership quests)"),
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable(),

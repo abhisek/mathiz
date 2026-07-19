@@ -26,6 +26,8 @@ type Tx struct {
 	DeviceToken *DeviceTokenClient
 	// DiagnosisEvent is the client for interacting with the DiagnosisEvent builders.
 	DiagnosisEvent *DiagnosisEventClient
+	// FamilyMember is the client for interacting with the FamilyMember builders.
+	FamilyMember *FamilyMemberClient
 	// FamilySpace is the client for interacting with the FamilySpace builders.
 	FamilySpace *FamilySpaceClient
 	// GemEvent is the client for interacting with the GemEvent builders.
@@ -40,6 +42,8 @@ type Tx struct {
 	LessonEvent *LessonEventClient
 	// MasteryEvent is the client for interacting with the MasteryEvent builders.
 	MasteryEvent *MasteryEventClient
+	// ParentInvite is the client for interacting with the ParentInvite builders.
+	ParentInvite *ParentInviteClient
 	// Quest is the client for interacting with the Quest builders.
 	Quest *QuestClient
 	// QuestProgress is the client for interacting with the QuestProgress builders.
@@ -188,6 +192,7 @@ func (tx *Tx) init() {
 	tx.CreditEntry = NewCreditEntryClient(tx.config)
 	tx.DeviceToken = NewDeviceTokenClient(tx.config)
 	tx.DiagnosisEvent = NewDiagnosisEventClient(tx.config)
+	tx.FamilyMember = NewFamilyMemberClient(tx.config)
 	tx.FamilySpace = NewFamilySpaceClient(tx.config)
 	tx.GemEvent = NewGemEventClient(tx.config)
 	tx.HintEvent = NewHintEventClient(tx.config)
@@ -195,6 +200,7 @@ func (tx *Tx) init() {
 	tx.LLMRequestEvent = NewLLMRequestEventClient(tx.config)
 	tx.LessonEvent = NewLessonEventClient(tx.config)
 	tx.MasteryEvent = NewMasteryEventClient(tx.config)
+	tx.ParentInvite = NewParentInviteClient(tx.config)
 	tx.Quest = NewQuestClient(tx.config)
 	tx.QuestProgress = NewQuestProgressClient(tx.config)
 	tx.QuestQuestion = NewQuestQuestionClient(tx.config)
