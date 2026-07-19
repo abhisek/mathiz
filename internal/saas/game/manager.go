@@ -812,6 +812,11 @@ func (e *expedition) saveSnapshot(ctx context.Context) {
 		if e.origSnap != nil {
 			snapData.Mastery = e.origSnap.Mastery
 			snapData.SpacedRep = e.origSnap.SpacedRep
+			// Legacy (pre-Mastery) snapshots keep their migration fields —
+			// dropping them here would wipe the graph state this branch
+			// exists to protect.
+			snapData.TierProgress = e.origSnap.TierProgress
+			snapData.MasteredSet = e.origSnap.MasteredSet
 		} else {
 			snapData.Mastery = nil
 			snapData.SpacedRep = nil
