@@ -49,7 +49,9 @@ export default function Login() {
       })
       if (error) throw error
       setCodeSent(true)
-      setNotice(`We emailed a sign-in code to ${email}.`)
+      setNotice(
+        `Check ${email} — enter the code from the email below, or just click the link in it. Both sign you in.`,
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -165,10 +167,6 @@ export default function Login() {
             <button className="btn btn-primary" disabled={busy || code.trim().length < 6}>
               {busy ? 'Checking…' : 'Sign in'}
             </button>
-            <p className="form-hint">
-              You can also just click the link in the email — it signs you in
-              here directly.
-            </p>
             <p className="auth-switch">
               <button className="linklike" type="button" onClick={(e) => sendCode(e)}>
                 Resend code
