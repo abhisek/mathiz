@@ -34,6 +34,7 @@ Rules:
 - Choose "numeric" format for computation problems (the student types the answer).
 - Choose "multiple_choice" format for conceptual, comparison, or identification problems (the student picks from 4 options).
 - For multiple choice, provide exactly 4 options where exactly one is correct. Distractors should reflect common mistakes, not random values.
+- Options are shuffled before display, so hints and explanations must refer to options by their content, never by their position (no "the first option" or "option A").
 - Use answer_type "text" only for conceptual reasoning questions, always with "multiple_choice" format.
 - Include a short helpful hint for every question.
 - Vary the questions: no two questions in the batch may be near-duplicates.`
@@ -165,6 +166,9 @@ func (s *Service) Generate(ctx context.Context, questUID, brief string, count in
 		if !passesValidation(pq) {
 			continue
 		}
+		// Mandatory for AI-generated questions (LLMs put the right answer
+		// first); parent-authored questions keep their authored order.
+		pq.ShuffleChoices()
 		valid = append(valid, pq)
 		if len(valid) == count {
 			break
