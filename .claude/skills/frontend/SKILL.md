@@ -75,8 +75,7 @@ explicit decision** — no react-query/SWR/Redux. Don't introduce one.
 - Read the `analytics` skill BEFORE touching anything tracking-related.
   Chokepoint rule: only `web/src/analytics.ts` imports `posthog-js`
   (dynamically) or contains event-name strings — everything else calls the
-  typed `track.*` helpers. Child identity NEVER enters analytics; new
-  events also get a row in `specs/16-analytics.md`, same PR.
+  typed `track.*` helpers. Child identity NEVER enters analytics.
 
 ## CSS
 
