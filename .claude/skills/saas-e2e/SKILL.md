@@ -67,8 +67,6 @@ Key selectors, in flow order:
   `button:has-text("Try it!")` → `button:has-text("Back to the hunt")`.
 - **Summary / vault / notebook**: `.summary`, `button:has-text("Back to the map")`;
   header `🧭` button → `.notebook` / `.notebook-tip-head`; gem counter → `.vault`.
-- **Terminal fallback**: `/terminal` streams the TUI (xterm.js); `.pill-live`
-  when connected; ctrl+c ends the session.
 
 ## 5. Cleanup
 

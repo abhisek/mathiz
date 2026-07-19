@@ -16,8 +16,7 @@ same PR.
 - No child names, no child profile UIDs, no PINs — not as distinct ids,
   not in event properties, not in group properties, not "just for
   debugging".
-- No `identify()` on any child surface (`/join`, `/play`); `/terminal`
-  gets no analytics at all.
+- No `identify()` on any child surface (`/join`, `/play`).
 - Children appear ONLY as anonymous usage inside their family group:
   `attachChildToFamily(familyId)` — group key only, never the family name
   or any other property from the child side.
@@ -64,7 +63,6 @@ config only. `ui_host` stays `https://us.posthog.com` (toolbar).
 | public (`/`, `/pricing`) | `ensureAnalyticsBooted('public')` | — | anonymous |
 | parent (`/login`, `/dashboard/*`) | `ensureAnalyticsBooted('parent')` (App.tsx pageview effect) | — | `identifyParent` + `identifyFamilyGroup` after `/me`; `resetAnalytics()` on sign-out; manual `$pageview` per route |
 | child (`/join`, `/play`) | `ensureAnalyticsBooted('child')` | `persistence:'memory'` | `attachChildToFamily` only; NO pageviews |
-| `/terminal` | none | — | — |
 
 \* shared: `autocapture:false`, `capture_pageview:false`,
 `disable_session_recording:true`, `respect_dnt:true`,

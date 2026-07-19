@@ -1,8 +1,8 @@
 // Package playslot enforces ONE live learning session per child across
-// every surface (treasure-map expeditions, the browser terminal, and any
-// future client). Concurrent sessions load the same owner's snapshot and
-// clobber each other's mastery/spaced-rep progress on save — per-surface
-// maps can't see each other, so the slot must be claimed here.
+// every surface (treasure-map expeditions today, and any future client).
+// Concurrent sessions load the same owner's snapshot and clobber each
+// other's mastery/spaced-rep progress on save — per-surface maps can't
+// see each other, so the slot must be claimed here.
 package playslot
 
 import (

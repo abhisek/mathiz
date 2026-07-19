@@ -240,16 +240,16 @@ func (m *AppModel) View() tea.View {
 }
 
 // NewModel creates the root Bubble Tea model. Used by hosts that run the
-// program themselves (e.g. the SaaS terminal bridge) instead of Run.
+// program themselves instead of Run.
 func NewModel(opts Options) tea.Model {
 	return newAppModel(opts)
 }
 
 // BuildOptions wires the standard dependency graph from a pair of repos and
-// an optional LLM provider. Both the local CLI (cmd/run.go) and the SaaS
-// terminal bridge use this, so a new dependency added here reaches every
-// surface. The returned cleanup releases per-session resources (the async
-// diagnosis worker); it is non-nil even when provider is nil.
+// an optional LLM provider. The local CLI (cmd/run.go) uses this — add new
+// session dependencies here so every host of the app model gets them. The
+// returned cleanup releases per-session resources (the async diagnosis
+// worker); it is non-nil even when provider is nil.
 func BuildOptions(eventRepo store.EventRepo, snapRepo store.SnapshotRepo, provider llm.Provider) (Options, func()) {
 	opts := Options{
 		EventRepo:    eventRepo,

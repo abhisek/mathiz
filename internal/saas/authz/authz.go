@@ -37,7 +37,7 @@ type Principal struct {
 }
 
 // ChildPrincipal builds the principal for an authenticated child device.
-// Every child auth surface (HTTP middleware, terminal bridge) uses this so
+// Every child auth surface (today the HTTP middleware) uses this so
 // hardening added to the principal reaches all of them.
 func ChildPrincipal(child *ent.ChildProfile) Principal {
 	return Principal{

@@ -156,6 +156,13 @@ probes on objects the caller can't see).
 
 ## 6. Terminal Bridge — `internal/saas/termbridge`
 
+> **Removed (2026-07-19).** The browser terminal proved unusable for
+> children on the web and was unneeded attack surface; the termbridge
+> package, the `/terminal` page, and the `WS /api/v1/terminal` endpoint
+> were deleted. The treasure-map game (spec 13) is the only hosted kid
+> surface. The local CLI TUI is unaffected. The section below is kept as
+> the design record.
+
 The existing TUI runs unmodified server-side, one `tea.Program` per WebSocket:
 
 - **Client → server**: binary frames = raw terminal input bytes (xterm.js `onData`).

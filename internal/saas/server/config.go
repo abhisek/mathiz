@@ -34,10 +34,7 @@ type Config struct {
 	// proxy's address and throttles everyone together).
 	TrustProxy bool
 
-	// MaxSessions caps concurrent terminal sessions.
-	MaxSessions int
-
-	// SessionIdleTimeout disconnects idle terminal sessions.
+	// SessionIdleTimeout ends idle learning sessions (game expeditions).
 	SessionIdleTimeout time.Duration
 
 	// BillingProvider enables monetisation: "" (off — everything free,
@@ -75,7 +72,6 @@ func ConfigFromEnv() (*Config, error) {
 		SupabaseURL:         strings.TrimRight(os.Getenv("MATHIZ_SUPABASE_URL"), "/"),
 		SupabaseAnonKey:     os.Getenv("MATHIZ_SUPABASE_ANON_KEY"),
 		SupabaseJWTSecret:   os.Getenv("MATHIZ_SUPABASE_JWT_SECRET"),
-		MaxSessions:         envIntOr("MATHIZ_MAX_SESSIONS", 100),
 		SessionIdleTimeout:  time.Duration(envIntOr("MATHIZ_SESSION_IDLE_MINUTES", 30)) * time.Minute,
 		TrustProxy:          os.Getenv("MATHIZ_TRUST_PROXY") == "true",
 		BillingProvider:     os.Getenv("MATHIZ_BILLING_PROVIDER"),

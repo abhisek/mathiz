@@ -1,8 +1,8 @@
 # Mathiz SaaS — Family Spaces in the Browser
 
 `mathiz serve` turns Mathiz into a hosted product: parents sign up, create a
-Family Space, add their children, and children learn in the browser — the same
-terminal experience, streamed over a WebSocket. The local CLI is unchanged.
+Family Space, add their children, and children learn in the browser through
+the treasure-map game. The local CLI is unchanged.
 
 See [specs/12-saas.md](../specs/12-saas.md) for the full architecture.
 
@@ -20,8 +20,7 @@ See [specs/12-saas.md](../specs/12-saas.md) for the full architecture.
   spaced-repetition due-dates make conquered spots "sink" until rescued. The
   full learning engine (planner, mastery, spaced rep, diagnosis, hints,
   learner profiles, gems) drives the game over the `/api/v1/game` endpoints;
-  see [specs/13-treasure-map.md](../specs/13-treasure-map.md). The classic
-  terminal experience is still streamed at `/terminal`.
+  see [specs/13-treasure-map.md](../specs/13-treasure-map.md).
 - **Data** lives in PostgreSQL. Every learning event and snapshot is scoped to
   the child profile that owns it; the authorization layer
   (`internal/saas/authz`) enforces that parents only see their own family and
@@ -46,7 +45,7 @@ Open http://localhost:8080 — landing page at `/` (parent and kid doors),
 parent sign-in at `/login`, kid flow at `/join`.
 
 For SPA development with hot reload, run `mathiz serve` on :8080 and
-`cd web && npm run dev` — Vite proxies `/api` (including the WebSocket).
+`cd web && npm run dev` — Vite proxies `/api`.
 
 ### Supabase setup
 
@@ -91,11 +90,9 @@ Kids never see prices or balances. Design:
 - Point `MATHIZ_DATABASE_URL` at Supabase's Postgres connection string or any
   hosted PostgreSQL. Schema migrates automatically on startup.
 - The binary is self-contained (SPA embedded): deploy it anywhere that can
-  run a Go binary and reach Postgres. Put TLS in front (the WebSocket works
-  over `wss://` automatically when the page is served over HTTPS).
+  run a Go binary and reach Postgres. Put TLS in front.
 - LLM API keys stay server-side; browsers never see them.
-- `MATHIZ_MAX_SESSIONS` and `MATHIZ_SESSION_IDLE_MINUTES` bound terminal
-  session resources.
+- `MATHIZ_SESSION_IDLE_MINUTES` bounds idle learning-session lifetime.
 
 ## API surface
 

@@ -15,7 +15,6 @@ import (
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/saas/activity"
 	"github.com/abhisek/mathiz/internal/saas/auth"
-	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/billing"
 	"github.com/abhisek/mathiz/internal/saas/credits"
 	"github.com/abhisek/mathiz/internal/saas/family"
@@ -23,7 +22,6 @@ import (
 	"github.com/abhisek/mathiz/internal/saas/playslot"
 	"github.com/abhisek/mathiz/internal/saas/quests"
 	"github.com/abhisek/mathiz/internal/saas/server"
-	"github.com/abhisek/mathiz/internal/saas/termbridge"
 	"github.com/abhisek/mathiz/internal/saas/webui"
 	"github.com/abhisek/mathiz/internal/store"
 )
@@ -35,7 +33,7 @@ var serveCmd = &cobra.Command{
 
   - Parent dashboard API under /api/v1 (Supabase-authenticated)
   - Child join flow (join codes + device tokens)
-  - Browser learning sessions: the Mathiz TUI streamed over WebSocket
+  - Browser learning sessions: the treasure-map game API
   - Embedded web app (when built with 'make web')
 
 Configuration is environment-driven:
@@ -75,7 +73,7 @@ func runServe(ctx context.Context) error {
 		return err
 	}
 
-	// One family service shared by the API server and the terminal bridge.
+	// The family service backing the API server.
 	svc := family.New(st.Client())
 
 	// Monetisation: enabled only when a billing provider is configured.
@@ -129,20 +127,11 @@ func runServe(ctx context.Context) error {
 		}
 	}
 
-	// One play slot per child, shared across the terminal and the map so
-	// the two surfaces can never write the same child's snapshot at once.
+	// One play slot per child: the game manager (and any future play
+	// surface) acquires from this shared registry so two live sessions can
+	// never write the same child's snapshot at once.
 	slots := playslot.NewRegistry()
 
-	bridge := termbridge.New(termbridge.Options{
-		Store:          st,
-		Family:         svc,
-		Checker:        authz.NewChecker(svc),
-		AllowedOrigins: cfg.CORSOrigins,
-		IdleTimeout:    cfg.SessionIdleTimeout,
-		MaxSessions:    cfg.MaxSessions,
-		Charge:         charge,
-		Slots:          slots,
-	})
 	// Parent quests: authoring + AI generation (specs/15-quests.md). The
 	// generation debit goes through the same credit ledger; with billing
 	// off (creditsSvc nil) generation is free. LLM provider from env, no
@@ -177,7 +166,6 @@ func runServe(ctx context.Context) error {
 		Store:    st,
 		Family:   svc,
 		Verifier: verifier,
-		Terminal: bridge,
 		WebUI:    webui.Handler(),
 		Game:     gameMgr,
 		Credits:  creditsSvc,

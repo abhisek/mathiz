@@ -64,7 +64,6 @@ device token stored in the browser.
 | Quest expedition: up to 5 not-yet-solved quest questions per run (chunked until done), same gems/streaks/hints/1-credit charge; tagged quests advance the main map, "Quest complete!" celebration at the end | `/play` expedition overlay | `POST /api/v1/game/quests/{id}/expeditions` (+ the standard expedition endpoints) |
 | Guide's notebook: revisit every past tip, grouped by island | 🧭 button on `/play` | `GET /api/v1/game/notebook` |
 | Gem vault: collection by gem type | 💎 button on `/play` | gem counts from map response |
-| Terminal mode: the classic TUI streamed to the browser | `/terminal` | WebSocket `/api/v1/terminal` |
 | Switch player / leave device | header buttons | clears local device token |
 
 Constraints kids can rely on: one live session per child (a second tab is
@@ -100,7 +99,7 @@ Whoever runs `mathiz serve` for their family or a community.
 | Database: any PostgreSQL (Supabase's included); schema auto-migrates | `MATHIZ_DATABASE_URL` |
 | Auth config: Supabase project URL + anon key (+ legacy JWT secret) | `MATHIZ_SUPABASE_*` |
 | LLM provider selection & keys (server-side only) | `MATHIZ_LLM_PROVIDER`, `MATHIZ_*_API_KEY`, `MATHIZ_OPENAI_BASE_URL` for compatible gateways |
-| Resource limits: concurrent sessions, idle timeout | `MATHIZ_MAX_SESSIONS`, `MATHIZ_SESSION_IDLE_MINUTES` |
+| Resource limits: session idle timeout | `MATHIZ_SESSION_IDLE_MINUTES` |
 | Reverse-proxy correctness (rate limiting by real client IP) | `MATHIZ_TRUST_PROXY=true` |
 | Split SPA deployments | `MATHIZ_CORS_ORIGINS` |
 | Monetisation on/off + provider (off = everything free; fake for dev; Stripe/Paddle planned) | `MATHIZ_BILLING_PROVIDER`, `MATHIZ_BILLING_PRICE_*` — see [specs/14-monetisation.md](../specs/14-monetisation.md) |
@@ -117,7 +116,7 @@ Full setup: [docs/saas.md](./saas.md) · env reference: [.env.example](../.env.e
   a child profile; parents see only their family; children see only
   themselves. Cross-tenant probes return 404.
 - **Same engine everywhere**: mastery, spaced repetition, question
-  generation, diagnosis, lessons, and gems are identical across the CLI,
-  the browser terminal, and the treasure map — only the presentation differs.
+  generation, diagnosis, lessons, and gems are identical across the CLI
+  and the treasure map — only the presentation differs.
 - **AI-generated questions**: no persona ever sees a static question bank;
   every question is generated for that learner at ask time.

@@ -1,6 +1,6 @@
 # Mathiz Web
 
-The parent dashboard and kid learning terminal for [Mathiz SaaS mode](../docs/saas.md).
+The parent dashboard and kid treasure-map game for [Mathiz SaaS mode](../docs/saas.md).
 
 Vite + React + TypeScript. `npm run build` emits into
 `../internal/saas/webui/dist`, which `mathiz serve` embeds — build via
@@ -13,4 +13,4 @@ npm install
 npm run dev
 ```
 
-Vite proxies `/api` (including the terminal WebSocket) to the Go server.
+Vite proxies `/api` to the Go server.

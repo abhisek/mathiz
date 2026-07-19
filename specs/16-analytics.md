@@ -89,7 +89,7 @@ contain event-name strings. Everything else calls typed helpers:
 | public | `/`, `/pricing` | `person_profiles:'identified_only'` | anonymous |
 | parent | `/login`, `/dashboard/*` | `person_profiles:'identified_only'` | `identifyParent` + `identifyFamilyGroup`; manual `$pageview` per route |
 | child | `/join`, `/play` | `person_profiles:'identified_only'`, **`persistence:'memory'`** | NONE — `attachChildToFamily` group key only; no pageviews |
-| — | `/terminal` | nothing — no analytics at all | — |
+| — | `/terminal` | nothing — no analytics at all (surface removed 2026-07-19 with termbridge) | — |
 
 ## Event taxonomy
 

@@ -78,8 +78,8 @@ expedition ownership is validated on every sub-resource call.
 
 ## 4. Frontend (`/play`)
 
-The kid route becomes the map (the terminal remains available at `/terminal`
-for the curious):
+The kid route becomes the map (the terminal remained available at `/terminal`
+for the curious until its removal on 2026-07-19 — see spec 12 §6):
 
 - **Map screen**: SVG parchment sea with five islands. Dig spots laid out per
   island in grade columns; prerequisite paths drawn as dotted trails. States:

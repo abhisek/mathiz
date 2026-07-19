@@ -14,9 +14,9 @@ must pass.
 |---|---|
 | Domain engine (`session`, `mastery`, `spacedrep`, `problemgen`, `gems`, `lessons`, `diagnosis`, `skillgraph`) | `go test ./internal/...` — the engine is fully unit-tested with mocks. Skill graph edits: `go test ./internal/skillgraph/` FIRST (a bad seed panics every test binary). |
 | `internal/store` or `ent/schema` | `make generate` if schemas changed; `go test ./internal/store/` on SQLite **and** on Postgres (`MATHIZ_TEST_DATABASE_URL=...`, bootstrap via `saas-e2e` skill's `pg-local.sh`); interface changes → also the five mock-owning packages (see `add-event-type` skill). |
-| `internal/saas/**`, `cmd/serve.go` | `go test -race -count=2 ./internal/saas/...` (concurrency-heavy: termbridge, game manager, session cap). Then the `saas-e2e` skill for a real browser pass over the affected flow. |
+| `internal/saas/**`, `cmd/serve.go` | `go test -race -count=2 ./internal/saas/...` (concurrency-heavy: game manager, play slots). Then the `saas-e2e` skill for a real browser pass over the affected flow. |
 | `web/**` | `cd web && npm run build` (runs `tsc` — this is the type check). Then the `saas-e2e` skill: drive the changed page in Chromium and screenshot it; the SPA has no unit tests, the browser flow is the test. |
-| TUI screens (`internal/screens`, `internal/app`, `internal/ui`) | `go test ./internal/screens/...`; visually: `MATHIZ_LLM_PROVIDER=mock ./bin/mathiz` needs a TTY — in headless sandboxes, drive it through the terminal bridge instead (`saas-e2e` skill, `/terminal` page). |
+| TUI screens (`internal/screens`, `internal/app`, `internal/ui`) | `go test ./internal/screens/...`; visually: `MATHIZ_LLM_PROVIDER=mock ./bin/mathiz` needs a TTY — in headless sandboxes run it inside `tmux` or `script -c`. |
 | `cmd/` (CLI) | `make mathiz && ./bin/mathiz stats --db /tmp/smoke.db` is a cheap no-TTY smoke (opens store, migrates, renders). |
 
 ## Judgment calls

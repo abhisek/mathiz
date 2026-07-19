@@ -140,7 +140,7 @@ make web && make mathiz    # SPA → internal/saas/webui/dist → embedded in th
 
 Open `http://localhost:8080` — landing page at `/` (parent + kid doors),
 parent sign-in at `/login` (email code first; password fallback), kid join
-at `/join`, treasure map at `/play`, browser terminal at `/terminal`.
+at `/join`, treasure map at `/play`.
 Typical loop: sign in (or curl with a minted JWT) → create Family Space →
 add a child → mint a join code → open `/join` in a private window and play
 as the kid.
@@ -206,8 +206,8 @@ curl -s -H "$AUTH" http://localhost:8080/api/v1/family/$FAMILY/billing
 # → {"balance":180,"plan":"explorer","status":"active",...}
 ```
 
-**Testing the out-of-credits kid flow.** Each expedition (or terminal
-session) debits 1 credit. Either play through the starter balance, or
+**Testing the out-of-credits kid flow.** Each expedition debits 1 credit.
+Either play through the starter balance, or
 temporarily lower `StarterCredits` in `internal/saas/credits/service.go`
 to 1–2 and recreate the family. When the wallet hits zero the next
 expedition returns HTTP 402 and the kid sees the ship-resting screen;
@@ -244,7 +244,7 @@ codegen would overwrite it anyway.
 
 ```bash
 go test ./...                              # unit suite (fast, SQLite in-memory)
-go test -race ./internal/saas/...          # required for saas/termbridge/game changes
+go test -race ./internal/saas/...          # required for saas/game changes
 go test -run TestName ./internal/mastery   # one test
 
 # Store suite against real PostgreSQL (otherwise it runs on SQLite):
@@ -269,7 +269,7 @@ internal/
                       the Bubble Tea TUI
   store/              event sourcing + snapshots (SQLite & PostgreSQL, owner-scoped)
   llm/                provider adapters + retry/logging decorators
-  saas/               hosted mode: family, authz, auth, server, game, termbridge, webui
+  saas/               hosted mode: family, authz, auth, server, game, webui
 web/                  Vite + React SPA (parent dashboard + kid game)
 ent/schema/           hand-written schemas → make generate
 specs/                design records (spec-driven repo — add one for significant features)
@@ -286,8 +286,7 @@ docs/                 this guide, personas.md, saas.md
 | `internal/selfupdate` tests fail (HTTP 404 to 127.0.0.1) | Pre-existing sandbox/proxy artifact — ignore unless you touched selfupdate. |
 | `mathiz serve` exits: `MATHIZ_DATABASE_URL is required` | Source your `.env` (`set -a; source .env; set +a`). |
 | Parent login fails locally | JWT secret/issuer mismatch: `MATHIZ_SUPABASE_JWT_SECRET` and `MATHIZ_SUPABASE_URL` must match what minted the token. |
-| Terminal/expedition won't start, API 500s | Check the serve process's stderr/log — usually the LLM provider (missing key or unreachable base URL). |
-| Kid's terminal 403s on WebSocket upgrade behind a proxy | Origin/Host mismatch: add your SPA origin to `MATHIZ_CORS_ORIGINS`. |
+| Expedition won't start, API 500s | Check the serve process's stderr/log — usually the LLM provider (missing key or unreachable base URL). |
 | Changed the SPA but `:8080` serves the old one | Rebuild both: `make web && make mathiz` (the binary embeds the SPA at compile time). |
 | No wallet/billing card on the dashboard | Billing is off (`MATHIZ_BILLING_PROVIDER` empty). Set it to `fake` and restart — the card hides on 404 by design. |
 | Kid sees "The ship needs to rest! ⛵" | Family's credits are at 0. Subscribe/top up on the dashboard (fake checkout is instant), or disable billing. See §2e. |

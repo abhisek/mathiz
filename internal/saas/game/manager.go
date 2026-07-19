@@ -41,7 +41,7 @@ var (
 	ErrNoLesson       = errors.New("the guide has nothing to show right now")
 	ErrGeneration     = errors.New("could not conjure a question, try again")
 	// ErrElsewhere means the child's play slot is held by another surface
-	// (e.g. a live browser-terminal session).
+	// (e.g. a live expedition in another tab).
 	ErrElsewhere = errors.New("you're already playing on another screen — close it first!")
 	// ErrNoCredits means the family's credit balance can't cover the
 	// expedition. The kid-facing surface must never show prices — the API
@@ -65,7 +65,7 @@ type Toolset = tutor.Toolset
 type ToolsetFactory func(ctx context.Context, eventRepo store.EventRepo) (*Toolset, error)
 
 // NewLLMToolset is the production factory: provider from env with usage
-// logging into the child's event stream, exactly like the terminal bridge.
+// logging into the child's event stream, exactly like the local CLI.
 func NewLLMToolset(ctx context.Context, eventRepo store.EventRepo) (*Toolset, error) {
 	provider, err := llm.NewProviderFromEnv(ctx, eventRepo)
 	if err != nil {
@@ -85,10 +85,10 @@ type Config struct {
 	// (local mode, self-hosters without billing, tests).
 	Charge func(ctx context.Context, childUID, sessionID string) error
 
-	// Slots is the cross-surface one-session-per-child registry, shared
-	// with termbridge so an expedition and a terminal session can't run
-	// concurrently over the same snapshot. Nil = a private registry
-	// (standalone/test use).
+	// Slots is the cross-surface one-session-per-child registry: any play
+	// surface must acquire from the same registry so two live sessions
+	// can't run concurrently over the same snapshot. Nil = a private
+	// registry (standalone/test use).
 	Slots *playslot.Registry
 
 	// Quests serves parent-authored quests (specs/15-quests.md). Nil =
@@ -243,9 +243,9 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 		prev.finish(ctx, false)
 	}
 
-	// Claim the child's cross-surface play slot: a live terminal session
-	// and a map expedition must never run concurrently — both drive the
-	// same snapshot. finishLocked frees the slot after the final save.
+	// Claim the child's cross-surface play slot: two live sessions must
+	// never run concurrently — they'd drive the same snapshot.
+	// finishLocked frees the slot after the final save.
 	releaseSlot, err := m.cfg.Slots.Acquire(childUID, "the treasure map")
 	if err != nil {
 		return nil, ErrElsewhere
