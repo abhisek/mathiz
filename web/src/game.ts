@@ -20,9 +20,21 @@ export interface Island {
   spots: Spot[]
 }
 
+// QuestMapItem is one parent-authored quest on the map, with progress.
+// Kid-facing: never carries prices, balances, or any monetisation data.
+export interface QuestMapItem {
+  id: string
+  name: string
+  emoji?: string
+  total: number
+  correct: number
+  done: boolean
+}
+
 export interface GameMap {
   islands: Island[]
   gems: { total: number; byType: Record<string, number> }
+  quests?: QuestMapItem[]
 }
 
 export interface Expedition {
@@ -32,6 +44,7 @@ export interface Expedition {
   totalQuestions: number
   tier: 'learn' | 'prove'
   category: string
+  questId?: string
 }
 
 export interface Question {
@@ -57,6 +70,8 @@ export interface ExpeditionSummary {
   accuracy: number
   gems: GemAward[] | null
   mastered: boolean
+  questId?: string
+  questComplete?: boolean
 }
 
 export interface AnswerResult {
@@ -119,6 +134,8 @@ export const gameApi = {
   map: () => call<GameMap>('GET', '/api/v1/game/map'),
   notebook: () => call<Notebook>('GET', '/api/v1/game/notebook'),
   start: (skillId: string) => call<Expedition>('POST', '/api/v1/game/expeditions', { skillId }),
+  startQuest: (questId: string) =>
+    call<Expedition>('POST', `/api/v1/game/quests/${questId}/expeditions`),
   question: (expId: string) => call<Question>('POST', `/api/v1/game/expeditions/${expId}/question`),
   answer: (expId: string, answer: string) =>
     call<AnswerResult>('POST', `/api/v1/game/expeditions/${expId}/answer`, { answer }),

@@ -97,6 +97,51 @@ export interface ChildStats {
   gems: { total: number; byType: Record<string, number> }
 }
 
+// ---- Parent quests (specs/15-quests.md) ----
+
+export type QuestStatus = 'draft' | 'active' | 'archived'
+
+export interface Quest {
+  id: string
+  name: string
+  emoji?: string
+  skillId: string
+  childId: string // "" = all children
+  status: QuestStatus
+  questionCount: number
+  createdAt: string
+}
+
+export interface QuestQuestion {
+  id: string
+  position: number
+  text: string
+  answer: string
+  answerType: string
+  format: 'numeric' | 'multiple_choice'
+  choices?: string[]
+  hint?: string
+  explanation?: string
+  generated: boolean // saved by AI generation — review me
+}
+
+export interface QuestQuestionInput {
+  text: string
+  answer: string
+  answerType: string
+  format: string
+  choices: string[]
+  hint: string
+  explanation: string
+}
+
+// Saving a question can succeed with a non-empty warning (the math checker
+// computed a different answer — probably a typo in the answer key).
+export interface QuestQuestionResult {
+  question: QuestQuestion
+  warning: string
+}
+
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -173,6 +218,45 @@ export const api = {
     request<{ devices: Device[] }>('GET', `/api/v1/children/${childId}/devices`, token),
   revokeDevice: (token: string, deviceId: string) =>
     request<void>('DELETE', `/api/v1/devices/${deviceId}`, token),
+
+  // Parent quests (404s when the server runs without quests)
+  createQuest: (
+    token: string,
+    familyId: string,
+    input: { name: string; emoji: string; skillId: string; childId: string },
+  ) => request<Quest>('POST', `/api/v1/family/${familyId}/quests`, token, input),
+  listQuests: (token: string, familyId: string) =>
+    request<{ quests: Quest[] }>('GET', `/api/v1/family/${familyId}/quests`, token),
+  getQuest: (token: string, questId: string) =>
+    request<{ quest: Quest; questions: QuestQuestion[] }>('GET', `/api/v1/quests/${questId}`, token),
+  updateQuest: (
+    token: string,
+    questId: string,
+    patch: Partial<{ name: string; emoji: string; skillId: string; childId: string; status: string }>,
+  ) => request<Quest>('PATCH', `/api/v1/quests/${questId}`, token, patch),
+  deleteQuest: (token: string, questId: string) =>
+    request<void>('DELETE', `/api/v1/quests/${questId}`, token),
+  publishQuest: (token: string, questId: string) =>
+    request<Quest>('POST', `/api/v1/quests/${questId}/publish`, token),
+  addQuestQuestion: (token: string, questId: string, input: QuestQuestionInput) =>
+    request<QuestQuestionResult>('POST', `/api/v1/quests/${questId}/questions`, token, input),
+  updateQuestQuestion: (token: string, questId: string, qid: string, input: QuestQuestionInput) =>
+    request<QuestQuestionResult>('PATCH', `/api/v1/quests/${questId}/questions/${qid}`, token, input),
+  deleteQuestQuestion: (token: string, questId: string, qid: string) =>
+    request<void>('DELETE', `/api/v1/quests/${questId}/questions/${qid}`, token),
+  generateQuestQuestions: (
+    token: string,
+    questId: string,
+    brief: string,
+    count: number,
+    clientKey: string,
+  ) =>
+    request<{ questions: QuestQuestion[]; replayed: boolean }>(
+      'POST',
+      `/api/v1/quests/${questId}/generate`,
+      token,
+      { brief, count, clientKey },
+    ),
 
   // Billing (404s when the server runs without a billing provider)
   billing: (token: string, familyId: string) =>
