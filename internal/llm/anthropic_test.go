@@ -117,6 +117,109 @@ func TestAnthropicProvider_ServerError(t *testing.T) {
 	}
 }
 
+// anthropicSuccessBody returns a minimal successful Messages API response.
+func anthropicSuccessBody(model string) map[string]any {
+	return map[string]any{
+		"id":   "msg_test",
+		"type": "message",
+		"role": "assistant",
+		"content": []map[string]any{
+			{"type": "text", "text": `{"ok":true}`},
+		},
+		"model":       model,
+		"stop_reason": "end_turn",
+		"usage": map[string]any{
+			"input_tokens":  10,
+			"output_tokens": 5,
+		},
+	}
+}
+
+func decodeRequestBody(t *testing.T, r *http.Request) map[string]any {
+	t.Helper()
+	var body map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode request body: %v", err)
+	}
+	return body
+}
+
+func TestAnthropicProvider_Claude5FamilyOmitsTemperature(t *testing.T) {
+	models := []string{"claude-sonnet-5", "claude-fable-5", "claude-opus-4-8", "claude-opus-4-7"}
+	for _, model := range models {
+		t.Run(model, func(t *testing.T) {
+			var requests int
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				body := decodeRequestBody(t, r)
+				if _, ok := body["temperature"]; ok {
+					t.Errorf("request for %s must not carry a temperature field, got %v", model, body["temperature"])
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(anthropicSuccessBody(model))
+			}
+
+			p := newTestAnthropicProvider(t, handler)
+			p.model = model
+			_, err := p.Generate(context.Background(), Request{
+				Messages:    []Message{{Role: RoleUser, Content: "test"}},
+				MaxTokens:   100,
+				Temperature: 0.7,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if requests != 1 {
+				t.Fatalf("expected exactly 1 request, got %d", requests)
+			}
+		})
+	}
+}
+
+func TestAnthropicProvider_OlderModelKeepsTemperature(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		body := decodeRequestBody(t, r)
+		temp, ok := body["temperature"].(float64)
+		if !ok || temp != 0.7 {
+			t.Errorf("expected temperature 0.7 in request, got %v", body["temperature"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(anthropicSuccessBody("claude-sonnet-4-5-20250929"))
+	}
+
+	p := newTestAnthropicProvider(t, handler)
+	_, err := p.Generate(context.Background(), Request{
+		Messages:    []Message{{Role: RoleUser, Content: "test"}},
+		MaxTokens:   100,
+		Temperature: 0.7,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestAnthropicModelRejectsTemperature(t *testing.T) {
+	tests := []struct {
+		model   string
+		rejects bool
+	}{
+		{"claude-sonnet-5", true},
+		{"claude-fable-5", true},
+		{"claude-mythos-5", true},
+		{"claude-opus-4-7", true},
+		{"claude-opus-4-8", true},
+		{"claude-sonnet-4-5-20250929", false},
+		{"claude-haiku-4-5-20251001", false},
+		{"claude-sonnet-4-6", false},
+		{"claude-opus-4-6", false},
+	}
+	for _, tt := range tests {
+		if got := anthropicModelRejectsTemperature(tt.model); got != tt.rejects {
+			t.Errorf("anthropicModelRejectsTemperature(%q) = %v, want %v", tt.model, got, tt.rejects)
+		}
+	}
+}
+
 func TestAnthropicProvider_ModelID(t *testing.T) {
 	p := &AnthropicProvider{model: "claude-sonnet-4-5-20250929"}
 	if p.ModelID() != "claude-sonnet-4-5-20250929" {
