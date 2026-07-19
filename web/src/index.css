@@ -60,6 +60,36 @@ code {
   text-align: center;
 }
 
+/* ---- Loading skeletons ----
+   Shown only during a section's FIRST load so the layout doesn't pop in
+   from nothing; mutations afterwards keep real content on screen. */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--line);
+  border-radius: 6px;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-circle {
+  border-radius: 50%;
+}
+
 /* ---- Brand ---- */
 
 .brand {

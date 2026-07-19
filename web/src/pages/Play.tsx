@@ -303,7 +303,7 @@ export default function Play() {
       )}
 
       <main className="sea">
-        {!map && !mapError && <div className="boot boot-dark">Charting the map…</div>}
+        {!map && !mapError && <div className="boot boot-dark">Charting the map… 🧭</div>}
         {map?.quests && map.quests.length > 0 && (
           <div className="quest-cards">
             {map.quests.map((q) => (
