@@ -17,6 +17,7 @@ Rules:
 - Choose "multiple_choice" format for conceptual, comparison, or identification problems (the student picks from 4 options).
 - For multiple choice, provide exactly 4 options where exactly one is correct. Distractors should reflect common mistakes, not random values.
 - Options are shuffled before display, so hints and explanations must refer to options by their content, never by their position (no "the first option" or "option A").
+- Never use options whose meaning depends on the other options, like "all of the above" or "none of the above" — every option must stand alone.
 - Use answer_type "text" for conceptual reasoning or explanation questions (e.g. "why does carrying work?"). Text answer type must always use "multiple_choice" format with 4 English explanation options.
 - If the difficulty tier is "learn", include a helpful hint. If "prove", leave the hint empty.
 - Do not repeat any question from the "already asked" list.`
