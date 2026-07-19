@@ -514,6 +514,56 @@ table.sessions th {
   margin-top: 2.25rem;
 }
 
+/* ---- Co-parents ---- */
+
+.parents {
+  margin-top: 2.25rem;
+}
+
+.parent-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+}
+
+.parent-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.93rem;
+}
+
+.parent-who {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.parent-invite-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.parent-invite-form input {
+  width: 18rem;
+  max-width: 100%;
+}
+
+.accept-banner {
+  margin-bottom: 1.25rem;
+}
+
+.invite-or {
+  text-align: center;
+  margin: 0 0 0.75rem;
+}
+
 .section-head {
   display: flex;
   align-items: center;

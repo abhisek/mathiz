@@ -46,6 +46,31 @@ export interface Invite {
   createdAt: string
 }
 
+// ---- Co-parents (specs/12-saas.md, "Co-parents") ----
+
+export interface ParentMember {
+  accountId: string
+  email: string
+  displayName: string
+  role: string // 'owner' | 'parent'
+  createdAt: string
+}
+
+export interface ParentInvite {
+  id: string
+  email: string
+  status: string
+  createdAt: string
+}
+
+// Surfaced on /me when the signed-in account has no family but a pending
+// co-parent invite matches its email — drives the dashboard accept banner.
+export interface PendingParentInvite {
+  id: string
+  familyName: string
+  invitedBy: string
+}
+
 export interface Device {
   id: string
   label: string
@@ -220,7 +245,12 @@ export const api = {
 
   // Parent (Supabase JWT)
   me: (token: string) =>
-    request<{ account: Account; family: FamilySpace | null }>('GET', '/api/v1/me', token),
+    request<{
+      account: Account
+      family: FamilySpace | null
+      role?: string // 'owner' | 'parent', present only with a family
+      pendingInvite?: PendingParentInvite // present only without a family
+    }>('GET', '/api/v1/me', token),
   createFamily: (token: string, name: string) =>
     request<FamilySpace>('POST', '/api/v1/family', token, { name }),
   listChildren: (token: string, familyId: string) =>
@@ -240,6 +270,26 @@ export const api = {
     request<{ invites: Invite[] }>('GET', `/api/v1/family/${familyId}/invites`, token),
   revokeInvite: (token: string, inviteId: string) =>
     request<void>('DELETE', `/api/v1/invites/${inviteId}`, token),
+  // Co-parents (reading the roster is open to any member; invite/revoke/
+  // remove are owner-only — the server enforces, the UI just hides them)
+  listParents: (token: string, familyId: string) =>
+    request<{ parents: ParentMember[]; invites: ParentInvite[] }>(
+      'GET',
+      `/api/v1/family/${familyId}/parents`,
+      token,
+    ),
+  inviteParent: (token: string, familyId: string, email: string) =>
+    request<ParentInvite>('POST', `/api/v1/family/${familyId}/parents`, token, { email }),
+  removeParent: (token: string, familyId: string, accountId: string) =>
+    request<void>('DELETE', `/api/v1/family/${familyId}/parents/${accountId}`, token),
+  revokeParentInvite: (token: string, inviteId: string) =>
+    request<void>('DELETE', `/api/v1/parent-invites/${inviteId}`, token),
+  acceptParentInvite: (token: string, inviteId: string) =>
+    request<{ family: FamilySpace; role: string }>(
+      'POST',
+      `/api/v1/invites/parent/${inviteId}/accept`,
+      token,
+    ),
   listDevices: (token: string, childId: string) =>
     request<{ devices: Device[] }>('GET', `/api/v1/children/${childId}/devices`, token),
   revokeDevice: (token: string, deviceId: string) =>
