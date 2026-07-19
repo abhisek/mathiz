@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -55,7 +56,10 @@ func (p *AnthropicProvider) Generate(ctx context.Context, req Request) (*Respons
 		}
 	}
 
-	if req.Temperature > 0 {
+	// Newer Anthropic models (the Claude 5 family, Opus 4.7+) removed the
+	// temperature parameter entirely — sending it returns a 400. Only set it
+	// for models known to accept it.
+	if req.Temperature > 0 && !anthropicModelRejectsTemperature(p.model) {
 		params.Temperature = anthropic.Float(req.Temperature)
 	}
 
@@ -142,6 +146,29 @@ func mapAnthropicStopReason(reason anthropic.StopReason) string {
 	default:
 		return "end"
 	}
+}
+
+// anthropicNoTemperaturePrefixes lists model-ID prefixes for which the
+// Anthropic API rejects the temperature parameter with a 400 ("temperature is
+// deprecated for this model"): the Claude 5 family (Sonnet 5, Fable 5,
+// Mythos 5) and Opus 4.7 and later.
+var anthropicNoTemperaturePrefixes = []string{
+	"claude-sonnet-5",
+	"claude-fable-5",
+	"claude-mythos-5",
+	"claude-opus-4-7",
+	"claude-opus-4-8",
+}
+
+// anthropicModelRejectsTemperature reports whether the model is known to
+// reject the temperature sampling parameter.
+func anthropicModelRejectsTemperature(model string) bool {
+	for _, prefix := range anthropicNoTemperaturePrefixes {
+		if strings.HasPrefix(model, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func mapAnthropicError(err error) error {
