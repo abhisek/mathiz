@@ -175,6 +175,10 @@ code {
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.05s ease, background 0.15s ease;
+  /* .btn also dresses <a>/<Link> elements — kill the anchor underline at
+     the base so every link-as-button behaves like a real button. */
+  text-decoration: none;
+  display: inline-block;
 }
 
 .btn:active {
@@ -203,8 +207,6 @@ code {
 .btn-kid {
   background: var(--kid);
   color: #fff;
-  text-decoration: none;
-  display: inline-block;
 }
 
 .btn-kid:hover {
