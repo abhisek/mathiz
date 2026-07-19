@@ -2646,3 +2646,10 @@ table.sessions th {
 .kid-door .btn {
   white-space: nowrap;
 }
+
+.child-detail-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.4rem 0;
+}
