@@ -145,11 +145,28 @@ webhook events, read by the dashboard.
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
+| `GET  /api/v1/pricing` | public | plan catalog + `billingEnabled` + starter credits (served even with billing off) |
 | `GET  /api/v1/family/{id}/billing` | parent | balance, plan, status, period end, catalog |
 | `POST /api/v1/family/{id}/billing/checkout {planId}` | parent | checkout URL (plan or top-up) |
 | `POST /api/v1/family/{id}/billing/portal` | parent | provider portal URL |
 | `POST /api/v1/billing/webhook` | provider signature | normalized events → ledger + state |
 | `GET  /api/v1/billing/fake/complete` | dev only (fake provider) | simulates provider success + redirect |
+
+### Public pricing page & beta state
+
+The plan catalog is served read-only via the public `GET /api/v1/pricing`
+regardless of provider configuration — the route is registered
+unconditionally, unlike the parent billing routes, which only exist when a
+provider is wired. The response carries a `billingEnabled` flag
+(`true` iff a billing provider is configured), the starter-credit count, and
+the catalog (`ProviderPriceID` never serializes).
+
+`billingEnabled` drives all beta messaging in the SPA: `/pricing` shows a
+"public beta — everything is free right now" banner over the indicative plan
+cards, and the dashboard billing page (whose API 404s with billing off)
+shows a friendly beta card linking to `/pricing`. Flipping the provider on
+in production flips all of that messaging with no frontend change. As
+everywhere else, none of this ever reaches a child surface.
 
 ## 6. Testing
 

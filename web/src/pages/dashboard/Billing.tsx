@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { api, type BillingInfo } from '../../api'
 import Skeleton from '../../components/Skeleton'
 import { useDashboard } from './context'
@@ -38,10 +38,10 @@ export default function Billing() {
   )
 }
 
-// BillingCard shows the expedition wallet. Hidden entirely when the server
-// runs without billing (self-hosted free mode → the endpoint 404s; the
-// plans guard also covers any malformed response so a billing hiccup can
-// never blank the whole dashboard).
+// BillingCard shows the expedition wallet. When the server runs without
+// billing (public beta / self-hosted free mode → the endpoint 404s) it shows
+// a friendly beta card instead; the plans guard also covers any malformed
+// response so a billing hiccup can never blank the whole dashboard.
 function BillingCard({ token, familyId }: { token: string; familyId: string }) {
   const [info, setInfo] = useState<BillingInfo | null>(null)
   const [hidden, setHidden] = useState(false)
@@ -60,7 +60,14 @@ function BillingCard({ token, familyId }: { token: string; familyId: string }) {
   if (hidden) {
     return (
       <section className="billing">
-        <p className="muted">Billing is not enabled on this server — everything is free.</p>
+        <div className="beta-card">
+          <h3>You're in the public beta 🎉</h3>
+          <p className="muted">
+            Mathiz is free while we polish — your family has unlimited
+            expeditions during the beta.
+          </p>
+          <Link to="/pricing">See what pricing will look like →</Link>
+        </div>
       </section>
     )
   }

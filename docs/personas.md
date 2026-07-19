@@ -22,6 +22,7 @@ parents — those stay with the owner. One family per account.
 | Flow | Surface | Backing |
 |---|---|---|
 | Land on the front door, pick the parent path | `/` (static landing, parent + kid CTAs) | no backend — routes to `/login` or `/join` |
+| Read indicative pricing before signing up — public, pre-auth; while no billing provider is configured (public beta) the page shows a "everything is free right now" banner instead of live purchase flows | `/pricing` (static SPA page, linked from the landing + legal footers) | `GET /api/v1/pricing` (public: `billingEnabled`, starter credits, plan catalog) |
 | Sign in — email code (OTP) first; the emailed magic link also works; email+password behind a fallback link. Account auto-created on first sign-in | `/login` (SPA, supabase-js) | Supabase Auth (`signInWithOtp`/`verifyOtp`, password fallback); server verifies JWT locally (HS256 secret or JWKS) |
 | Create / rename Family Space (one per account) | `/dashboard` (Kids) | `POST/PATCH /api/v1/family` |
 | Add child (name, grade 2–5, optional 4–6 digit PIN) | `/dashboard` (Kids) | `POST /api/v1/family/{id}/children` |

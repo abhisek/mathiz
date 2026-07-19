@@ -24,7 +24,7 @@ function LegalPage({ title, children }: { title: string; children: ReactNode }) 
       </article>
 
       <p className="legal-back muted">
-        <Link to="/">← Back to Mathiz</Link>
+        <Link to="/">← Back to Mathiz</Link> · <Link to="/pricing">Pricing</Link>
       </p>
     </div>
   )

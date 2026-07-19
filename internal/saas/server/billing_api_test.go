@@ -2,8 +2,14 @@ package server
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/abhisek/mathiz/internal/saas/auth"
+	"github.com/abhisek/mathiz/internal/saas/credits"
+	"github.com/abhisek/mathiz/internal/saas/family"
+	"github.com/abhisek/mathiz/internal/store"
 )
 
 // TestBillingLifecycle drives the money path with the fake provider:
@@ -103,6 +109,92 @@ func TestBillingLifecycle(t *testing.T) {
 	resp = e.call(t, "POST", "/api/v1/family/"+space.ID+"/billing/checkout", parentA,
 		map[string]string{"planId": "yacht"}, nil)
 	expectStatus(t, resp, 400, "unknown plan")
+}
+
+// pricingJSON mirrors the public pricing payload.
+type pricingJSON struct {
+	BillingEnabled bool             `json:"billingEnabled"`
+	StarterCredits int              `json:"starterCredits"`
+	Plans          []map[string]any `json:"plans"`
+}
+
+// checkPricingShape asserts the payload invariants shared by both modes:
+// starter credits from the const, a non-empty catalog, and no plan field
+// beyond the public set (ProviderPriceID and friends must never leak).
+func checkPricingShape(t *testing.T, pricing pricingJSON) {
+	t.Helper()
+	if pricing.StarterCredits != credits.StarterCredits {
+		t.Errorf("starterCredits = %d, want %d", pricing.StarterCredits, credits.StarterCredits)
+	}
+	if len(pricing.Plans) == 0 {
+		t.Fatal("catalog missing")
+	}
+	public := map[string]bool{
+		"id": true, "name": true, "priceUsdCents": true,
+		"monthlyCredits": true, "topupCredits": true, "blurb": true,
+	}
+	for _, p := range pricing.Plans {
+		for k := range p {
+			if !public[k] {
+				t.Errorf("plan %v leaks field %q", p["id"], k)
+			}
+		}
+	}
+}
+
+// TestPricingIsPublic covers the pricing catalog with a billing provider
+// wired: no auth required, billingEnabled true.
+func TestPricingIsPublic(t *testing.T) {
+	e := newTestEnv(t)
+	var pricing pricingJSON
+	resp := e.call(t, "GET", "/api/v1/pricing", "", nil, &pricing)
+	expectStatus(t, resp, 200, "pricing")
+	if !pricing.BillingEnabled {
+		t.Error("billingEnabled = false, want true with fake provider wired")
+	}
+	checkPricingShape(t, pricing)
+}
+
+// TestPricingWithoutBillingProvider covers the free/self-hosted mode: the
+// endpoint is still served (it's registered unconditionally), with
+// billingEnabled false driving the SPA's beta messaging.
+func TestPricingWithoutBillingProvider(t *testing.T) {
+	st, err := store.Open("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+	verifier, err := auth.NewSupabaseVerifier(auth.SupabaseConfig{JWTSecret: testJWTSecret})
+	if err != nil {
+		t.Fatalf("verifier: %v", err)
+	}
+	srv := New(Deps{
+		Config: &Config{
+			Addr:            ":0",
+			DatabaseURL:     "test",
+			SupabaseURL:     "https://example.supabase.co",
+			SupabaseAnonKey: "anon-key",
+		},
+		Store:    st,
+		Family:   family.New(st.Client()),
+		Verifier: verifier,
+		// No Billing, no Credits: billing routes 404, pricing still serves.
+	})
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	e := &testEnv{ts: ts, st: st}
+
+	var pricing pricingJSON
+	resp := e.call(t, "GET", "/api/v1/pricing", "", nil, &pricing)
+	expectStatus(t, resp, 200, "pricing without billing")
+	if pricing.BillingEnabled {
+		t.Error("billingEnabled = true, want false with no provider")
+	}
+	checkPricingShape(t, pricing)
+
+	// The parent billing routes stay off in this mode.
+	resp = e.call(t, "GET", "/api/v1/family/x/billing", "", nil, nil)
+	expectStatus(t, resp, 404, "billing route without provider")
 }
 
 // pathOf strips the fake provider's base URL, keeping path?query for use

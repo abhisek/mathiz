@@ -13,6 +13,8 @@ export default function Landing() {
           <h1>Mathiz</h1>
         </header>
 
+        <span className="beta-pill">Public beta</span>
+
         <p className="landing-tag">
           A math playground where kids <strong>learn by doing</strong> — every
           question is created just for them, never copied from a worksheet.
@@ -94,6 +96,7 @@ export default function Landing() {
       </section>
 
       <footer className="landing-footer">
+        <Link to="/pricing">Pricing</Link>
         <Link to="/terms">Terms</Link>
         <Link to="/privacy">Privacy</Link>
         <Link to="/contact">Contact</Link>
