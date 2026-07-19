@@ -8,6 +8,10 @@ package game
 type MapView struct {
 	Islands []IslandView `json:"islands"`
 	Gems    GemsView     `json:"gems"`
+
+	// Quests are the active parent-authored quests targeted at this child,
+	// with progress (specs/15-quests.md). Absent when quests are disabled.
+	Quests []QuestMapItem `json:"quests,omitempty"`
 }
 
 // IslandView is one strand rendered as an island.
@@ -55,6 +59,10 @@ type ExpeditionView struct {
 	TotalQuestions int    `json:"totalQuestions"`
 	Tier           string `json:"tier"`     // "learn" | "prove"
 	Category       string `json:"category"` // "frontier" | "review" | "booster"
+
+	// QuestID is set for quest expeditions; SkillName then carries the
+	// quest name (SkillID is empty for untagged quests).
+	QuestID string `json:"questId,omitempty"`
 }
 
 // QuestionView is one question presented to the kid.
@@ -166,4 +174,10 @@ type SummaryView struct {
 	Accuracy  float64        `json:"accuracy"`
 	Gems      []GemAwardView `json:"gems"`
 	Mastered  bool           `json:"mastered"`
+
+	// Quest fields are set for quest expeditions. QuestComplete means every
+	// question in the quest has now been answered correctly — cue the
+	// "Quest complete!" celebration.
+	QuestID       string `json:"questId,omitempty"`
+	QuestComplete bool   `json:"questComplete,omitempty"`
 }

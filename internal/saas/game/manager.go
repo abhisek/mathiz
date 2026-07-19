@@ -90,6 +90,10 @@ type Config struct {
 	// concurrently over the same snapshot. Nil = a private registry
 	// (standalone/test use).
 	Slots *playslot.Registry
+
+	// Quests serves parent-authored quests (specs/15-quests.md). Nil =
+	// quests disabled: no quest cards on the map, StartQuest refuses.
+	Quests QuestSource
 }
 
 // Manager owns all live expeditions (one per child).
@@ -145,6 +149,13 @@ type expedition struct {
 	skill    skillgraph.Skill
 	category sess.PlanCategory
 
+	// quest is set for quest expeditions (see quest.go); nil for normal
+	// dig-spot expeditions. origSnap is the snapshot the expedition loaded
+	// at start — untagged quest expeditions save it back verbatim so quest
+	// play can never move graph state.
+	quest    *questRun
+	origSnap *store.SnapshotData
+
 	state      *sess.SessionState
 	masterySvc *mastery.Service
 	scheduler  *spacedrep.Scheduler
@@ -170,6 +181,15 @@ type expedition struct {
 }
 
 func (e *expedition) touch() { e.lastActivity.Store(time.Now().UnixNano()) }
+
+// totalQuestions is how many questions this expedition serves: the standard
+// 5 for dig spots, min(5, remaining) for quest expeditions.
+func (e *expedition) totalQuestions() int {
+	if e.quest != nil {
+		return e.quest.total
+	}
+	return QuestionsPerExpedition
+}
 
 func (e *expedition) idle(timeout time.Duration) bool {
 	return time.Since(time.Unix(0, e.lastActivity.Load())) > timeout
@@ -200,7 +220,7 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 	m.mu.Unlock()
 	if prev != nil {
 		prev.mu.Lock()
-		reuse := !prev.finished && prev.skill.ID == skillID && prev.questionsAsked == 0
+		reuse := !prev.finished && prev.quest == nil && prev.skill.ID == skillID && prev.questionsAsked == 0
 		var view *ExpeditionView
 		if reuse {
 			prev.touch()
@@ -410,12 +430,17 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 	if exp.state.CurrentQuestion != nil && !exp.answered {
 		return exp.questionView(), nil
 	}
-	if exp.questionsAsked >= QuestionsPerExpedition {
+	if exp.questionsAsked >= exp.totalQuestions() {
 		return nil, ErrExpeditionOver
 	}
 
-	// Live tier, never the frozen plan tier.
-	tier := exp.masterySvc.GetMastery(exp.skill.ID).CurrentTier
+	// Live tier, never the frozen plan tier. Untagged quest expeditions
+	// skip the lookup: their synthetic skill ID must not seed a phantom
+	// mastery entry.
+	tier := skillgraph.TierLearn
+	if exp.quest == nil || exp.quest.tagged {
+		tier = exp.masterySvc.GetMastery(exp.skill.ID).CurrentTier
+	}
 
 	exp.state.ErrorMu.Lock()
 	recentErrors := append([]string(nil), exp.state.RecentErrors[exp.skill.ID]...)
@@ -452,7 +477,7 @@ func (e *expedition) questionView() *QuestionView {
 	q := e.state.CurrentQuestion
 	v := &QuestionView{
 		Index:      e.questionsAsked,
-		Total:      QuestionsPerExpedition,
+		Total:      e.totalQuestions(),
 		Text:       q.Text,
 		Format:     string(q.Format),
 		Choices:    q.Choices,
@@ -518,6 +543,11 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 		AnswerFormat:  string(q.Format),
 	})
 
+	// Quest progress is control-plane (specs/15-quests.md): one upsert per
+	// graded answer, and completion detection when the last remaining
+	// question is answered correctly.
+	m.recordQuestProgress(ctx, exp, state.LastAnswerCorrect)
+
 	result := &AnswerResultView{
 		Correct:           state.LastAnswerCorrect,
 		CorrectAnswer:     q.Answer,
@@ -525,7 +555,7 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 		HintAvailable:     state.HintAvailable && !state.HintShown,
 		Streak:            state.ConsecutiveCorrect,
 		QuestionsAnswered: exp.questionsAsked,
-		TotalQuestions:    QuestionsPerExpedition,
+		TotalQuestions:    exp.totalQuestions(),
 		LessonPending:     state.PendingLesson,
 	}
 	if award := state.PendingGemAward; award != nil {
@@ -552,7 +582,7 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 	// The expedition ends after the last question, or triumphantly early
 	// when the chest opens (skill mastered).
 	mastered := masteredAfter[exp.skill.ID] && !masteredBefore[exp.skill.ID]
-	if exp.questionsAsked >= QuestionsPerExpedition || mastered {
+	if exp.questionsAsked >= exp.totalQuestions() || mastered {
 		m.remove(exp)
 		summary := exp.finishLocked(ctx, true)
 		summary.Mastered = mastered
@@ -756,6 +786,10 @@ func (e *expedition) summaryLocked() *SummaryView {
 		Correct:   state.TotalCorrect,
 		Accuracy:  accuracy,
 	}
+	if e.quest != nil {
+		s.QuestID = e.quest.uid
+		s.QuestComplete = e.quest.complete
+	}
 	for _, g := range e.gemSvc.SessionGems {
 		s.Gems = append(s.Gems, GemAwardView{Type: string(g.Type), Rarity: string(g.Rarity), Reason: g.Reason})
 	}
@@ -770,6 +804,19 @@ func (e *expedition) saveSnapshot(ctx context.Context) {
 	snapData.Mastery = e.masterySvc.SnapshotData()
 	snapData.SpacedRep = e.scheduler.SnapshotData()
 	snapData.Gems = e.gemSvc.SnapshotData(ctx)
+
+	// Untagged quest expeditions must leave graph state untouched
+	// (specs/15-quests.md §2): save back exactly the mastery/spaced-rep
+	// data the expedition loaded, not the services' in-memory state.
+	if e.quest != nil && !e.quest.tagged {
+		if e.origSnap != nil {
+			snapData.Mastery = e.origSnap.Mastery
+			snapData.SpacedRep = e.origSnap.SpacedRep
+		} else {
+			snapData.Mastery = nil
+			snapData.SpacedRep = nil
+		}
+	}
 
 	// No profile refresh for an expedition that never asked a question.
 	var compressor *lessons.Compressor

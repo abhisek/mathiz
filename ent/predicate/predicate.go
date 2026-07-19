@@ -48,6 +48,15 @@ type LessonEvent func(*sql.Selector)
 // MasteryEvent is the predicate function for masteryevent builders.
 type MasteryEvent func(*sql.Selector)
 
+// Quest is the predicate function for quest builders.
+type Quest func(*sql.Selector)
+
+// QuestProgress is the predicate function for questprogress builders.
+type QuestProgress func(*sql.Selector)
+
+// QuestQuestion is the predicate function for questquestion builders.
+type QuestQuestion func(*sql.Selector)
+
 // SessionEvent is the predicate function for sessionevent builders.
 type SessionEvent func(*sql.Selector)
 

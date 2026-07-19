@@ -118,11 +118,15 @@ func writeGameError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, game.ErrNoExpedition):
 		writeError(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, game.ErrQuestUnavailable):
+		// Cross-tenant/inactive quest probes: 404, don't confirm existence.
+		writeError(w, http.StatusNotFound, "not found")
 	case errors.Is(err, game.ErrLocked),
 		errors.Is(err, game.ErrNoQuestion),
 		errors.Is(err, game.ErrExpeditionOver),
 		errors.Is(err, game.ErrNoHint),
 		errors.Is(err, game.ErrNoLesson),
+		errors.Is(err, game.ErrQuestDone),
 		errors.Is(err, game.ErrElsewhere):
 		writeError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, game.ErrNoCredits):

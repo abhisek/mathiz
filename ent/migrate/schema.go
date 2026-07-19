@@ -536,6 +536,99 @@ var (
 			},
 		},
 	}
+	// QuestsColumns holds the columns for the "quests" table.
+	QuestsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "family_space_id", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString},
+		{Name: "emoji", Type: field.TypeString, Default: ""},
+		{Name: "skill_id", Type: field.TypeString, Default: ""},
+		{Name: "child_uid", Type: field.TypeString, Default: ""},
+		{Name: "status", Type: field.TypeString, Default: "draft"},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// QuestsTable holds the schema information for the "quests" table.
+	QuestsTable = &schema.Table{
+		Name:       "quests",
+		Columns:    QuestsColumns,
+		PrimaryKey: []*schema.Column{QuestsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "quest_family_space_id",
+				Unique:  false,
+				Columns: []*schema.Column{QuestsColumns[2]},
+			},
+			{
+				Name:    "quest_family_space_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{QuestsColumns[2], QuestsColumns[7]},
+			},
+		},
+	}
+	// QuestProgressesColumns holds the columns for the "quest_progresses" table.
+	QuestProgressesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "quest_uid", Type: field.TypeString},
+		{Name: "child_uid", Type: field.TypeString},
+		{Name: "question_uid", Type: field.TypeString},
+		{Name: "correct", Type: field.TypeBool, Default: false},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// QuestProgressesTable holds the schema information for the "quest_progresses" table.
+	QuestProgressesTable = &schema.Table{
+		Name:       "quest_progresses",
+		Columns:    QuestProgressesColumns,
+		PrimaryKey: []*schema.Column{QuestProgressesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "questprogress_quest_uid_child_uid_question_uid",
+				Unique:  true,
+				Columns: []*schema.Column{QuestProgressesColumns[2], QuestProgressesColumns[3], QuestProgressesColumns[4]},
+			},
+			{
+				Name:    "questprogress_quest_uid_child_uid",
+				Unique:  false,
+				Columns: []*schema.Column{QuestProgressesColumns[2], QuestProgressesColumns[3]},
+			},
+		},
+	}
+	// QuestQuestionsColumns holds the columns for the "quest_questions" table.
+	QuestQuestionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "quest_uid", Type: field.TypeString},
+		{Name: "position", Type: field.TypeInt},
+		{Name: "text", Type: field.TypeString, Size: 2147483647},
+		{Name: "answer", Type: field.TypeString},
+		{Name: "answer_type", Type: field.TypeString},
+		{Name: "format", Type: field.TypeString},
+		{Name: "choices", Type: field.TypeJSON, Nullable: true},
+		{Name: "hint", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "explanation", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "client_key", Type: field.TypeString, Default: ""},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// QuestQuestionsTable holds the schema information for the "quest_questions" table.
+	QuestQuestionsTable = &schema.Table{
+		Name:       "quest_questions",
+		Columns:    QuestQuestionsColumns,
+		PrimaryKey: []*schema.Column{QuestQuestionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "questquestion_quest_uid",
+				Unique:  false,
+				Columns: []*schema.Column{QuestQuestionsColumns[2]},
+			},
+			{
+				Name:    "questquestion_quest_uid_client_key",
+				Unique:  false,
+				Columns: []*schema.Column{QuestQuestionsColumns[2], QuestQuestionsColumns[11]},
+			},
+		},
+	}
 	// SessionEventsColumns holds the columns for the "session_events" table.
 	SessionEventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -629,6 +722,9 @@ var (
 		LlmRequestEventsTable,
 		LessonEventsTable,
 		MasteryEventsTable,
+		QuestsTable,
+		QuestProgressesTable,
+		QuestQuestionsTable,
 		SessionEventsTable,
 		SnapshotsTable,
 	}

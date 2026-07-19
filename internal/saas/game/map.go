@@ -54,6 +54,17 @@ func (m *Manager) Map(ctx context.Context, childUID string) (*MapView, error) {
 		return nil, fmt.Errorf("gem counts: %w", err)
 	}
 	view.Gems = GemsView{Total: total, ByType: byType}
+
+	// Active parent quests for this child, with progress. Strictly a read —
+	// the QuestSource contract requires ActiveQuests to be side-effect-free,
+	// like everything else on this path.
+	if m.cfg.Quests != nil {
+		quests, err := m.cfg.Quests.ActiveQuests(ctx, childUID)
+		if err != nil {
+			return nil, fmt.Errorf("active quests: %w", err)
+		}
+		view.Quests = quests
+	}
 	return view, nil
 }
 

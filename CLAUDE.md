@@ -61,7 +61,9 @@ Two deployment modes, one engine:
   (Supabase JWT verify), `server` (REST API), `game` (treasure-map
   expeditions), `termbridge` (TUI over WebSocket), `webui` (embedded SPA),
   `credits` (prepaid credit ledger — THE entitlement source of truth),
-  `billing` (thin payment-provider abstraction; `fake` + `stripe` shipped).
+  `billing` (thin payment-provider abstraction; `fake` + `stripe` shipped),
+  `quests` (parent-authored one-off question sets played on the map;
+  control-plane, specs/15-quests.md).
 - **`web/`** — Vite + React SPA. `npm run build` emits into
   `internal/saas/webui/dist` (gitignored except `.gitkeep`).
 - **`cmd/run.go` / `cmd/serve.go`** — wiring. Shared dependency graph lives

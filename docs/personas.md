@@ -30,6 +30,7 @@ auto-provisioned on first authenticated request.
 | Read the AI tutor's learner profile ("what the tutor has learned about X") | `/dashboard` child card | learner profile from latest snapshot |
 | List / sign out child devices | `/dashboard` child card | `GET /api/v1/children/{id}/devices`, `DELETE /api/v1/devices/{id}` |
 | Expedition wallet: balance, plans, subscribe / top-up, manage billing | `/dashboard` billing card | `GET/POST /api/v1/family/{id}/billing*` (only when a billing provider is configured; 30 free starter credits on space creation) |
+| Author quests: one-off question sets ("HCF revision this week") for one child or all — manual authoring (free, with a math-recompute typo warning) or AI generation from a brief (debits ceil(count/5) credits, 402 on empty wallet); publish flips draft → active | `/dashboard` quests panel | `POST/GET /api/v1/family/{id}/quests`, `GET/PATCH/DELETE /api/v1/quests/{id}`, `POST/PATCH/DELETE .../questions[/{qid}]`, `POST .../generate`, `POST .../publish` — see [specs/15-quests.md](../specs/15-quests.md) |
 
 Authorization: a parent can only ever see and manage the Family Space they
 own; cross-tenant requests return 404 (`internal/saas/authz`).
@@ -49,6 +50,8 @@ device token stored in the browser.
 | Hints after a wrong answer | expedition overlay | `POST .../hint` |
 | The guide's micro-lesson after two wrong answers on a skill: explanation, worked example, practice question | expedition overlay | `POST .../lesson`, `POST .../lesson/answer` |
 | Mastery celebration: chest opens, fog lifts on newly unlocked spots, expedition ends triumphantly | expedition overlay | mastery transition in answer response |
+| Quest card above the islands ("⭐ The Captain left you a quest") with a progress ring; trophy when every question is solved | `/play` map | `quests[]` in `GET /api/v1/game/map` |
+| Quest expedition: up to 5 not-yet-solved quest questions per run (chunked until done), same gems/streaks/hints/1-credit charge; tagged quests advance the main map, "Quest complete!" celebration at the end | `/play` expedition overlay | `POST /api/v1/game/quests/{id}/expeditions` (+ the standard expedition endpoints) |
 | Guide's notebook: revisit every past tip, grouped by island | 🧭 button on `/play` | `GET /api/v1/game/notebook` |
 | Gem vault: collection by gem type | 💎 button on `/play` | gem counts from map response |
 | Terminal mode: the classic TUI streamed to the browser | `/terminal` | WebSocket `/api/v1/terminal` |
