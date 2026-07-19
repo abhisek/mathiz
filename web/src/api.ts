@@ -167,6 +167,76 @@ export interface QuestQuestionResult {
   warning: string
 }
 
+// ---- Activity timeline (parent dashboard) ----
+// A per-child feed of expeditions, mastery milestones, and micro-lessons,
+// paged newest-first by event sequence number.
+
+export interface ActivitySkillRef {
+  id: string
+  name: string
+}
+
+export interface ActivityQuestRef {
+  id: string
+  name: string
+  emoji: string
+  createdBy: string
+}
+
+export interface ActivityExpedition {
+  sessionId: string
+  questions: number
+  correct: number
+  durationSecs: number
+  gems: number
+  skills: ActivitySkillRef[]
+  quest?: ActivityQuestRef
+}
+
+export interface ActivityMastery {
+  skillId: string
+  skillName: string
+  fromState: string
+  toState: string
+}
+
+export interface ActivityLesson {
+  skillId: string
+  skillName: string
+  title: string
+}
+
+export interface ActivityItem {
+  kind: 'expedition' | 'mastery' | 'lesson'
+  seq: number
+  at: string
+  expedition?: ActivityExpedition
+  mastery?: ActivityMastery
+  lesson?: ActivityLesson
+}
+
+export interface ActivityFeed {
+  items: ActivityItem[]
+  nextBefore?: number | null
+}
+
+export interface ActivitySessionAnswer {
+  seq: number
+  at: string
+  skillId: string
+  skillName: string
+  questionText: string
+  learnerAnswer: string
+  correctAnswer: string
+  correct: boolean
+  timeMs: number
+}
+
+export interface ActivitySessionDetail {
+  answers: ActivitySessionAnswer[]
+  hintCount: number
+}
+
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -253,6 +323,8 @@ export const api = {
     }>('GET', '/api/v1/me', token),
   createFamily: (token: string, name: string) =>
     request<FamilySpace>('POST', '/api/v1/family', token, { name }),
+  renameFamily: (token: string, familyId: string, name: string) =>
+    request<FamilySpace>('PATCH', `/api/v1/family/${familyId}`, token, { name }),
   listChildren: (token: string, familyId: string) =>
     request<{ children: ChildWithSummary[] }>('GET', `/api/v1/family/${familyId}/children`, token),
   addChild: (token: string, familyId: string, name: string, grade: number, pin: string) =>
@@ -288,6 +360,31 @@ export const api = {
     request<{ family: FamilySpace; role: string }>(
       'POST',
       `/api/v1/invites/parent/${inviteId}/accept`,
+      token,
+    ),
+  // Activity timeline (see specs — GET .../activity pages newest-first by seq)
+  activity: (
+    token: string,
+    childId: string,
+    opts?: { before?: number; limit?: number; kinds?: string[]; from?: string; to?: string },
+  ) => {
+    const params = new URLSearchParams()
+    if (opts?.before !== undefined) params.set('before', String(opts.before))
+    if (opts?.limit !== undefined) params.set('limit', String(opts.limit))
+    if (opts?.kinds && opts.kinds.length > 0) params.set('kinds', opts.kinds.join(','))
+    if (opts?.from) params.set('from', opts.from)
+    if (opts?.to) params.set('to', opts.to)
+    const qs = params.toString()
+    return request<ActivityFeed>(
+      'GET',
+      `/api/v1/children/${childId}/activity${qs ? `?${qs}` : ''}`,
+      token,
+    )
+  },
+  activitySession: (token: string, childId: string, sessionId: string) =>
+    request<ActivitySessionDetail>(
+      'GET',
+      `/api/v1/children/${childId}/activity/sessions/${sessionId}`,
       token,
     ),
   listDevices: (token: string, childId: string) =>

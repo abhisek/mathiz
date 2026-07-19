@@ -180,7 +180,7 @@ the Stripe section below); anything else is rejected at startup.
 card shows "⛵ 30 expeditions left" → pick a plan (Explorer $5/150 ·
 Voyager $10/400 · Armada $20/1000, or the $5/100 top-up) → **Subscribe** /
 **Buy pack**. With the fake provider the "checkout" URL is a local endpoint
-that completes instantly — you land back on `/dashboard?billing=success`
+that completes instantly — you land back on `/dashboard/billing?billing=success`
 with the credits granted and the plan active. "Manage billing" works too
 (the fake portal is just the dashboard).
 
