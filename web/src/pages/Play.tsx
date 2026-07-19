@@ -12,6 +12,7 @@ import {
   type Notebook,
   type NotebookTip,
   type Question,
+  type QuestMapItem,
   type Spot,
 } from '../game'
 
@@ -92,12 +93,23 @@ export default function Play() {
 
   async function dig(spot: Spot) {
     if (spot.state === 'locked' || phase !== 'idle') return
+    await setSail(() => gameApi.start(spot.id))
+  }
+
+  async function startQuest(quest: QuestMapItem) {
+    if (quest.done || phase !== 'idle') return
+    await setSail(() => gameApi.startQuest(quest.id))
+  }
+
+  // setSail starts any expedition (dig spot or quest) — one flow, one
+  // overlay, one kid-friendly out-of-credits screen.
+  async function setSail(start: () => Promise<Expedition>) {
     setPhase('starting')
     setExpError(null)
     setResult(null)
     setHint(null)
     try {
-      const exp = await gameApi.start(spot.id)
+      const exp = await start()
       setExpedition(exp)
       await nextQuestion(exp.id)
     } catch (err) {
@@ -292,6 +304,34 @@ export default function Play() {
 
       <main className="sea">
         {!map && !mapError && <div className="boot boot-dark">Charting the map…</div>}
+        {map?.quests && map.quests.length > 0 && (
+          <div className="quest-cards">
+            {map.quests.map((q) => (
+              <button
+                key={q.id}
+                className={`quest-card${q.done ? ' quest-card-done' : ''}`}
+                onClick={() => void startQuest(q)}
+                disabled={q.done || phase !== 'idle'}
+              >
+                {q.done ? (
+                  <span className="quest-card-marker">🏆</span>
+                ) : (
+                  <QuestRing correct={q.correct} total={q.total} emoji={q.emoji || '⭐'} />
+                )}
+                <span className="quest-card-text">
+                  <span className="quest-card-title">
+                    {q.done
+                      ? 'Quest complete!'
+                      : `⭐ The Captain left you a quest: ${q.name}`}
+                  </span>
+                  <span className="quest-card-progress">
+                    {q.done ? q.name : `${q.correct} of ${q.total} solved`}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         {map?.islands.map((island) => (
           <section key={island.id} className="island">
             <h2 className="island-name">🏝️ {island.name}</h2>
@@ -404,6 +444,16 @@ function NotebookDrawer({
         </div>
       ))}
     </div>
+  )
+}
+
+// QuestRing shows quest progress (questions solved / total) around the
+// quest's emoji — same ring visual language as the dig spots.
+function QuestRing({ correct, total, emoji }: { correct: number; total: number; emoji: string }) {
+  return (
+    <span className="quest-card-marker">
+      <ProgressRing progress={total > 0 ? correct / total : 0} icon={emoji} />
+    </span>
   )
 }
 
@@ -677,7 +727,15 @@ function ExpeditionOverlay({
 
         {phase === 'summary' && result?.summary && (
           <div className="summary">
-            {result.summary.mastered ? (
+            {result.summary.questComplete ? (
+              <>
+                <div className="summary-big chest-open">🏆</div>
+                <h3>Quest complete! 🏆</h3>
+                <p className="unlock-note">
+                  You solved every question the Captain left for you!
+                </p>
+              </>
+            ) : result.summary.mastered ? (
               <>
                 <div className="summary-big chest-open">💰</div>
                 <h3>Treasure chest opened!</h3>
