@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { getSupabase } from '../supa'
 
-// OTP-first parent sign-in: email → 6-digit code (or the magic link in the
+// OTP-first parent sign-in: email → emailed code (6–10 digits depending on
+// the Supabase project's OTP length setting; or the magic link in the
 // same email). Password auth stays available as an explicit fallback.
 type Mode = 'otp' | 'password'
 type PasswordMode = 'signin' | 'signup'
@@ -142,16 +143,16 @@ export default function Login() {
           <form onSubmit={verifyCode}>
             {notice && <p className="form-notice">{notice}</p>}
             <label>
-              6-digit code
+              Sign-in code
               <input
                 className="otp-input"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="123456"
+                placeholder="12345678"
                 required
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                maxLength={6}
+                maxLength={10}
                 autoFocus
               />
             </label>

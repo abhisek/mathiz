@@ -61,7 +61,7 @@ remains available behind a "Prefer a password?" link on `/login`.
    the **Redirect URLs** — magic links land on `/login`, where the Supabase
    client boots and picks up the session.
 4. Authentication → Email Templates → **Magic Link**: include
-   `{{ .Token }}` in the body so the email shows the 6-digit code, e.g.
+   `{{ .Token }}` in the body so the email shows the sign-in code, e.g.
    "Your sign-in code: `{{ .Token }}` — or just click the link below."
    (The default template only contains the link; without `{{ .Token }}`
    parents can still sign in by clicking, but the code box has nothing to
