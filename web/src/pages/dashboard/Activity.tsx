@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   api,
@@ -41,8 +41,10 @@ export default function Activity() {
 
   const [items, setItems] = useState<ActivityItem[]>([])
   const [nextBefore, setNextBefore] = useState<number | null>(null)
-  // Expanded-expedition detail cache, keyed by sessionId — survives filter
-  // changes and "load more" so a re-expand never refetches.
+  // Expanded-expedition detail cache, keyed by `${childId}:${sessionId}` —
+  // survives filter changes and "load more" so a re-expand never refetches,
+  // and the childId prefix means a (however unlikely) session-ID collision
+  // between siblings can never show one child's answers under the other.
   const [details, setDetails] = useState<Record<string, ActivitySessionDetail>>({})
   // True while the first fetch for the CURRENT child+filters is in flight —
   // changing any filter starts a fresh timeline (and fresh skeletons).
@@ -57,7 +59,14 @@ export default function Activity() {
 
   const kindsKey = kinds.join(',')
 
+  // Bumped whenever child/kind/range changes so an in-flight "Load more"
+  // started under the OLD filters can never splice its stale page into the
+  // fresh timeline (the first-page effect below has its own `cancelled`
+  // guard; this covers the loadMore path, which outlives the effect).
+  const fetchGeneration = useRef(0)
+
   useEffect(() => {
+    fetchGeneration.current += 1
     if (!childId || kinds.length === 0) {
       setItems([])
       setNextBefore(null)
@@ -96,6 +105,7 @@ export default function Activity() {
 
   const [loadMore, loadingMore] = useAction(async () => {
     if (!childId || nextBefore === null) return
+    const generation = fetchGeneration.current
     try {
       const res = await api.activity(token, childId, {
         before: nextBefore,
@@ -103,10 +113,13 @@ export default function Activity() {
         kinds: kinds.length === KIND_TOGGLES.length ? undefined : kinds,
         from: fromParam,
       })
+      // Filters changed while this page was in flight — drop it.
+      if (fetchGeneration.current !== generation) return
       setItems((cur) => [...cur, ...(res.items ?? [])])
       setNextBefore(res.nextBefore ?? null)
       setError(null)
     } catch (err) {
+      if (fetchGeneration.current !== generation) return
       setError(err instanceof Error ? err.message : String(err))
     }
   })
@@ -207,8 +220,8 @@ export default function Activity() {
             childId={childId!}
             items={items}
             details={details}
-            onDetail={(sessionId, detail) =>
-              setDetails((cur) => ({ ...cur, [sessionId]: detail }))
+            onDetail={(cacheKey, detail) =>
+              setDetails((cur) => ({ ...cur, [cacheKey]: detail }))
             }
           />
           {nextBefore !== null && (
@@ -256,8 +269,9 @@ function durationLabel(secs: number): string {
 }
 
 interface DetailCacheProps {
+  // Keyed by `${childId}:${sessionId}` (see the cache in Activity).
   details: Record<string, ActivitySessionDetail>
-  onDetail: (sessionId: string, detail: ActivitySessionDetail) => void
+  onDetail: (cacheKey: string, detail: ActivitySessionDetail) => void
 }
 
 function Timeline({
@@ -378,10 +392,11 @@ function ExpeditionRow({
   const [open, setOpen] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
-  const detail = details[exp.sessionId] ?? null
+  const cacheKey = `${childId}:${exp.sessionId}`
+  const detail = details[cacheKey] ?? null
 
   // Lazy-fetch the per-question detail on first expand; the page-level
-  // cache (keyed by sessionId) means a re-expand never refetches.
+  // cache (keyed by child + session) means a re-expand never refetches.
   function toggle() {
     const next = !open
     setOpen(next)
@@ -390,7 +405,7 @@ function ExpeditionRow({
     setDetailError(null)
     api
       .activitySession(token, childId, exp.sessionId)
-      .then((d) => onDetail(exp.sessionId, d))
+      .then((d) => onDetail(cacheKey, d))
       .catch((err) => setDetailError(err instanceof Error ? err.message : String(err)))
       .finally(() => setDetailLoading(false))
   }
