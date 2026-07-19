@@ -1983,3 +1983,13 @@ table.sessions th {
 .invite-ttl select {
   width: auto;
 }
+
+/* Brand-as-home-link (login/legal cards) + unwrappable CTA pills. */
+.brand-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.kid-door .btn {
+  white-space: nowrap;
+}
