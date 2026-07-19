@@ -77,5 +77,9 @@ func (g *LLMGenerator) Generate(ctx context.Context, input GenerateInput) (*Ques
 		}
 	}
 
+	// After validation so the checker sees exactly what the LLM claimed;
+	// see ShuffleChoices for why this is mandatory.
+	q.ShuffleChoices()
+
 	return q, nil
 }

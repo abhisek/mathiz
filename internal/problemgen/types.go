@@ -1,6 +1,10 @@
 package problemgen
 
-import "github.com/abhisek/mathiz/internal/skillgraph"
+import (
+	"math/rand/v2"
+
+	"github.com/abhisek/mathiz/internal/skillgraph"
+)
 
 // Question represents a generated math question ready for display.
 type Question struct {
@@ -40,6 +44,22 @@ type Question struct {
 
 	// Tier is the tier this question was generated for.
 	Tier skillgraph.Tier
+}
+
+// ShuffleChoices randomizes multiple-choice option order in place. LLMs
+// habitually emit the correct answer as the FIRST option, and kids are
+// ruthless pattern-matchers — an unshuffled deck teaches "pick A" instead
+// of math. Safe because answer checking (CheckAnswer) compares against the
+// Answer TEXT, never a position. Every generation path must call this after
+// validation; parent-authored quest questions are deliberately exempt (the
+// author's ordering — e.g. "all of the above" last — is intentional).
+func (q *Question) ShuffleChoices() {
+	if q.Format != FormatMultipleChoice || len(q.Choices) < 2 {
+		return
+	}
+	rand.Shuffle(len(q.Choices), func(i, j int) {
+		q.Choices[i], q.Choices[j] = q.Choices[j], q.Choices[i]
+	})
 }
 
 // AnswerType describes the numeric representation of the correct answer.
