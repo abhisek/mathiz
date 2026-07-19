@@ -336,13 +336,17 @@ func (m *Manager) StartQuest(ctx context.Context, childUID, questUID string) (*E
 	}
 	exp.touch()
 
+	// Build the view before publishing the expedition in the maps —
+	// expeditionView requires e.mu once the expedition is reachable.
+	view := exp.expeditionView()
+
 	m.mu.Lock()
 	m.byID[exp.id] = exp
 	m.byChild[childUID] = exp
 	m.mu.Unlock()
 	registered = true
 
-	return exp.expeditionView(), nil
+	return view, nil
 }
 
 // expeditionView builds the start/reuse view. Caller holds e.mu (or the

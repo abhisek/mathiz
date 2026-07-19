@@ -569,6 +569,11 @@ func (s *Service) ActiveQuests(ctx context.Context, childUID string) ([]game.Que
 		if err != nil {
 			return nil, err
 		}
+		if total == 0 {
+			// Publish requires ≥1 question, but questions can be deleted
+			// afterwards — an emptied quest must not reach the kid's map.
+			continue
+		}
 		correct, err := s.correctCount(ctx, q.UID, childUID)
 		if err != nil {
 			return nil, err
