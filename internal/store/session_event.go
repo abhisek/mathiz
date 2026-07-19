@@ -73,6 +73,36 @@ func (r *eventRepo) AppendAnswerEvent(ctx context.Context, data AnswerEventData)
 	return nil
 }
 
+func (r *eventRepo) AnswersForSession(ctx context.Context, sessionID string) ([]AnswerEventRecord, error) {
+	ctx = r.scope(ctx)
+	events, err := r.client.AnswerEvent.Query().
+		Where(answerevent.OwnerID(r.owner), answerevent.SessionID(sessionID)).
+		Order(ent.Asc(answerevent.FieldSequence)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query session answers: %w", err)
+	}
+
+	records := make([]AnswerEventRecord, len(events))
+	for i, e := range events {
+		records[i] = AnswerEventRecord{
+			Sequence:      e.Sequence,
+			Timestamp:     e.Timestamp,
+			SessionID:     e.SessionID,
+			SkillID:       e.SkillID,
+			Tier:          e.Tier,
+			Category:      e.Category,
+			QuestionText:  e.QuestionText,
+			CorrectAnswer: e.CorrectAnswer,
+			LearnerAnswer: e.LearnerAnswer,
+			Correct:       e.Correct,
+			TimeMs:        e.TimeMs,
+			AnswerFormat:  e.AnswerFormat,
+		}
+	}
+	return records, nil
+}
+
 func (r *eventRepo) LatestAnswerTime(ctx context.Context, skillID string) (time.Time, error) {
 	ctx = r.scope(ctx)
 	ae, err := r.client.AnswerEvent.Query().

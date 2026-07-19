@@ -115,6 +115,18 @@ func (s *Service) Quest(ctx context.Context, questUID string) (*ent.Quest, error
 	return q, err
 }
 
+// QuestMeta returns display attribution for a quest — name, emoji, and the
+// authoring parent's account UID. Read-only accessor for the activity
+// timeline (satisfies activity's quest lookup without widening quest
+// semantics).
+func (s *Service) QuestMeta(ctx context.Context, questUID string) (name, emoji, createdByAccountID string, err error) {
+	q, err := s.Quest(ctx, questUID)
+	if err != nil {
+		return "", "", "", err
+	}
+	return q.Name, q.Emoji, q.CreatedBy, nil
+}
+
 // BySpace lists all quests in a space, newest first.
 func (s *Service) BySpace(ctx context.Context, spaceUID string) ([]*ent.Quest, error) {
 	return s.client.Quest.Query().

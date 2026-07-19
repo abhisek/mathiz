@@ -268,14 +268,45 @@ type GemEventRecord struct {
 	Timestamp time.Time
 }
 
-// SessionSummaryRecord is a hydrated session event for the history screen.
+// SessionSummaryRecord is a hydrated session event for the history screen
+// and the activity timeline.
 type SessionSummaryRecord struct {
 	SessionID       string
+	Sequence        int64 // sequence of the session "end" event
 	Timestamp       time.Time
 	QuestionsServed int
 	CorrectAnswers  int
 	DurationSecs    int
-	GemCount        int // gems awarded in this session
+	GemCount        int                   // gems awarded in this session
+	Plan            []PlanSlotSummaryData // plan from the matching "start" event
+}
+
+// MasteryEventRecord is a hydrated mastery transition event for display.
+type MasteryEventRecord struct {
+	Sequence     int64
+	Timestamp    time.Time
+	SkillID      string
+	FromState    string
+	ToState      string
+	Trigger      string
+	FluencyScore float64
+	SessionID    string
+}
+
+// AnswerEventRecord is a hydrated answer event for display.
+type AnswerEventRecord struct {
+	Sequence      int64
+	Timestamp     time.Time
+	SessionID     string
+	SkillID       string
+	Tier          string
+	Category      string
+	QuestionText  string
+	CorrectAnswer string
+	LearnerAnswer string
+	Correct       bool
+	TimeMs        int
+	AnswerFormat  string
 }
 
 // GemsSnapshotData holds aggregate gem counts for quick loading.
@@ -334,6 +365,17 @@ type EventRepo interface {
 
 	// QuerySessionSummaries returns session end events for the history screen.
 	QuerySessionSummaries(ctx context.Context, opts QueryOpts) ([]SessionSummaryRecord, error)
+
+	// QueryMasteryEvents returns mastery transition events matching the query
+	// options, newest first.
+	QueryMasteryEvents(ctx context.Context, opts QueryOpts) ([]MasteryEventRecord, error)
+
+	// AnswersForSession returns all answer events for a session, oldest first
+	// (question order).
+	AnswersForSession(ctx context.Context, sessionID string) ([]AnswerEventRecord, error)
+
+	// HintCountForSession returns how many hints were shown in a session.
+	HintCountForSession(ctx context.Context, sessionID string) (int, error)
 
 	// QueryLLMEvents returns LLM request events matching the query options.
 	QueryLLMEvents(ctx context.Context, opts QueryOpts) ([]LLMRequestEventRecord, error)

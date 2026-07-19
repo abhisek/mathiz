@@ -6,6 +6,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/abhisek/mathiz/internal/saas/activity"
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/billing"
@@ -29,6 +30,7 @@ type Deps struct {
 	Credits  *credits.Service
 	Billing  *billing.Service
 	Quests   *quests.Service
+	Activity *activity.Reader
 }
 
 // Server wires config, services, and routes.
@@ -45,6 +47,7 @@ type Server struct {
 	credits  *credits.Service
 	billing  *billing.Service
 	quests   *quests.Service
+	activity *activity.Reader
 
 	joinLimiter *ipLimiter
 	handler     http.Handler
@@ -64,6 +67,7 @@ func New(d Deps) *Server {
 		credits:  d.Credits,
 		billing:  d.Billing,
 		quests:   d.Quests,
+		activity: d.Activity,
 		// Join endpoints are unauthenticated: keep brute force slow.
 		joinLimiter: newIPLimiter(1, 10),
 	}
@@ -100,6 +104,10 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("POST /api/v1/invites/parent/{id}/accept", s.withParent(s.handleAcceptParentInvite))
 	mux.Handle("PATCH /api/v1/children/{id}", s.withParent(s.handleUpdateChild))
 	mux.Handle("GET /api/v1/children/{id}/stats", s.withParent(s.handleChildStats))
+	if s.activity != nil {
+		mux.Handle("GET /api/v1/children/{id}/activity", s.withParent(s.handleChildActivity))
+		mux.Handle("GET /api/v1/children/{id}/activity/sessions/{sessionId}", s.withParent(s.handleChildActivitySession))
+	}
 	mux.Handle("GET /api/v1/children/{id}/devices", s.withParent(s.handleListDevices))
 	mux.Handle("DELETE /api/v1/devices/{id}", s.withParent(s.handleRevokeDevice))
 
