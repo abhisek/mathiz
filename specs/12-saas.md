@@ -160,8 +160,10 @@ probes on objects the caller can't see).
 > children on the web and was unneeded attack surface; the termbridge
 > package, the `/terminal` page, and the `WS /api/v1/terminal` endpoint
 > were deleted. The treasure-map game (spec 13) is the only hosted kid
-> surface. The local CLI TUI is unaffected. The section below is kept as
-> the design record.
+> surface. The local CLI TUI is unaffected. The section below — and every
+> other terminal/xterm/WebSocket mention elsewhere in this spec (the
+> architecture diagram, auth flow, endpoint table, security notes) — is
+> historical design record, not current behavior.
 
 The existing TUI runs unmodified server-side, one `tea.Program` per WebSocket:
 
