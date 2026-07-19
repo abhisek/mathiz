@@ -155,14 +155,39 @@ func (s *Server) handleJoinRedeem(w http.ResponseWriter, r *http.Request) {
 // ---- Parent ----
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, p authz.Principal, acct *ent.Account) {
-	sp, err := s.family.SpaceByOwner(r.Context(), acct.UID)
+	sp, role, err := s.family.SpaceForAccount(r.Context(), acct.UID)
 	if err != nil {
 		writeServiceError(w, err)
 		return
 	}
 	resp := map[string]any{"account": toAccountJSON(acct), "family": nil}
-	if sp != nil {
+	switch {
+	case sp != nil:
 		resp["family"] = toSpaceJSON(sp)
+		resp["role"] = role
+	default:
+		// No family yet: surface a matching pending co-parent invite so the
+		// dashboard can show the accept banner. Match is by the account's
+		// verified email — a typo'd invite simply never matches.
+		inv, err := s.family.PendingInviteForEmail(r.Context(), acct.Email)
+		if err != nil {
+			writeServiceError(w, err)
+			return
+		}
+		if inv != nil {
+			pending := map[string]any{"id": inv.UID, "familyName": "", "invitedBy": ""}
+			if invSp, err := s.family.Space(r.Context(), inv.FamilySpaceID); err == nil {
+				pending["familyName"] = invSp.Name
+			}
+			if inviter, err := s.family.Account(r.Context(), inv.CreatedBy); err == nil {
+				name := inviter.DisplayName
+				if name == "" {
+					name = inviter.Email
+				}
+				pending["invitedBy"] = name
+			}
+			resp["pendingInvite"] = pending
+		}
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

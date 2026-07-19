@@ -74,24 +74,67 @@ func (c *Checker) SetQuests(q QuestDirectory) {
 	c.quests = q
 }
 
+// spaceRole resolves the parent principal's membership role in a space.
+// Non-members (including cross-family parents) get ErrDenied — the API maps
+// that to 404 so object existence never leaks.
+func (c *Checker) spaceRole(ctx context.Context, p Principal, spaceUID string) (string, error) {
+	if p.Kind != KindParent || p.AccountID == "" {
+		return "", ErrDenied
+	}
+	role, err := c.family.MemberRole(ctx, spaceUID, p.AccountID)
+	if err != nil {
+		return "", ErrDenied
+	}
+	return role, nil
+}
+
 // CanManageSpace reports whether p may read and mutate a family space
-// (children, invites, devices, stats). V1 policy: only the owning parent.
+// (children, invites, devices, stats, quests). Membership policy: any
+// member — owner or co-parent.
 func (c *Checker) CanManageSpace(ctx context.Context, p Principal, spaceUID string) error {
+	_, err := c.spaceRole(ctx, p, spaceUID)
+	return err
+}
+
+// CanManageBilling reports whether p may see and operate the space's wallet
+// (balance, checkout, portal). Owner-only: the payment provider's customer
+// is the payer's identity.
+func (c *Checker) CanManageBilling(ctx context.Context, p Principal, spaceUID string) error {
+	return c.requireOwner(ctx, p, spaceUID)
+}
+
+// CanManageParents reports whether p may invite and remove co-parents.
+// Owner-only.
+func (c *Checker) CanManageParents(ctx context.Context, p Principal, spaceUID string) error {
+	return c.requireOwner(ctx, p, spaceUID)
+}
+
+// CanManageParentInvite reports whether p may revoke a co-parent invite
+// (owner of the invite's space only).
+func (c *Checker) CanManageParentInvite(ctx context.Context, p Principal, inviteUID string) error {
 	if p.Kind != KindParent || p.AccountID == "" {
 		return ErrDenied
 	}
-	sp, err := c.family.Space(ctx, spaceUID)
+	inv, err := c.family.ParentInvite(ctx, inviteUID)
 	if err != nil {
 		return ErrDenied
 	}
-	if sp.OwnerAccountID != p.AccountID {
+	return c.CanManageParents(ctx, p, inv.FamilySpaceID)
+}
+
+func (c *Checker) requireOwner(ctx context.Context, p Principal, spaceUID string) error {
+	role, err := c.spaceRole(ctx, p, spaceUID)
+	if err != nil {
+		return err
+	}
+	if role != family.RoleOwner {
 		return ErrDenied
 	}
 	return nil
 }
 
 // CanManageChild reports whether p may read and mutate a child profile.
-// Parents manage children of spaces they own.
+// Parents manage children of the space they belong to.
 func (c *Checker) CanManageChild(ctx context.Context, p Principal, childUID string) error {
 	child, err := c.family.Child(ctx, childUID)
 	if err != nil {
@@ -120,7 +163,7 @@ func (c *Checker) CanManageDevice(ctx context.Context, p Principal, deviceUID st
 
 // CanManageQuest reports whether p may read and mutate a quest (rename,
 // retarget, author questions, generate, publish, delete). Parents manage
-// quests of spaces they own.
+// quests of the space they belong to.
 func (c *Checker) CanManageQuest(ctx context.Context, p Principal, questUID string) error {
 	if c.quests == nil {
 		return ErrDenied

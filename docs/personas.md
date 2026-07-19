@@ -13,9 +13,11 @@ browser) — and four personas across them.
 
 ## 1. Parent (hosted mode)
 
-The account owner: signs up, runs the Family Space, follows their children's
-progress. Authenticated by a **Supabase JWT**; an account is
-auto-provisioned on first authenticated request.
+Runs the Family Space and follows the children's progress. Authenticated by
+a **Supabase JWT**; an account is auto-provisioned on first authenticated
+request. A family holds one **owner** plus any number of **co-parents**
+(role `parent`): co-parents can do everything except billing and managing
+parents — those stay with the owner. One family per account.
 
 | Flow | Surface | Backing |
 |---|---|---|
@@ -29,11 +31,17 @@ auto-provisioned on first authenticated request.
 | See per-child progress: island bars, mastered/learning counts, gems, recent sessions | `/dashboard` child card | `GET /api/v1/family/{id}/children`, `GET /api/v1/children/{id}/stats` |
 | Read the AI tutor's learner profile ("what the tutor has learned about X") | `/dashboard` child card | learner profile from latest snapshot |
 | List / sign out child devices | `/dashboard` child card | `GET /api/v1/children/{id}/devices`, `DELETE /api/v1/devices/{id}` |
-| Expedition wallet: balance, plans, subscribe / top-up, manage billing | `/dashboard` billing card | `GET/POST /api/v1/family/{id}/billing*` (only when a billing provider is configured; 30 free starter credits on space creation) |
+| Invite a co-parent by email — no email is sent; the invitee sees an accept banner after signing in normally (**owner only**) | `/dashboard` parents panel | `POST /api/v1/family/{id}/parents` (`email`) |
+| See the parent roster (members + pending invites) — any member | `/dashboard` parents panel | `GET /api/v1/family/{id}/parents` |
+| Accept a pending co-parent invite matching the account email → join the family with role `parent` | `/dashboard` accept banner | `GET /api/v1/me` (`pendingInvite`), `POST /api/v1/invites/parent/{id}/accept` |
+| Revoke a pending co-parent invite / remove a co-parent — the owner can never be removed (**owner only**) | `/dashboard` parents panel | `DELETE /api/v1/parent-invites/{id}`, `DELETE /api/v1/family/{id}/parents/{accountId}` |
+| Expedition wallet: balance, plans, subscribe / top-up, manage billing (**owner only** — the payment provider's customer is the payer's identity) | `/dashboard` billing card | `GET/POST /api/v1/family/{id}/billing*` (only when a billing provider is configured; 30 free starter credits on space creation) |
 | Author quests: one-off question sets ("HCF revision this week") for one child or all — manual authoring (free, with a math-recompute typo warning) or AI generation from a brief (debits ceil(count/5) credits, 402 on empty wallet); publish flips draft → active | `/dashboard` quests panel | `POST/GET /api/v1/family/{id}/quests`, `GET/PATCH/DELETE /api/v1/quests/{id}`, `POST/PATCH/DELETE .../questions[/{qid}]`, `POST .../generate`, `POST .../publish` — see [specs/15-quests.md](../specs/15-quests.md) |
 
 Authorization: a parent can only ever see and manage the Family Space they
-own; cross-tenant requests return 404 (`internal/saas/authz`).
+are a **member** of (owner or co-parent); billing and parent management are
+owner-only. Cross-tenant requests return 404 (`internal/saas/authz`). Kid
+surfaces are role-agnostic.
 
 ## 2. Child (hosted mode)
 

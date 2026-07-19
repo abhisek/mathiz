@@ -107,7 +107,7 @@ func (s *Server) handleCreateQuest(w http.ResponseWriter, r *http.Request, p aut
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	q, err := s.quests.Create(r.Context(), spaceID, quests.QuestInput{
+	q, err := s.quests.Create(r.Context(), spaceID, acct.UID, quests.QuestInput{
 		Name: req.Name, Emoji: req.Emoji, SkillID: req.SkillID, ChildUID: req.ChildID,
 	})
 	if err != nil {

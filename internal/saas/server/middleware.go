@@ -103,16 +103,21 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "not found")
 	case errors.Is(err, family.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not found")
-	case errors.Is(err, family.ErrSpaceExists):
+	case errors.Is(err, family.ErrSpaceExists),
+		errors.Is(err, family.ErrAlreadyMember),
+		errors.Is(err, family.ErrAlreadyInvited):
 		writeError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, family.ErrInviteInvalid),
+		errors.Is(err, family.ErrParentInviteInvalid),
 		errors.Is(err, family.ErrPINRequired),
 		errors.Is(err, family.ErrPINMismatch),
 		errors.Is(err, family.ErrArchived):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, family.ErrBadPIN),
 		errors.Is(err, family.ErrBadGrade),
-		errors.Is(err, family.ErrBadName):
+		errors.Is(err, family.ErrBadName),
+		errors.Is(err, family.ErrBadEmail),
+		errors.Is(err, family.ErrOwnerRemoval):
 		writeError(w, http.StatusBadRequest, err.Error())
 	default:
 		log.Printf("internal error: %v", err)

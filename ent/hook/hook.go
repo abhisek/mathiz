@@ -93,6 +93,18 @@ func (f DiagnosisEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagnosisEventMutation", m)
 }
 
+// The FamilyMemberFunc type is an adapter to allow the use of ordinary
+// function as FamilyMember mutator.
+type FamilyMemberFunc func(context.Context, *ent.FamilyMemberMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f FamilyMemberFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FamilyMemberMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FamilyMemberMutation", m)
+}
+
 // The FamilySpaceFunc type is an adapter to allow the use of ordinary
 // function as FamilySpace mutator.
 type FamilySpaceFunc func(context.Context, *ent.FamilySpaceMutation) (ent.Value, error)
@@ -175,6 +187,18 @@ func (f MasteryEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MasteryEventMutation", m)
+}
+
+// The ParentInviteFunc type is an adapter to allow the use of ordinary
+// function as ParentInvite mutator.
+type ParentInviteFunc func(context.Context, *ent.ParentInviteMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ParentInviteFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ParentInviteMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ParentInviteMutation", m)
 }
 
 // The QuestFunc type is an adapter to allow the use of ordinary

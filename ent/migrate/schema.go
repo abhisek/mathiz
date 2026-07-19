@@ -245,6 +245,33 @@ var (
 			},
 		},
 	}
+	// FamilyMembersColumns holds the columns for the "family_members" table.
+	FamilyMembersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "family_space_id", Type: field.TypeString},
+		{Name: "account_id", Type: field.TypeString, Unique: true},
+		{Name: "role", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// FamilyMembersTable holds the schema information for the "family_members" table.
+	FamilyMembersTable = &schema.Table{
+		Name:       "family_members",
+		Columns:    FamilyMembersColumns,
+		PrimaryKey: []*schema.Column{FamilyMembersColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "familymember_family_space_id",
+				Unique:  false,
+				Columns: []*schema.Column{FamilyMembersColumns[2]},
+			},
+			{
+				Name:    "familymember_account_id",
+				Unique:  false,
+				Columns: []*schema.Column{FamilyMembersColumns[3]},
+			},
+		},
+	}
 	// FamilySpacesColumns holds the columns for the "family_spaces" table.
 	FamilySpacesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -536,6 +563,34 @@ var (
 			},
 		},
 	}
+	// ParentInvitesColumns holds the columns for the "parent_invites" table.
+	ParentInvitesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "uid", Type: field.TypeString, Unique: true},
+		{Name: "family_space_id", Type: field.TypeString},
+		{Name: "email", Type: field.TypeString},
+		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "created_by", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// ParentInvitesTable holds the schema information for the "parent_invites" table.
+	ParentInvitesTable = &schema.Table{
+		Name:       "parent_invites",
+		Columns:    ParentInvitesColumns,
+		PrimaryKey: []*schema.Column{ParentInvitesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "parentinvite_family_space_id",
+				Unique:  false,
+				Columns: []*schema.Column{ParentInvitesColumns[2]},
+			},
+			{
+				Name:    "parentinvite_email_status",
+				Unique:  false,
+				Columns: []*schema.Column{ParentInvitesColumns[3], ParentInvitesColumns[4]},
+			},
+		},
+	}
 	// QuestsColumns holds the columns for the "quests" table.
 	QuestsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -546,6 +601,7 @@ var (
 		{Name: "skill_id", Type: field.TypeString, Default: ""},
 		{Name: "child_uid", Type: field.TypeString, Default: ""},
 		{Name: "status", Type: field.TypeString, Default: "draft"},
+		{Name: "created_by", Type: field.TypeString, Default: ""},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}
@@ -715,6 +771,7 @@ var (
 		CreditEntriesTable,
 		DeviceTokensTable,
 		DiagnosisEventsTable,
+		FamilyMembersTable,
 		FamilySpacesTable,
 		GemEventsTable,
 		HintEventsTable,
@@ -722,6 +779,7 @@ var (
 		LlmRequestEventsTable,
 		LessonEventsTable,
 		MasteryEventsTable,
+		ParentInvitesTable,
 		QuestsTable,
 		QuestProgressesTable,
 		QuestQuestionsTable,

@@ -86,18 +86,18 @@ func TestQuestCRUDAndValidation(t *testing.T) {
 	ctx := context.Background()
 
 	// Validation on create.
-	if _, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "  "}); !errors.Is(err, ErrBadName) {
+	if _, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "  "}); !errors.Is(err, ErrBadName) {
 		t.Errorf("empty name: %v", err)
 	}
-	if _, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "Q", SkillID: "no-such-skill"}); !errors.Is(err, ErrBadSkill) {
+	if _, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Q", SkillID: "no-such-skill"}); !errors.Is(err, ErrBadSkill) {
 		t.Errorf("bad skill: %v", err)
 	}
 	// Another family's child is not a valid target.
-	if _, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "Q", ChildUID: e.childB}); !errors.Is(err, ErrBadChild) {
+	if _, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Q", ChildUID: e.childB}); !errors.Is(err, ErrBadChild) {
 		t.Errorf("cross-family child target: %v", err)
 	}
 
-	q, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "HCF week", Emoji: "🧮", ChildUID: e.childA})
+	q, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "HCF week", Emoji: "🧮", ChildUID: e.childA})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestPublishGating(t *testing.T) {
 	svc := New(e.client, nil, nil)
 	ctx := context.Background()
 
-	q, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "Empty quest"})
+	q, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Empty quest"})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestQuestionValidationAndMathcheckWarning(t *testing.T) {
 	e := newQuestEnv(t)
 	svc := New(e.client, nil, nil)
 	ctx := context.Background()
-	q, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "Quest"})
+	q, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Quest"})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestQuestionValidationAndMathcheckWarning(t *testing.T) {
 	}
 
 	// A question UID from another quest 404s instead of leaking.
-	q2, _ := svc.Create(ctx, e.spaceA, QuestInput{Name: "Other"})
+	q2, _ := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Other"})
 	if _, err := svc.UpdateQuestion(ctx, q2.UID, questions[0].UID, numericQuestion("X?", "1")); !errors.Is(err, ErrNotFound) {
 		t.Errorf("cross-quest question update: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestGenerateDebitIdempotencyAndValidation(t *testing.T) {
 		llm.MockResponse{Content: []byte(goodBatchJSON)},
 	))
 
-	q, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "Gen quest"})
+	q, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Gen quest"})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestGenerateInsufficientCreditsWritesNothing(t *testing.T) {
 	svc := New(e.client, e.credits, mockProviderFactory(
 		llm.MockResponse{Content: []byte(goodBatchJSON)},
 	))
-	q, err := svc.Create(ctx, e.spaceB, QuestInput{Name: "Broke quest"})
+	q, err := svc.Create(ctx, e.spaceB, "", QuestInput{Name: "Broke quest"})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -329,7 +329,7 @@ func TestGenerateFreeWhenBillingOff(t *testing.T) {
 	svc := New(e.client, nil, mockProviderFactory(
 		llm.MockResponse{Content: []byte(goodBatchJSON)},
 	))
-	q, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "Free quest"})
+	q, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Free quest"})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -340,7 +340,7 @@ func TestGenerateFreeWhenBillingOff(t *testing.T) {
 
 	// No provider configured → generation unavailable, authoring still fine.
 	noAI := New(e.client, nil, nil)
-	q2, _ := noAI.Create(ctx, e.spaceA, QuestInput{Name: "Manual quest"})
+	q2, _ := noAI.Create(ctx, e.spaceA, "", QuestInput{Name: "Manual quest"})
 	if _, err := noAI.Generate(ctx, q2.UID, "brief", 2, "k"); !errors.Is(err, ErrNoProvider) {
 		t.Errorf("generate without provider: %v", err)
 	}
@@ -351,7 +351,7 @@ func TestPlayableQuestTargetingAndProgress(t *testing.T) {
 	svc := New(e.client, nil, nil)
 	ctx := context.Background()
 
-	q, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "Play quest", ChildUID: e.childA})
+	q, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Play quest", ChildUID: e.childA})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -439,7 +439,7 @@ func TestActiveQuestsListing(t *testing.T) {
 	ctx := context.Background()
 
 	mk := func(space, name, childUID string, publish bool) *ent.Quest {
-		q, err := svc.Create(ctx, space, QuestInput{Name: name, ChildUID: childUID})
+		q, err := svc.Create(ctx, space, "", QuestInput{Name: name, ChildUID: childUID})
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
@@ -500,7 +500,7 @@ func TestAuthzQuestChecks(t *testing.T) {
 	checker := authz.NewChecker(e.family)
 	checker.SetQuests(svc)
 
-	q, err := svc.Create(ctx, e.spaceA, QuestInput{Name: "Authz quest", ChildUID: e.childA})
+	q, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Authz quest", ChildUID: e.childA})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}

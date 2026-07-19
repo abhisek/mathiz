@@ -12,6 +12,7 @@ import (
 	"github.com/abhisek/mathiz/ent/creditentry"
 	"github.com/abhisek/mathiz/ent/devicetoken"
 	"github.com/abhisek/mathiz/ent/diagnosisevent"
+	"github.com/abhisek/mathiz/ent/familymember"
 	"github.com/abhisek/mathiz/ent/familyspace"
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
@@ -19,6 +20,7 @@ import (
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
+	"github.com/abhisek/mathiz/ent/parentinvite"
 	"github.com/abhisek/mathiz/ent/quest"
 	"github.com/abhisek/mathiz/ent/questprogress"
 	"github.com/abhisek/mathiz/ent/questquestion"
@@ -201,6 +203,12 @@ func init() {
 	diagnosiseventDescReasoning := diagnosiseventFields[9].Descriptor()
 	// diagnosisevent.DefaultReasoning holds the default value on creation for the reasoning field.
 	diagnosisevent.DefaultReasoning = diagnosiseventDescReasoning.Default.(string)
+	familymemberFields := schema.FamilyMember{}.Fields()
+	_ = familymemberFields
+	// familymemberDescCreatedAt is the schema descriptor for created_at field.
+	familymemberDescCreatedAt := familymemberFields[4].Descriptor()
+	// familymember.DefaultCreatedAt holds the default value on creation for the created_at field.
+	familymember.DefaultCreatedAt = familymemberDescCreatedAt.Default.(func() time.Time)
 	familyspaceFields := schema.FamilySpace{}.Fields()
 	_ = familyspaceFields
 	// familyspaceDescCreatedAt is the schema descriptor for created_at field.
@@ -386,6 +394,16 @@ func init() {
 	masteryeventDescTrigger := masteryeventFields[3].Descriptor()
 	// masteryevent.TriggerValidator is a validator for the "trigger" field. It is called by the builders before save.
 	masteryevent.TriggerValidator = masteryeventDescTrigger.Validators[0].(func(string) error)
+	parentinviteFields := schema.ParentInvite{}.Fields()
+	_ = parentinviteFields
+	// parentinviteDescStatus is the schema descriptor for status field.
+	parentinviteDescStatus := parentinviteFields[3].Descriptor()
+	// parentinvite.DefaultStatus holds the default value on creation for the status field.
+	parentinvite.DefaultStatus = parentinviteDescStatus.Default.(string)
+	// parentinviteDescCreatedAt is the schema descriptor for created_at field.
+	parentinviteDescCreatedAt := parentinviteFields[5].Descriptor()
+	// parentinvite.DefaultCreatedAt holds the default value on creation for the created_at field.
+	parentinvite.DefaultCreatedAt = parentinviteDescCreatedAt.Default.(func() time.Time)
 	questFields := schema.Quest{}.Fields()
 	_ = questFields
 	// questDescEmoji is the schema descriptor for emoji field.
@@ -404,12 +422,16 @@ func init() {
 	questDescStatus := questFields[6].Descriptor()
 	// quest.DefaultStatus holds the default value on creation for the status field.
 	quest.DefaultStatus = questDescStatus.Default.(string)
+	// questDescCreatedBy is the schema descriptor for created_by field.
+	questDescCreatedBy := questFields[7].Descriptor()
+	// quest.DefaultCreatedBy holds the default value on creation for the created_by field.
+	quest.DefaultCreatedBy = questDescCreatedBy.Default.(string)
 	// questDescCreatedAt is the schema descriptor for created_at field.
-	questDescCreatedAt := questFields[7].Descriptor()
+	questDescCreatedAt := questFields[8].Descriptor()
 	// quest.DefaultCreatedAt holds the default value on creation for the created_at field.
 	quest.DefaultCreatedAt = questDescCreatedAt.Default.(func() time.Time)
 	// questDescUpdatedAt is the schema descriptor for updated_at field.
-	questDescUpdatedAt := questFields[8].Descriptor()
+	questDescUpdatedAt := questFields[9].Descriptor()
 	// quest.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	quest.DefaultUpdatedAt = questDescUpdatedAt.Default.(func() time.Time)
 	// quest.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
