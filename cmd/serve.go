@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/billing"
@@ -19,6 +20,7 @@ import (
 	"github.com/abhisek/mathiz/internal/saas/family"
 	"github.com/abhisek/mathiz/internal/saas/game"
 	"github.com/abhisek/mathiz/internal/saas/playslot"
+	"github.com/abhisek/mathiz/internal/saas/quests"
 	"github.com/abhisek/mathiz/internal/saas/server"
 	"github.com/abhisek/mathiz/internal/saas/termbridge"
 	"github.com/abhisek/mathiz/internal/saas/webui"
@@ -140,11 +142,20 @@ func runServe(ctx context.Context) error {
 		Charge:         charge,
 		Slots:          slots,
 	})
+	// Parent quests: authoring + AI generation (specs/15-quests.md). The
+	// generation debit goes through the same credit ledger; with billing
+	// off (creditsSvc nil) generation is free. LLM provider from env, no
+	// child event stream (generation is parent-initiated).
+	questsSvc := quests.New(st.Client(), creditsSvc, func(ctx context.Context) (llm.Provider, error) {
+		return llm.NewProviderFromEnv(ctx, nil)
+	})
+
 	gameMgr := game.NewManager(game.Config{
 		Store:       st,
 		IdleTimeout: cfg.SessionIdleTimeout,
 		Charge:      charge,
 		Slots:       slots,
+		Quests:      questsSvc,
 	})
 	srv := server.New(server.Deps{
 		Config:   cfg,
@@ -156,6 +167,7 @@ func runServe(ctx context.Context) error {
 		Game:     gameMgr,
 		Credits:  creditsSvc,
 		Billing:  billingSvc,
+		Quests:   questsSvc,
 	})
 
 	httpServer := &http.Server{

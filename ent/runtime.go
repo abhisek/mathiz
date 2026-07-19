@@ -19,6 +19,9 @@ import (
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
+	"github.com/abhisek/mathiz/ent/quest"
+	"github.com/abhisek/mathiz/ent/questprogress"
+	"github.com/abhisek/mathiz/ent/questquestion"
 	"github.com/abhisek/mathiz/ent/schema"
 	"github.com/abhisek/mathiz/ent/sessionevent"
 	"github.com/abhisek/mathiz/ent/snapshot"
@@ -383,6 +386,64 @@ func init() {
 	masteryeventDescTrigger := masteryeventFields[3].Descriptor()
 	// masteryevent.TriggerValidator is a validator for the "trigger" field. It is called by the builders before save.
 	masteryevent.TriggerValidator = masteryeventDescTrigger.Validators[0].(func(string) error)
+	questFields := schema.Quest{}.Fields()
+	_ = questFields
+	// questDescEmoji is the schema descriptor for emoji field.
+	questDescEmoji := questFields[3].Descriptor()
+	// quest.DefaultEmoji holds the default value on creation for the emoji field.
+	quest.DefaultEmoji = questDescEmoji.Default.(string)
+	// questDescSkillID is the schema descriptor for skill_id field.
+	questDescSkillID := questFields[4].Descriptor()
+	// quest.DefaultSkillID holds the default value on creation for the skill_id field.
+	quest.DefaultSkillID = questDescSkillID.Default.(string)
+	// questDescChildUID is the schema descriptor for child_uid field.
+	questDescChildUID := questFields[5].Descriptor()
+	// quest.DefaultChildUID holds the default value on creation for the child_uid field.
+	quest.DefaultChildUID = questDescChildUID.Default.(string)
+	// questDescStatus is the schema descriptor for status field.
+	questDescStatus := questFields[6].Descriptor()
+	// quest.DefaultStatus holds the default value on creation for the status field.
+	quest.DefaultStatus = questDescStatus.Default.(string)
+	// questDescCreatedAt is the schema descriptor for created_at field.
+	questDescCreatedAt := questFields[7].Descriptor()
+	// quest.DefaultCreatedAt holds the default value on creation for the created_at field.
+	quest.DefaultCreatedAt = questDescCreatedAt.Default.(func() time.Time)
+	// questDescUpdatedAt is the schema descriptor for updated_at field.
+	questDescUpdatedAt := questFields[8].Descriptor()
+	// quest.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	quest.DefaultUpdatedAt = questDescUpdatedAt.Default.(func() time.Time)
+	// quest.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	quest.UpdateDefaultUpdatedAt = questDescUpdatedAt.UpdateDefault.(func() time.Time)
+	questprogressFields := schema.QuestProgress{}.Fields()
+	_ = questprogressFields
+	// questprogressDescCorrect is the schema descriptor for correct field.
+	questprogressDescCorrect := questprogressFields[4].Descriptor()
+	// questprogress.DefaultCorrect holds the default value on creation for the correct field.
+	questprogress.DefaultCorrect = questprogressDescCorrect.Default.(bool)
+	// questprogressDescUpdatedAt is the schema descriptor for updated_at field.
+	questprogressDescUpdatedAt := questprogressFields[5].Descriptor()
+	// questprogress.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	questprogress.DefaultUpdatedAt = questprogressDescUpdatedAt.Default.(func() time.Time)
+	// questprogress.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	questprogress.UpdateDefaultUpdatedAt = questprogressDescUpdatedAt.UpdateDefault.(func() time.Time)
+	questquestionFields := schema.QuestQuestion{}.Fields()
+	_ = questquestionFields
+	// questquestionDescHint is the schema descriptor for hint field.
+	questquestionDescHint := questquestionFields[8].Descriptor()
+	// questquestion.DefaultHint holds the default value on creation for the hint field.
+	questquestion.DefaultHint = questquestionDescHint.Default.(string)
+	// questquestionDescExplanation is the schema descriptor for explanation field.
+	questquestionDescExplanation := questquestionFields[9].Descriptor()
+	// questquestion.DefaultExplanation holds the default value on creation for the explanation field.
+	questquestion.DefaultExplanation = questquestionDescExplanation.Default.(string)
+	// questquestionDescClientKey is the schema descriptor for client_key field.
+	questquestionDescClientKey := questquestionFields[10].Descriptor()
+	// questquestion.DefaultClientKey holds the default value on creation for the client_key field.
+	questquestion.DefaultClientKey = questquestionDescClientKey.Default.(string)
+	// questquestionDescCreatedAt is the schema descriptor for created_at field.
+	questquestionDescCreatedAt := questquestionFields[11].Descriptor()
+	// questquestion.DefaultCreatedAt holds the default value on creation for the created_at field.
+	questquestion.DefaultCreatedAt = questquestionDescCreatedAt.Default.(func() time.Time)
 	sessioneventMixin := schema.SessionEvent{}.Mixin()
 	sessioneventMixinFields0 := sessioneventMixin[0].Fields()
 	_ = sessioneventMixinFields0

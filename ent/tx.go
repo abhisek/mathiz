@@ -40,6 +40,12 @@ type Tx struct {
 	LessonEvent *LessonEventClient
 	// MasteryEvent is the client for interacting with the MasteryEvent builders.
 	MasteryEvent *MasteryEventClient
+	// Quest is the client for interacting with the Quest builders.
+	Quest *QuestClient
+	// QuestProgress is the client for interacting with the QuestProgress builders.
+	QuestProgress *QuestProgressClient
+	// QuestQuestion is the client for interacting with the QuestQuestion builders.
+	QuestQuestion *QuestQuestionClient
 	// SessionEvent is the client for interacting with the SessionEvent builders.
 	SessionEvent *SessionEventClient
 	// Snapshot is the client for interacting with the Snapshot builders.
@@ -189,6 +195,9 @@ func (tx *Tx) init() {
 	tx.LLMRequestEvent = NewLLMRequestEventClient(tx.config)
 	tx.LessonEvent = NewLessonEventClient(tx.config)
 	tx.MasteryEvent = NewMasteryEventClient(tx.config)
+	tx.Quest = NewQuestClient(tx.config)
+	tx.QuestProgress = NewQuestProgressClient(tx.config)
+	tx.QuestQuestion = NewQuestQuestionClient(tx.config)
 	tx.SessionEvent = NewSessionEventClient(tx.config)
 	tx.Snapshot = NewSnapshotClient(tx.config)
 }

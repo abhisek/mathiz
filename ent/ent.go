@@ -26,6 +26,9 @@ import (
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
+	"github.com/abhisek/mathiz/ent/quest"
+	"github.com/abhisek/mathiz/ent/questprogress"
+	"github.com/abhisek/mathiz/ent/questquestion"
 	"github.com/abhisek/mathiz/ent/sessionevent"
 	"github.com/abhisek/mathiz/ent/snapshot"
 )
@@ -102,6 +105,9 @@ func checkColumn(t, c string) error {
 			llmrequestevent.Table: llmrequestevent.ValidColumn,
 			lessonevent.Table:     lessonevent.ValidColumn,
 			masteryevent.Table:    masteryevent.ValidColumn,
+			quest.Table:           quest.ValidColumn,
+			questprogress.Table:   questprogress.ValidColumn,
+			questquestion.Table:   questquestion.ValidColumn,
 			sessionevent.Table:    sessionevent.ValidColumn,
 			snapshot.Table:        snapshot.ValidColumn,
 		})

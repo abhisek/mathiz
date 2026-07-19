@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,12 +11,36 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
+	"github.com/abhisek/mathiz/internal/llm"
+	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/billing"
 	"github.com/abhisek/mathiz/internal/saas/credits"
 	"github.com/abhisek/mathiz/internal/saas/family"
+	"github.com/abhisek/mathiz/internal/saas/game"
+	"github.com/abhisek/mathiz/internal/saas/quests"
 	"github.com/abhisek/mathiz/internal/store"
 )
+
+// testGenBatchJSON is the mock LLM's canned quest-generation batch.
+const testGenBatchJSON = `{"questions":[
+	{"question_text":"What is 12 + 8?","format":"numeric","answer":"20","answer_type":"integer","choices":[],"hint":"Add the ones first.","difficulty":2,"explanation":"12 + 8 = 20."}
+]}`
+
+// stubGenerator serves deterministic questions for game expeditions.
+type stubGenerator struct{}
+
+func (stubGenerator) Generate(_ context.Context, input problemgen.GenerateInput) (*problemgen.Question, error) {
+	return &problemgen.Question{
+		Text:        "What is 2 + 2?",
+		Format:      problemgen.FormatNumeric,
+		Answer:      "4",
+		AnswerType:  problemgen.AnswerTypeInteger,
+		Explanation: "2 and 2 make 4.",
+		SkillID:     input.Skill.ID,
+		Tier:        input.Tier,
+	}, nil
+}
 
 const testJWTSecret = "test-secret-value-with-enough-length!!"
 
@@ -43,6 +68,19 @@ func newTestEnv(t *testing.T) *testEnv {
 		SupabaseAnonKey: "anon-key",
 	}
 	creditsSvc := credits.New(st.Client())
+	// Quests + game are wired with deterministic fakes: a mock LLM for
+	// question generation and a fake per-expedition generator, so quest and
+	// game routes are exercisable without a network.
+	questsSvc := quests.New(st.Client(), creditsSvc, func(ctx context.Context) (llm.Provider, error) {
+		return llm.NewMockProvider(llm.MockResponse{Content: []byte(testGenBatchJSON)}), nil
+	})
+	gameMgr := game.NewManager(game.Config{
+		Store: st,
+		Toolset: func(ctx context.Context, eventRepo store.EventRepo) (*game.Toolset, error) {
+			return &game.Toolset{Generator: stubGenerator{}}, nil
+		},
+		Quests: questsSvc,
+	})
 	srv := New(Deps{
 		Config:   cfg,
 		Store:    st,
@@ -50,6 +88,8 @@ func newTestEnv(t *testing.T) *testEnv {
 		Verifier: verifier,
 		Credits:  creditsSvc,
 		Billing:  billing.NewService(st.Client(), creditsSvc, billing.NewFakeProvider(cfg.PublicBaseURL)),
+		Game:     gameMgr,
+		Quests:   questsSvc,
 	})
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)

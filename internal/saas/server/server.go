@@ -12,11 +12,12 @@ import (
 	"github.com/abhisek/mathiz/internal/saas/credits"
 	"github.com/abhisek/mathiz/internal/saas/family"
 	"github.com/abhisek/mathiz/internal/saas/game"
+	"github.com/abhisek/mathiz/internal/saas/quests"
 	"github.com/abhisek/mathiz/internal/store"
 )
 
 // Deps carries everything a Server needs. Terminal, WebUI, Game, Credits,
-// and Billing are optional — their routes 404 / fall through when nil.
+// Billing, and Quests are optional — their routes 404 / fall through when nil.
 type Deps struct {
 	Config   *Config
 	Store    *store.Store
@@ -27,6 +28,7 @@ type Deps struct {
 	Game     *game.Manager
 	Credits  *credits.Service
 	Billing  *billing.Service
+	Quests   *quests.Service
 }
 
 // Server wires config, services, and routes.
@@ -42,6 +44,7 @@ type Server struct {
 	game     *game.Manager
 	credits  *credits.Service
 	billing  *billing.Service
+	quests   *quests.Service
 
 	joinLimiter *ipLimiter
 	handler     http.Handler
@@ -60,8 +63,12 @@ func New(d Deps) *Server {
 		game:     d.Game,
 		credits:  d.Credits,
 		billing:  d.Billing,
+		quests:   d.Quests,
 		// Join endpoints are unauthenticated: keep brute force slow.
 		joinLimiter: newIPLimiter(1, 10),
+	}
+	if d.Quests != nil {
+		s.checker.SetQuests(d.Quests)
 	}
 	s.handler = s.routes()
 	return s
@@ -105,6 +112,23 @@ func (s *Server) routes() http.Handler {
 		mux.Handle("POST /api/v1/game/expeditions/{id}/lesson", s.withChild(s.handleExpeditionLesson))
 		mux.Handle("POST /api/v1/game/expeditions/{id}/lesson/answer", s.withChild(s.handleExpeditionLessonAnswer))
 		mux.Handle("POST /api/v1/game/expeditions/{id}/end", s.withChild(s.handleExpeditionEnd))
+	}
+
+	// Parent quests (specs/15-quests.md).
+	if s.quests != nil {
+		mux.Handle("POST /api/v1/family/{id}/quests", s.withParent(s.handleCreateQuest))
+		mux.Handle("GET /api/v1/family/{id}/quests", s.withParent(s.handleListQuests))
+		mux.Handle("GET /api/v1/quests/{id}", s.withParent(s.handleGetQuest))
+		mux.Handle("PATCH /api/v1/quests/{id}", s.withParent(s.handleUpdateQuest))
+		mux.Handle("DELETE /api/v1/quests/{id}", s.withParent(s.handleDeleteQuest))
+		mux.Handle("POST /api/v1/quests/{id}/questions", s.withParent(s.handleAddQuestQuestion))
+		mux.Handle("PATCH /api/v1/quests/{id}/questions/{qid}", s.withParent(s.handleUpdateQuestQuestion))
+		mux.Handle("DELETE /api/v1/quests/{id}/questions/{qid}", s.withParent(s.handleDeleteQuestQuestion))
+		mux.Handle("POST /api/v1/quests/{id}/generate", s.withParent(s.handleGenerateQuestQuestions))
+		mux.Handle("POST /api/v1/quests/{id}/publish", s.withParent(s.handlePublishQuest))
+		if s.game != nil {
+			mux.Handle("POST /api/v1/game/quests/{id}/expeditions", s.withChild(s.handleQuestExpeditionStart))
+		}
 	}
 
 	// Billing (only when a provider is configured).

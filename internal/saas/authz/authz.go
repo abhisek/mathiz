@@ -47,13 +47,31 @@ func ChildPrincipal(child *ent.ChildProfile) Principal {
 	}
 }
 
+// QuestDirectory resolves quests for permission checks (implemented by
+// internal/saas/quests.Service; an interface here keeps authz free of the
+// quests package's LLM/game dependencies).
+type QuestDirectory interface {
+	Quest(ctx context.Context, questUID string) (*ent.Quest, error)
+}
+
+// questStatusActive mirrors quests.StatusActive (see QuestDirectory: authz
+// deliberately does not import the quests package).
+const questStatusActive = "active"
+
 // Checker answers authorization questions using control-plane data.
 type Checker struct {
 	family *family.Service
+	quests QuestDirectory // nil until SetQuests; quest checks then deny
 }
 
 func NewChecker(svc *family.Service) *Checker {
 	return &Checker{family: svc}
+}
+
+// SetQuests wires the quest directory. Without it every quest check denies
+// (fail closed).
+func (c *Checker) SetQuests(q QuestDirectory) {
+	c.quests = q
 }
 
 // CanManageSpace reports whether p may read and mutate a family space
@@ -98,6 +116,46 @@ func (c *Checker) CanManageDevice(ctx context.Context, p Principal, deviceUID st
 		return ErrDenied
 	}
 	return c.CanManageSpace(ctx, p, dt.FamilySpaceID)
+}
+
+// CanManageQuest reports whether p may read and mutate a quest (rename,
+// retarget, author questions, generate, publish, delete). Parents manage
+// quests of spaces they own.
+func (c *Checker) CanManageQuest(ctx context.Context, p Principal, questUID string) error {
+	if c.quests == nil {
+		return ErrDenied
+	}
+	q, err := c.quests.Quest(ctx, questUID)
+	if err != nil {
+		return ErrDenied
+	}
+	return c.CanManageSpace(ctx, p, q.FamilySpaceID)
+}
+
+// CanPlayQuest reports whether p (a child) may start an expedition on a
+// quest: the quest must be active, live in the child's own family space,
+// and target this child (or all children).
+func (c *Checker) CanPlayQuest(ctx context.Context, p Principal, questUID string) error {
+	if p.Kind != KindChild || p.ChildProfileID == "" {
+		return ErrDenied
+	}
+	if c.quests == nil {
+		return ErrDenied
+	}
+	q, err := c.quests.Quest(ctx, questUID)
+	if err != nil {
+		return ErrDenied
+	}
+	if q.FamilySpaceID != p.FamilySpaceID {
+		return ErrDenied
+	}
+	if q.Status != questStatusActive {
+		return ErrDenied
+	}
+	if q.ChildUID != "" && q.ChildUID != p.ChildProfileID {
+		return ErrDenied
+	}
+	return nil
 }
 
 // CanLearnAs reports whether p may run a learning session (and read own

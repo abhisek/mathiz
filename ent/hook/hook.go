@@ -177,6 +177,42 @@ func (f MasteryEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MasteryEventMutation", m)
 }
 
+// The QuestFunc type is an adapter to allow the use of ordinary
+// function as Quest mutator.
+type QuestFunc func(context.Context, *ent.QuestMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f QuestFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.QuestMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.QuestMutation", m)
+}
+
+// The QuestProgressFunc type is an adapter to allow the use of ordinary
+// function as QuestProgress mutator.
+type QuestProgressFunc func(context.Context, *ent.QuestProgressMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f QuestProgressFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.QuestProgressMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.QuestProgressMutation", m)
+}
+
+// The QuestQuestionFunc type is an adapter to allow the use of ordinary
+// function as QuestQuestion mutator.
+type QuestQuestionFunc func(context.Context, *ent.QuestQuestionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f QuestQuestionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.QuestQuestionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.QuestQuestionMutation", m)
+}
+
 // The SessionEventFunc type is an adapter to allow the use of ordinary
 // function as SessionEvent mutator.
 type SessionEventFunc func(context.Context, *ent.SessionEventMutation) (ent.Value, error)

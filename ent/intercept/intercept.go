@@ -23,6 +23,9 @@ import (
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
 	"github.com/abhisek/mathiz/ent/predicate"
+	"github.com/abhisek/mathiz/ent/quest"
+	"github.com/abhisek/mathiz/ent/questprogress"
+	"github.com/abhisek/mathiz/ent/questquestion"
 	"github.com/abhisek/mathiz/ent/sessionevent"
 	"github.com/abhisek/mathiz/ent/snapshot"
 )
@@ -461,6 +464,87 @@ func (f TraverseMasteryEvent) Traverse(ctx context.Context, q ent.Query) error {
 	return fmt.Errorf("unexpected query type %T. expect *ent.MasteryEventQuery", q)
 }
 
+// The QuestFunc type is an adapter to allow the use of ordinary function as a Querier.
+type QuestFunc func(context.Context, *ent.QuestQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f QuestFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.QuestQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.QuestQuery", q)
+}
+
+// The TraverseQuest type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseQuest func(context.Context, *ent.QuestQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseQuest) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseQuest) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.QuestQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.QuestQuery", q)
+}
+
+// The QuestProgressFunc type is an adapter to allow the use of ordinary function as a Querier.
+type QuestProgressFunc func(context.Context, *ent.QuestProgressQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f QuestProgressFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.QuestProgressQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.QuestProgressQuery", q)
+}
+
+// The TraverseQuestProgress type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseQuestProgress func(context.Context, *ent.QuestProgressQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseQuestProgress) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseQuestProgress) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.QuestProgressQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.QuestProgressQuery", q)
+}
+
+// The QuestQuestionFunc type is an adapter to allow the use of ordinary function as a Querier.
+type QuestQuestionFunc func(context.Context, *ent.QuestQuestionQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f QuestQuestionFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.QuestQuestionQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.QuestQuestionQuery", q)
+}
+
+// The TraverseQuestQuestion type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseQuestQuestion func(context.Context, *ent.QuestQuestionQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseQuestQuestion) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseQuestQuestion) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.QuestQuestionQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.QuestQuestionQuery", q)
+}
+
 // The SessionEventFunc type is an adapter to allow the use of ordinary function as a Querier.
 type SessionEventFunc func(context.Context, *ent.SessionEventQuery) (ent.Value, error)
 
@@ -546,6 +630,12 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.LessonEventQuery, predicate.LessonEvent, lessonevent.OrderOption]{typ: ent.TypeLessonEvent, tq: q}, nil
 	case *ent.MasteryEventQuery:
 		return &query[*ent.MasteryEventQuery, predicate.MasteryEvent, masteryevent.OrderOption]{typ: ent.TypeMasteryEvent, tq: q}, nil
+	case *ent.QuestQuery:
+		return &query[*ent.QuestQuery, predicate.Quest, quest.OrderOption]{typ: ent.TypeQuest, tq: q}, nil
+	case *ent.QuestProgressQuery:
+		return &query[*ent.QuestProgressQuery, predicate.QuestProgress, questprogress.OrderOption]{typ: ent.TypeQuestProgress, tq: q}, nil
+	case *ent.QuestQuestionQuery:
+		return &query[*ent.QuestQuestionQuery, predicate.QuestQuestion, questquestion.OrderOption]{typ: ent.TypeQuestQuestion, tq: q}, nil
 	case *ent.SessionEventQuery:
 		return &query[*ent.SessionEventQuery, predicate.SessionEvent, sessionevent.OrderOption]{typ: ent.TypeSessionEvent, tq: q}, nil
 	case *ent.SnapshotQuery:
