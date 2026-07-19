@@ -20,8 +20,11 @@ gofmt -w <files you touched>    # Format ONLY files you touch (see Quirks)
 
 Project skills in `.claude/skills/` cover the recurring multi-step jobs:
 `saas-e2e` (full-stack browser E2E in a sandbox, no real LLM or Supabase
-needed), `add-event-type`, `add-math-skill`, `add-billing-provider`, `verify`,
+needed), `frontend` (web/ patterns — read it BEFORE touching web/),
+`add-event-type`, `add-math-skill`, `add-billing-provider`, `verify`,
 `db-backup` (pg_dump backups via `scripts/db-backup.sh`).
+If a PR changes a frontend pattern, update `.claude/skills/frontend/SKILL.md`
+in the same PR (same rule as `docs/personas.md` for user-facing flows).
 
 ## Architecture
 
