@@ -14,6 +14,7 @@ import {
   type QuestQuestion,
   type QuestQuestionInput,
 } from '../api'
+import { useAction } from '../hooks'
 import { getSupabase } from '../supa'
 
 interface Props {
@@ -190,14 +191,22 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
     }
   }
 
-  async function revokeInvite(id: string) {
+  const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null)
+
+  const [revokeInvite, revokingInvite] = useAction(async (id: string) => {
+    setRevokingInviteId(id)
     try {
       await api.revokeInvite(token, id)
-      await refresh()
+      // Only the invite list changed — don't refetch every child's stats.
+      const invs = await api.listInvites(token, family.id)
+      setInvites(invs.invites ?? [])
+      setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setRevokingInviteId(null)
     }
-  }
+  })
 
   return (
     <div className="family">
@@ -308,8 +317,12 @@ function FamilyView({ token, family }: { token: string; family: FamilySpace }) {
                 <span className="muted">
                   expires {new Date(inv.expiresAt).toLocaleDateString()}
                 </span>
-                <button className="btn btn-ghost btn-danger" onClick={() => revokeInvite(inv.id)}>
-                  Revoke
+                <button
+                  className="btn btn-ghost btn-danger"
+                  disabled={revokingInvite}
+                  onClick={() => void revokeInvite(inv.id)}
+                >
+                  {revokingInvite && revokingInviteId === inv.id ? 'Revoking…' : 'Revoke'}
                 </button>
               </li>
             ))}
@@ -377,6 +390,22 @@ function QuestsSection({
     void refresh()
   }, [refresh])
 
+  const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null)
+
+  // Full refresh on delete is deliberate: quests touch the map and counts.
+  const [remove, deleting] = useAction(async (q: Quest) => {
+    if (!window.confirm(`Delete the quest "${q.name}"? This cannot be undone.`)) return
+    setDeletingQuestId(q.id)
+    try {
+      await api.deleteQuest(token, q.id)
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setDeletingQuestId(null)
+    }
+  })
+
   if (hidden) return null
 
   // First load: an anonymous skeleton (no "Quests" heading — the section may
@@ -407,16 +436,6 @@ function QuestsSection({
   function targetName(childId: string) {
     if (!childId) return 'All children'
     return kids.find((k) => k.id === childId)?.name ?? 'Unknown child'
-  }
-
-  async function remove(q: Quest) {
-    if (!window.confirm(`Delete the quest "${q.name}"? This cannot be undone.`)) return
-    try {
-      await api.deleteQuest(token, q.id)
-      await refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    }
   }
 
   return (
@@ -452,8 +471,12 @@ function QuestsSection({
                   {QUEST_STATUS_LABEL[q.status] ?? q.status}
                 </span>
               </button>
-              <button className="btn btn-ghost btn-danger" onClick={() => void remove(q)}>
-                Delete
+              <button
+                className="btn btn-ghost btn-danger"
+                disabled={deleting}
+                onClick={() => void remove(q)}
+              >
+                {deleting && deletingQuestId === q.id ? 'Deleting…' : 'Delete'}
               </button>
             </li>
           ))}
@@ -1255,18 +1278,25 @@ function ChildCard({
       .catch(() => {})
   }, [open, token, profile.id])
 
-  async function revokeDevice(id: string) {
+  const [revokingDeviceId, setRevokingDeviceId] = useState<string | null>(null)
+
+  const [revokeDevice, revokingDevice] = useAction(async (id: string) => {
+    setRevokingDeviceId(id)
     try {
       await api.revokeDevice(token, id)
+      // Only the device list changed — targeted refetch, not a full refresh.
       const d = await api.listDevices(token, profile.id)
       setDevices(d.devices ?? [])
       setActionError(null)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setRevokingDeviceId(null)
     }
-  }
+  })
 
-  async function archive() {
+  // Full refresh on archive is deliberate: it changes cards, tips, quests.
+  const [archive, archiving] = useAction(async () => {
     if (!window.confirm(`Archive ${profile.name}? Their devices will be signed out.`)) return
     try {
       await api.updateChild(token, profile.id, { archived: true })
@@ -1274,7 +1304,7 @@ function ChildCard({
     } catch (err) {
       setActionError(err instanceof Error ? err.message : String(err))
     }
-  }
+  })
 
   const pct =
     summary.totalSkills > 0 ? Math.round((summary.masteredSkills / summary.totalSkills) * 100) : 0
@@ -1388,8 +1418,12 @@ function ChildCard({
                       ? `last used ${new Date(d.lastUsedAt).toLocaleDateString()}`
                       : 'never used'}
                   </span>
-                  <button className="btn btn-ghost btn-danger" onClick={() => revokeDevice(d.id)}>
-                    Sign out
+                  <button
+                    className="btn btn-ghost btn-danger"
+                    disabled={revokingDevice}
+                    onClick={() => void revokeDevice(d.id)}
+                  >
+                    {revokingDevice && revokingDeviceId === d.id ? 'Signing out…' : 'Sign out'}
                   </button>
                 </li>
               ))}
@@ -1397,8 +1431,12 @@ function ChildCard({
           )}
 
           <div className="danger-zone">
-            <button className="btn btn-ghost btn-danger" onClick={archive}>
-              Archive {profile.name}
+            <button
+              className="btn btn-ghost btn-danger"
+              disabled={archiving}
+              onClick={() => void archive()}
+            >
+              {archiving ? 'Archiving…' : `Archive ${profile.name}`}
             </button>
           </div>
         </div>

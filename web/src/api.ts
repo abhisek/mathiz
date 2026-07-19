@@ -167,26 +167,52 @@ export interface BillingInfo {
   plans: BillingPlan[]
 }
 
+// ---- Global API activity (drives the BusyBar) ----
+// Module-level in-flight counter: every request() bumps it, and subscribers
+// are notified only on 0↔1 transitions, so the UI sees "anything in flight?"
+// rather than individual calls.
+
+let inflight = 0
+const activityListeners = new Set<(active: boolean) => void>()
+
+export function subscribeApiActivity(cb: (active: boolean) => void): () => void {
+  activityListeners.add(cb)
+  return () => {
+    activityListeners.delete(cb)
+  }
+}
+
+function notifyActivity(active: boolean) {
+  for (const cb of activityListeners) cb(active)
+}
+
 export async function request<T>(
   method: string,
   path: string,
   token: string | null,
   body?: unknown,
 ): Promise<T> {
-  const headers: Record<string, string> = {}
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
-  const resp = await fetch(path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
-  if (resp.status === 204) return undefined as T
-  const data = await resp.json().catch(() => ({}))
-  if (!resp.ok) {
-    throw new ApiError(resp.status, (data as { error?: string }).error ?? `HTTP ${resp.status}`)
+  inflight++
+  if (inflight === 1) notifyActivity(true)
+  try {
+    const headers: Record<string, string> = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    const resp = await fetch(path, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+    if (resp.status === 204) return undefined as T
+    const data = await resp.json().catch(() => ({}))
+    if (!resp.ok) {
+      throw new ApiError(resp.status, (data as { error?: string }).error ?? `HTTP ${resp.status}`)
+    }
+    return data as T
+  } finally {
+    inflight--
+    if (inflight === 0) notifyActivity(false)
   }
-  return data as T
 }
 
 export const api = {
