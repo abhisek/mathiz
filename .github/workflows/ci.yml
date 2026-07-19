@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  go:
+    name: Go build & test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mathiz
+          POSTGRES_PASSWORD: mathiz
+          POSTGRES_DB: mathiz_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mathiz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build (CGO off, as shipped)
+        run: CGO_ENABLED=0 go build ./...
+
+      - name: Test (SQLite)
+        run: go test ./...
+
+      - name: Owner-isolation suite against PostgreSQL
+        run: go test -count=1 ./internal/store/
+        env:
+          MATHIZ_TEST_DATABASE_URL: postgres://mathiz:mathiz@localhost:5432/mathiz_test?sslmode=disable
+
+      - name: Race pass (saas / termbridge / game)
+        run: go test -race ./internal/saas/... ./internal/session/...
+
+  web:
+    name: Web SPA
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
