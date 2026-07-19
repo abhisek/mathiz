@@ -9,27 +9,32 @@ import Join from './pages/Join'
 import Play from './pages/Play'
 import TerminalPage from './pages/Terminal'
 import { Contact, Privacy, Terms } from './pages/Legal'
+import BusyBar from './components/BusyBar'
 
 export default function App() {
   return (
-    <Routes>
-      {/* Kid routes are Supabase-free: a join code is all a child needs. */}
-      <Route path="/join" element={<Join />} />
-      <Route path="/play" element={<Play />} />
-      <Route path="/terminal" element={<TerminalPage />} />
+    <>
+      {/* One global activity bar for every route — api.request() feeds it. */}
+      <BusyBar />
+      <Routes>
+        {/* Kid routes are Supabase-free: a join code is all a child needs. */}
+        <Route path="/join" element={<Join />} />
+        <Route path="/play" element={<Play />} />
+        <Route path="/terminal" element={<TerminalPage />} />
 
-      {/* The front door: static, Supabase-free, routes each persona. */}
-      <Route path="/" element={<Landing />} />
+        {/* The front door: static, Supabase-free, routes each persona. */}
+        <Route path="/" element={<Landing />} />
 
-      {/* Legal pages: static, Supabase-free. */}
-      <Route path="/terms" element={<Terms />} />
-      <Route path="/privacy" element={<Privacy />} />
-      <Route path="/contact" element={<Contact />} />
+        {/* Legal pages: static, Supabase-free. */}
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/contact" element={<Contact />} />
 
-      <Route path="/login" element={<ParentArea page="login" />} />
-      <Route path="/dashboard" element={<ParentArea page="dashboard" />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="/login" element={<ParentArea page="login" />} />
+        <Route path="/dashboard" element={<ParentArea page="dashboard" />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   )
 }
 
