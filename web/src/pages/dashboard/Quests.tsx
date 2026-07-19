@@ -8,8 +8,9 @@ import { QUEST_STATUS_LABEL } from './questStatus'
 
 // ---- Parent quests (specs/15-quests.md) ----
 // One-off practice sets the parent authors (or AI-drafts) that show up on
-// the kid's treasure map. Hidden entirely when the server runs without
-// quests (the list endpoint 404s).
+// the kid's treasure map. When the server runs without quests (the list
+// endpoint 404s) the page shows an explicit "not enabled on this server"
+// note — the nav item stays, since the layout can't know without probing.
 
 export default function Quests() {
   const { token, family, children } = useDashboard()

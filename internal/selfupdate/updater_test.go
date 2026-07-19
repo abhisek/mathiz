@@ -60,7 +60,7 @@ func TestParseChecksums(t *testing.T) {
 			name:  "normal",
 			input: "abc123  mathiz_Darwin_all.tar.gz\ndef456  mathiz_Linux_x86_64.tar.gz\n",
 			want: map[string]string{
-				"mathiz_Darwin_all.tar.gz":    "abc123",
+				"mathiz_Darwin_all.tar.gz":   "abc123",
 				"mathiz_Linux_x86_64.tar.gz": "def456",
 			},
 		},
@@ -155,7 +155,11 @@ func TestUpdate(t *testing.T) {
 		execPath := filepath.Join(dir, "mathiz")
 		require.NoError(t, os.WriteFile(execPath, []byte("old"), 0755))
 
-		asset := "mathiz_Darwin_all.tar.gz"
+		// The updater downloads the asset for the platform it RUNS on, so the
+		// test server must serve that name — hardcoding one (e.g. Darwin)
+		// makes the test fail everywhere else.
+		asset, err := assetName()
+		require.NoError(t, err)
 		checksums := fmt.Sprintf("%s  %s\n", archiveHex, asset)
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -179,7 +183,7 @@ func TestUpdate(t *testing.T) {
 		)
 
 		var stages []string
-		err := checker.Update(context.Background(), &UpdateInput{CurrentVersion: "v1.0.0"}, func(p UpdateProgress) {
+		err = checker.Update(context.Background(), &UpdateInput{CurrentVersion: "v1.0.0"}, func(p UpdateProgress) {
 			stages = append(stages, p.Stage)
 		})
 		require.NoError(t, err)
@@ -211,7 +215,8 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("checksum mismatch", func(t *testing.T) {
-		asset := "mathiz_Darwin_all.tar.gz"
+		asset, err := assetName()
+		require.NoError(t, err)
 		checksums := fmt.Sprintf("%s  %s\n", "0000000000000000000000000000000000000000000000000000000000000000", asset)
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -232,7 +237,7 @@ func TestUpdate(t *testing.T) {
 			WithBaseURL(server.URL),
 			WithDownloadBaseURL(server.URL),
 		)
-		err := checker.Update(context.Background(), &UpdateInput{CurrentVersion: "v1.0.0"}, func(UpdateProgress) {})
+		err = checker.Update(context.Background(), &UpdateInput{CurrentVersion: "v1.0.0"}, func(UpdateProgress) {})
 		assert.ErrorIs(t, err, ErrChecksum)
 	})
 
