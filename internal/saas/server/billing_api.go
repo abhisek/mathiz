@@ -67,8 +67,8 @@ func (s *Server) handleBillingCheckout(w http.ResponseWriter, r *http.Request, p
 	url, err := s.billing.Provider().CreateCheckout(r.Context(), billing.CheckoutParams{
 		FamilySpaceID: spaceID,
 		PlanID:        req.PlanID,
-		SuccessURL:    "/dashboard?billing=success",
-		CancelURL:     "/dashboard",
+		SuccessURL:    "/dashboard/billing?billing=success",
+		CancelURL:     "/dashboard/billing",
 	})
 	if err != nil {
 		writeServiceError(w, err)
@@ -131,5 +131,5 @@ func (s *Server) handleFakeBillingComplete(w http.ResponseWriter, r *http.Reques
 	if !s.applyProviderEvents(w, r, "invalid or used checkout token") {
 		return
 	}
-	http.Redirect(w, r, "/dashboard?billing=success", http.StatusSeeOther)
+	http.Redirect(w, r, "/dashboard/billing?billing=success", http.StatusSeeOther)
 }

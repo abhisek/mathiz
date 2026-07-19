@@ -77,6 +77,15 @@ func (m *mockEventRepo) LLMUsageByPurpose(_ context.Context) ([]store.LLMUsageSt
 func (m *mockEventRepo) LLMUsageByModel(_ context.Context) ([]store.LLMModelUsage, error) {
 	return nil, nil
 }
+func (m *mockEventRepo) QueryMasteryEvents(_ context.Context, _ store.QueryOpts) ([]store.MasteryEventRecord, error) {
+	return nil, nil
+}
+func (m *mockEventRepo) AnswersForSession(_ context.Context, _ string) ([]store.AnswerEventRecord, error) {
+	return nil, nil
+}
+func (m *mockEventRepo) HintCountForSession(_ context.Context, _ string) (int, error) {
+	return 0, nil
+}
 
 func newTestScheduler(reviews map[string]*ReviewState, masterySvc *mastery.Service, eventRepo store.EventRepo) *Scheduler {
 	if reviews == nil {

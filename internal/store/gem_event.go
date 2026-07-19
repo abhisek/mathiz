@@ -116,6 +116,18 @@ func (r *eventRepo) QuerySessionSummaries(ctx context.Context, opts QueryOpts) (
 	if opts.Limit > 0 {
 		query = query.Limit(opts.Limit)
 	}
+	if opts.After > 0 {
+		query = query.Where(sessionevent.SequenceGT(opts.After))
+	}
+	if opts.Before > 0 {
+		query = query.Where(sessionevent.SequenceLT(opts.Before))
+	}
+	if !opts.From.IsZero() {
+		query = query.Where(sessionevent.TimestampGTE(opts.From))
+	}
+	if !opts.To.IsZero() {
+		query = query.Where(sessionevent.TimestampLTE(opts.To))
+	}
 
 	events, err := query.All(ctx)
 	if err != nil {
@@ -147,15 +159,45 @@ func (r *eventRepo) QuerySessionSummaries(ctx context.Context, opts QueryOpts) (
 		gemsBySession[row.SessionID] = row.Count
 	}
 
+	// One query for all matching "start" events joins each summary with the
+	// plan it opened with (instead of N per-session lookups).
+	starts, err := r.client.SessionEvent.Query().
+		Where(
+			sessionevent.OwnerID(r.owner),
+			sessionevent.Action("start"),
+			sessionevent.SessionIDIn(sessionIDs...),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query session starts: %w", err)
+	}
+	planBySession := make(map[string][]PlanSlotSummaryData, len(starts))
+	for _, st := range starts {
+		if len(st.PlanSummary) == 0 {
+			continue
+		}
+		plan := make([]PlanSlotSummaryData, len(st.PlanSummary))
+		for i, slot := range st.PlanSummary {
+			plan[i] = PlanSlotSummaryData{
+				SkillID:  slot.SkillID,
+				Tier:     slot.Tier,
+				Category: slot.Category,
+			}
+		}
+		planBySession[st.SessionID] = plan
+	}
+
 	records := make([]SessionSummaryRecord, len(events))
 	for i, e := range events {
 		records[i] = SessionSummaryRecord{
 			SessionID:       e.SessionID,
+			Sequence:        e.Sequence,
 			Timestamp:       e.Timestamp,
 			QuestionsServed: e.QuestionsServed,
 			CorrectAnswers:  e.CorrectAnswers,
 			DurationSecs:    e.DurationSecs,
 			GemCount:        gemsBySession[e.SessionID],
+			Plan:            planBySession[e.SessionID],
 		}
 	}
 	return records, nil

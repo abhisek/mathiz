@@ -267,3 +267,36 @@ A Family Space supports multiple parent accounts via `family_member` rows
   `internal/saas/authz` chokepoint; `CanManageBilling` / `CanManageParents`
   are owner-only. Cross-family denials remain 404.
 - Quests record `created_by` (account UID) for the future activity log.
+
+## Activity timeline (read model)
+
+`internal/saas/activity.Reader` is a pure read model over the child's
+owner-scoped event streams, serving the parent dashboard's "what has my kid
+been doing" view. It writes nothing and reads only via
+`Store.EventRepoFor(childUID)`.
+
+- **Granularity:** the timeline shows expedition rows (session "end" events,
+  hydrated with the plan from the matching "start" event, gem count, and
+  skill names), mastery transitions worth a parent's attention (to
+  `mastered` or `rusty` only — learning-state churn is filtered out), and
+  micro-lessons. Individual answers are NOT timeline items; they live behind
+  an expandable per-session detail
+  (`GET /api/v1/children/{id}/activity/sessions/{sessionId}` → answers in
+  question order + hint count) so the feed stays scannable.
+- **Pagination:** one `before` cursor over the global event sequence, applied
+  to every underlying stream; each stream contributes up to `limit` items,
+  the merge keeps the newest `limit` overall. `nextBefore` is the lowest
+  sequence in the returned page and is omitted when the page came back short
+  (no more data).
+- **Quest attribution:** untagged quest sessions plan the synthetic
+  `quest:<uid>` skill ID; the reader resolves it through the quests service
+  (name, emoji, authoring parent's display name) into a `quest` object on the
+  expedition item. Lookups degrade — deleted quest or missing member name
+  yields a bare ID / empty name, never a failed timeline. **Limitation:**
+  skill-tagged quest sessions plan the real skill ID and are therefore
+  indistinguishable from normal digs; they appear without quest attribution.
+- **Authz:** `CanManageChild` — any family member (owner or co-parent) may
+  read; strangers get 404. Endpoints:
+  `GET /api/v1/children/{id}/activity` (`before`, `limit` ≤ 50 default 20,
+  `kinds=expedition,mastery,lesson`, `from`/`to` RFC3339) and the session
+  detail above.

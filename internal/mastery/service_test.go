@@ -78,6 +78,15 @@ func (m *mockEventRepo) LLMUsageByPurpose(_ context.Context) ([]store.LLMUsageSt
 func (m *mockEventRepo) LLMUsageByModel(_ context.Context) ([]store.LLMModelUsage, error) {
 	return nil, nil
 }
+func (m *mockEventRepo) QueryMasteryEvents(_ context.Context, _ store.QueryOpts) ([]store.MasteryEventRecord, error) {
+	return nil, nil
+}
+func (m *mockEventRepo) AnswersForSession(_ context.Context, _ string) ([]store.AnswerEventRecord, error) {
+	return nil, nil
+}
+func (m *mockEventRepo) HintCountForSession(_ context.Context, _ string) (int, error) {
+	return 0, nil
+}
 
 func testSkillID() string {
 	skills := skillgraph.AllSkills()
@@ -113,7 +122,7 @@ func TestService_NewService_WithExistingData(t *testing.T) {
 					State:       "mastered",
 					CurrentTier: "prove",
 					SpeedWindow: 10,
-					StreakCap:    8,
+					StreakCap:   8,
 				},
 			},
 		},

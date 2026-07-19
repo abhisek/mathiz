@@ -279,6 +279,161 @@ func TestOwnerIsolationLessonEvents(t *testing.T) {
 	}
 }
 
+// TestOwnerIsolationActivityQueries covers the activity-timeline read
+// methods: mastery transitions, per-session answers, and hint counts must
+// never cross owners.
+func TestOwnerIsolationActivityQueries(t *testing.T) {
+	s := openIsolationStore(t)
+	ctx := context.Background()
+
+	alice := s.EventRepoFor(testOwner(t, "alice"))
+	bob := s.EventRepoFor(testOwner(t, "bob"))
+
+	if err := alice.AppendMasteryEvent(ctx, MasteryEventData{
+		SkillID: "add-1", FromState: "learning", ToState: "mastered",
+		Trigger: "fluency", FluencyScore: 0.9, SessionID: "sess-a",
+	}); err != nil {
+		t.Fatalf("alice mastery: %v", err)
+	}
+	if err := bob.AppendMasteryEvent(ctx, MasteryEventData{
+		SkillID: "add-1", FromState: "mastered", ToState: "rusty",
+		Trigger: "decay", FluencyScore: 0.2, SessionID: "sess-b",
+	}); err != nil {
+		t.Fatalf("bob mastery: %v", err)
+	}
+	// Same session ID in both streams: the session-scoped queries must still
+	// separate by owner.
+	if err := alice.AppendAnswerEvent(ctx, AnswerEventData{
+		SessionID: "shared-sess", SkillID: "add-1", Tier: "learn", Category: "core",
+		QuestionText: "2+3?", CorrectAnswer: "5", LearnerAnswer: "5",
+		Correct: true, TimeMs: 900, AnswerFormat: "integer",
+	}); err != nil {
+		t.Fatalf("alice answer: %v", err)
+	}
+	if err := bob.AppendAnswerEvent(ctx, AnswerEventData{
+		SessionID: "shared-sess", SkillID: "add-1", Tier: "learn", Category: "core",
+		QuestionText: "9-4?", CorrectAnswer: "5", LearnerAnswer: "4",
+		Correct: false, TimeMs: 2100, AnswerFormat: "integer",
+	}); err != nil {
+		t.Fatalf("bob answer: %v", err)
+	}
+	if err := alice.AppendHintEvent(ctx, HintEventData{
+		SessionID: "shared-sess", SkillID: "add-1", QuestionText: "2+3?", HintText: "count up",
+	}); err != nil {
+		t.Fatalf("alice hint: %v", err)
+	}
+
+	// Mastery events: each owner sees only their own transition.
+	got, err := alice.QueryMasteryEvents(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("alice mastery query: %v", err)
+	}
+	if len(got) != 1 || got[0].ToState != "mastered" || got[0].Sequence == 0 {
+		t.Errorf("alice mastery = %+v, want her single mastered transition", got)
+	}
+	got, err = bob.QueryMasteryEvents(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("bob mastery query: %v", err)
+	}
+	if len(got) != 1 || got[0].ToState != "rusty" {
+		t.Errorf("bob mastery = %+v, want his single rusty transition", got)
+	}
+	got, err = s.EventRepoFor(testOwner(t, "carol")).QueryMasteryEvents(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("carol mastery query: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("carol sees %d mastery events, want 0", len(got))
+	}
+
+	// Answers for the shared session ID stay per-owner.
+	answers, err := alice.AnswersForSession(ctx, "shared-sess")
+	if err != nil {
+		t.Fatalf("alice answers: %v", err)
+	}
+	if len(answers) != 1 || !answers[0].Correct || answers[0].QuestionText != "2+3?" {
+		t.Errorf("alice answers = %+v, want only her own", answers)
+	}
+	answers, err = bob.AnswersForSession(ctx, "shared-sess")
+	if err != nil {
+		t.Fatalf("bob answers: %v", err)
+	}
+	if len(answers) != 1 || answers[0].Correct {
+		t.Errorf("bob answers = %+v, want only his own", answers)
+	}
+
+	// Hints: bob has none, alice one, despite the shared session ID.
+	n, err := bob.HintCountForSession(ctx, "shared-sess")
+	if err != nil {
+		t.Fatalf("bob hints: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("bob hint count = %d, want 0", n)
+	}
+	n, err = alice.HintCountForSession(ctx, "shared-sess")
+	if err != nil {
+		t.Fatalf("alice hints: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("alice hint count = %d, want 1", n)
+	}
+}
+
+// TestSessionSummariesJoinPlan proves QuerySessionSummaries hydrates each
+// end event with its start event's plan — and only from the same owner's
+// stream, even when session IDs collide across owners.
+func TestSessionSummariesJoinPlan(t *testing.T) {
+	s := openIsolationStore(t)
+	ctx := context.Background()
+
+	alice := s.EventRepoFor(testOwner(t, "alice"))
+	bob := s.EventRepoFor(testOwner(t, "bob"))
+
+	if err := alice.AppendSessionEvent(ctx, SessionEventData{
+		SessionID: "sess-1", Action: "start",
+		PlanSummary: []PlanSlotSummaryData{{SkillID: "add-1", Tier: "learn", Category: "core"}},
+	}); err != nil {
+		t.Fatalf("alice start: %v", err)
+	}
+	// Bob's start on the same session ID must not bleed into alice's plan.
+	if err := bob.AppendSessionEvent(ctx, SessionEventData{
+		SessionID: "sess-1", Action: "start",
+		PlanSummary: []PlanSlotSummaryData{{SkillID: "mult-9", Tier: "prove", Category: "core"}},
+	}); err != nil {
+		t.Fatalf("bob start: %v", err)
+	}
+	if err := alice.AppendSessionEvent(ctx, SessionEventData{
+		SessionID: "sess-1", Action: "end", QuestionsServed: 5, CorrectAnswers: 4, DurationSecs: 300,
+	}); err != nil {
+		t.Fatalf("alice end: %v", err)
+	}
+
+	sums, err := alice.QuerySessionSummaries(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("alice summaries: %v", err)
+	}
+	if len(sums) != 1 {
+		t.Fatalf("alice sees %d summaries, want 1", len(sums))
+	}
+	got := sums[0]
+	if got.Sequence == 0 {
+		t.Error("summary Sequence not populated")
+	}
+	if len(got.Plan) != 1 || got.Plan[0].SkillID != "add-1" ||
+		got.Plan[0].Tier != "learn" || got.Plan[0].Category != "core" {
+		t.Errorf("summary Plan = %+v, want alice's start plan", got.Plan)
+	}
+
+	// Cursor pagination: nothing strictly older than the end event's sequence.
+	sums, err = alice.QuerySessionSummaries(ctx, QueryOpts{Before: got.Sequence})
+	if err != nil {
+		t.Fatalf("alice summaries before cursor: %v", err)
+	}
+	if len(sums) != 0 {
+		t.Errorf("summaries before own sequence = %d, want 0", len(sums))
+	}
+}
+
 // TestOwnerGuardQueryFailsClosed proves the structural safety net: a query
 // through the ent client directly (bypassing the repos) on an owner-scoped
 // table with a bare context must error, not silently return all tenants'

@@ -6,6 +6,7 @@ import (
 
 	"github.com/abhisek/mathiz/ent"
 	"github.com/abhisek/mathiz/ent/answerevent"
+	"github.com/abhisek/mathiz/ent/masteryevent"
 )
 
 func (r *eventRepo) AppendMasteryEvent(ctx context.Context, data MasteryEventData) error {
@@ -33,6 +34,49 @@ func (r *eventRepo) AppendMasteryEvent(ctx context.Context, data MasteryEventDat
 		return fmt.Errorf("save mastery event: %w", err)
 	}
 	return nil
+}
+
+func (r *eventRepo) QueryMasteryEvents(ctx context.Context, opts QueryOpts) ([]MasteryEventRecord, error) {
+	ctx = r.scope(ctx)
+	query := r.client.MasteryEvent.Query().
+		Where(masteryevent.OwnerID(r.owner)).
+		Order(ent.Desc(masteryevent.FieldSequence))
+
+	if opts.Limit > 0 {
+		query = query.Limit(opts.Limit)
+	}
+	if opts.After > 0 {
+		query = query.Where(masteryevent.SequenceGT(opts.After))
+	}
+	if opts.Before > 0 {
+		query = query.Where(masteryevent.SequenceLT(opts.Before))
+	}
+	if !opts.From.IsZero() {
+		query = query.Where(masteryevent.TimestampGTE(opts.From))
+	}
+	if !opts.To.IsZero() {
+		query = query.Where(masteryevent.TimestampLTE(opts.To))
+	}
+
+	events, err := query.All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query mastery events: %w", err)
+	}
+
+	records := make([]MasteryEventRecord, len(events))
+	for i, e := range events {
+		records[i] = MasteryEventRecord{
+			Sequence:     e.Sequence,
+			Timestamp:    e.Timestamp,
+			SkillID:      e.SkillID,
+			FromState:    e.FromState,
+			ToState:      e.ToState,
+			Trigger:      e.Trigger,
+			FluencyScore: e.FluencyScore,
+			SessionID:    e.SessionID,
+		}
+	}
+	return records, nil
 }
 
 func (r *eventRepo) RecentReviewAccuracy(ctx context.Context, skillID string, lastN int) (float64, int, error) {

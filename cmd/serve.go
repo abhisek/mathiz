@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/abhisek/mathiz/internal/llm"
+	"github.com/abhisek/mathiz/internal/saas/activity"
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/billing"
@@ -150,6 +151,20 @@ func runServe(ctx context.Context) error {
 		return llm.NewProviderFromEnv(ctx, nil)
 	})
 
+	// Activity timeline read model: merges the child's event streams for the
+	// parent dashboard. Quest attribution resolves through the quests service
+	// and author names through family accounts (display name, else email).
+	activityReader := activity.NewReader(st, questsSvc, func(ctx context.Context, accountID string) (string, error) {
+		a, err := svc.Account(ctx, accountID)
+		if err != nil {
+			return "", err
+		}
+		if a.DisplayName != "" {
+			return a.DisplayName, nil
+		}
+		return a.Email, nil
+	})
+
 	gameMgr := game.NewManager(game.Config{
 		Store:       st,
 		IdleTimeout: cfg.SessionIdleTimeout,
@@ -168,6 +183,7 @@ func runServe(ctx context.Context) error {
 		Credits:  creditsSvc,
 		Billing:  billingSvc,
 		Quests:   questsSvc,
+		Activity: activityReader,
 	})
 
 	httpServer := &http.Server{

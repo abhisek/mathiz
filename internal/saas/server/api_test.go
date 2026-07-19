@@ -13,6 +13,7 @@ import (
 
 	"github.com/abhisek/mathiz/internal/llm"
 	"github.com/abhisek/mathiz/internal/problemgen"
+	"github.com/abhisek/mathiz/internal/saas/activity"
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/billing"
 	"github.com/abhisek/mathiz/internal/saas/credits"
@@ -81,15 +82,27 @@ func newTestEnv(t *testing.T) *testEnv {
 		},
 		Quests: questsSvc,
 	})
+	familySvc := family.New(st.Client())
+	activityReader := activity.NewReader(st, questsSvc, func(ctx context.Context, accountID string) (string, error) {
+		a, err := familySvc.Account(ctx, accountID)
+		if err != nil {
+			return "", err
+		}
+		if a.DisplayName != "" {
+			return a.DisplayName, nil
+		}
+		return a.Email, nil
+	})
 	srv := New(Deps{
 		Config:   cfg,
 		Store:    st,
-		Family:   family.New(st.Client()),
+		Family:   familySvc,
 		Verifier: verifier,
 		Credits:  creditsSvc,
 		Billing:  billing.NewService(st.Client(), creditsSvc, billing.NewFakeProvider(cfg.PublicBaseURL)),
 		Game:     gameMgr,
 		Quests:   questsSvc,
+		Activity: activityReader,
 	})
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
