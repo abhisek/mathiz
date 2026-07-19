@@ -1,0 +1,149 @@
+<!doctype html>
+<!--
+  OpenGraph share card source — renders to web/public/og.png (1200×630).
+
+  Regenerate after editing:
+    node web/og/render.mjs
+  (uses the sandbox/CI Chromium via Playwright; see the script for the path)
+
+  Design rules: poster, not webpage. One huge line, brand colors from
+  web/src/index.css, treasure-map motifs from the landing backdrop. Keep
+  key content centered — WhatsApp crops toward square, X shaves edges.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --bg: #faf8f4;
+    --ink: #241f33;
+    --ink-soft: #6f6885;
+    --accent: #6c4ef5;
+    --accent-deep: #5638e0;
+    --accent-soft: #efeafe;
+    --kid: #f59e0b;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  html { overflow: hidden; background: #faf8f4; }
+  body {
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    position: relative;
+  }
+
+  /* ---- map motifs (landing backdrop language, kept subtle) ---- */
+  .motif { position: absolute; }
+  svg.route path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 4;
+    stroke-dasharray: 2 18;
+    stroke-linecap: round;
+    opacity: 0.35;
+  }
+  .island { opacity: 0.5; }
+  .island path { fill: var(--kid); opacity: 0.35; }
+  .island .palm { fill: none; stroke: var(--ink-soft); stroke-width: 3; opacity: 0.6; }
+  .compass { opacity: 0.28; }
+  .compass circle { fill: none; stroke: var(--accent-deep); stroke-width: 3; }
+  .compass path { fill: var(--accent-deep); }
+  .xmark {
+    font-family: Georgia, serif;
+    font-weight: 700;
+    color: var(--kid);
+    opacity: 0.55;
+    transform: rotate(-8deg);
+  }
+
+  /* ---- content ---- */
+  .card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 30px;
+    padding: 0 120px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+  }
+  .brand-mark {
+    width: 92px;
+    height: 92px;
+    border-radius: 26px;
+    background: var(--accent);
+    color: #fff;
+    font-family: Georgia, serif;
+    font-size: 58px;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 10px 30px rgb(108 78 245 / 0.35);
+  }
+  .brand-name {
+    font-size: 84px;
+    font-weight: 800;
+    letter-spacing: -1px;
+  }
+  h1 {
+    font-size: 58px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--accent-deep);
+  }
+  .sub {
+    font-size: 30px;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  .sub b { color: var(--kid); font-weight: 800; }
+</style>
+</head>
+<body>
+  <!-- dotted sail route drifting across the card -->
+  <svg class="motif route" style="left:0; top:0; width:1200px; height:630px" viewBox="0 0 1200 630">
+    <path d="M-40 560 C 220 480, 240 300, 470 330 S 900 520, 1240 350" />
+  </svg>
+
+  <!-- islands, bottom corners -->
+  <svg class="motif island" style="left:36px; bottom:34px; width:240px" viewBox="0 0 300 120">
+    <path d="M0 110 Q 80 40 150 90 Q 230 30 300 100 L300 120 L0 120 Z" />
+    <path class="palm" d="M150 88 C 148 60 152 48 150 40 M150 44 C 138 32 124 30 112 36 M150 44 C 162 30 178 30 190 38" />
+  </svg>
+  <svg class="motif island" style="right:30px; top:44px; width:190px" viewBox="0 0 300 120">
+    <path d="M0 110 Q 90 50 170 95 Q 240 45 300 105 L300 120 L0 120 Z" />
+  </svg>
+
+  <!-- compass, top-left -->
+  <svg class="motif compass" style="left:56px; top:48px; width:120px" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="88" />
+    <circle cx="100" cy="100" r="12" />
+    <path d="M100 10 L110 100 L100 190 L90 100 Z" />
+    <path d="M10 100 L100 90 L190 100 L100 110 Z" />
+  </svg>
+
+  <!-- X marks the spot -->
+  <div class="motif xmark" style="right:64px; bottom:180px; font-size:64px">✕</div>
+
+  <div class="card">
+    <div class="brand">
+      <div class="brand-mark">∑</div>
+      <div class="brand-name">Mathiz</div>
+    </div>
+    <h1>Math adventures,<br /><em>made just for your child</em></h1>
+    <p class="sub">AI-crafted questions · grades 2–5 · <b>free to start</b> ⛵</p>
+  </div>
+</body>
+</html>
