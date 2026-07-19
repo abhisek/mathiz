@@ -5,9 +5,9 @@ description: PostHog product analytics pattern — how to add/change events, ide
 
 # Analytics (PostHog)
 
-Design record: `specs/16-analytics.md`. The code is the source of truth;
-update this file and the spec's taxonomy table in the same PR as any
-analytics change.
+The code is the source of truth — `web/src/analytics.ts` IS the event
+taxonomy. If your PR changes an analytics pattern, update this file in the
+same PR.
 
 ## NEVER track child identity
 
@@ -34,9 +34,9 @@ analytics change.
   (and only via dynamic `import()`), and the ONLY file that may contain
   event-name strings.
 - Every event is a typed helper on the exported `track` object
-  (snake_case, past tense names). To add an event: add the helper, call
-  it from the UI success point, add a row to the taxonomy table in
-  `specs/16-analytics.md` — same PR.
+  (snake_case, past tense names). To add an event: add the helper with a
+  one-line comment saying when it fires, then call it from the UI success
+  point. Nothing else — the helper list is the taxonomy.
 - Helpers are fire-and-forget: never throw, silently no-op before init or
   when analytics is off. Never `await` a track call in UI flow.
 
