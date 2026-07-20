@@ -5,10 +5,15 @@ import { ensureAnalyticsBooted, track } from '../analytics'
 import Skeleton from '../components/Skeleton'
 
 // Public "How Mathiz teaches" page (/how-it-works). Static-feeling and
-// Supabase-free like the legal/pricing pages: parent language, warm but
-// concrete, ending in the full curriculum from GET /api/v1/curriculum
-// (rendered from the shared cache; static fallback copy if the fetch fails
-// so the page never shows an error wall).
+// Supabase-free like the legal/pricing pages. Reading experience is
+// progressive disclosure: a 4-step TL;DR strip, then per-section one-line
+// gists with the fuller story folded behind native <details>. Skimmers get
+// the strip; readers get the depth.
+//
+// Staleness rule: NOTHING here may hardcode curriculum facts (grade ranges,
+// island names or counts, skill counts) — the outline and every number
+// derive from GET /api/v1/curriculum, so seed changes update this page
+// automatically.
 export default function HowItWorks() {
   useEffect(() => {
     void ensureAnalyticsBooted('public').then(() => track.howItWorksViewed())
@@ -23,61 +28,116 @@ export default function HowItWorks() {
 
       <h1 className="hiw-title">How Mathiz teaches</h1>
 
+      {/* The 10-second version. */}
+      <div className="hiw-steps">
+        <div className="hiw-step">
+          <span className="hiw-step-icon" aria-hidden>
+            ✨
+          </span>
+          Every question generated fresh for your child
+        </div>
+        <div className="hiw-step">
+          <span className="hiw-step-icon" aria-hidden>
+            🏝️
+          </span>
+          Skills mastered by doing, on a treasure map
+        </div>
+        <div className="hiw-step">
+          <span className="hiw-step-icon" aria-hidden>
+            🔄
+          </span>
+          Re-checked days later so it sticks
+        </div>
+        <div className="hiw-step">
+          <span className="hiw-step-icon" aria-hidden>
+            🧭
+          </span>
+          You can steer with quests
+        </div>
+      </div>
+
       <section className="hiw-section">
         <h2>🎲 Not another worksheet</h2>
         <p>
-          There is no question bank. Every single question is generated fresh
-          for <em>your</em> child — from their current level, the skills they're
-          working on, and the mistakes they've made recently. Two kids on the
-          same skill get different questions; the same kid never sees a rerun.
-          It's the difference between a stack of photocopies and a tutor who
-          knows where your child got stuck yesterday.
+          There is no question bank — every single question is generated fresh
+          for <em>your</em> child, from their level and their recent mistakes.
         </p>
+        <details className="hiw-more">
+          <summary>The longer story</summary>
+          <p>
+            Two kids on the same skill get different questions; the same kid
+            never sees a rerun. Each question is built from what the tutor
+            knows right now — the skills in progress, the errors made this
+            week, the pace that fits. It's the difference between a stack of
+            photocopies and a tutor who knows where your child got stuck
+            yesterday.
+          </p>
+        </details>
       </section>
 
       <section className="hiw-section">
         <h2>🧭 The mastery journey</h2>
         <p>
-          Each skill moves from <strong>learning</strong> to{' '}
-          <strong>mastered</strong> as your child proves they can do it — first
-          with hints allowed, then in a short timed round without them. And
-          mastered doesn't mean forgotten about: Mathiz quietly re-checks
-          mastered skills days later, on a 1/3/7/14/30/60-day rhythm. If one
-          has faded it's marked <strong>rusty</strong> and comes back for
-          review — like a good tutor circling back to make sure it stuck.
+          Skills move from <strong>learning</strong> to <strong>mastered</strong>{' '}
+          as your child proves them — and mastered skills get quietly
+          re-checked later, like a good tutor circling back.
         </p>
+        <details className="hiw-more">
+          <summary>The longer story</summary>
+          <p>
+            Proving a skill happens in two stages: first with hints allowed,
+            then a short round without them. Mastered doesn't mean forgotten
+            about — Mathiz re-checks mastered skills on a growing rhythm
+            (1, 3, 7, 14, 30, then 60 days). If one has faded it's marked{' '}
+            <strong>rusty</strong> and comes back for review before moving on.
+            That rhythm is what makes practice stick instead of wash out.
+          </p>
+        </details>
       </section>
 
       <section className="hiw-section">
         <h2>⛵ What an expedition is</h2>
         <p>
-          Practice happens in short expeditions: 5 questions on one skill,
-          launched from a spot on the treasure map. A wrong answer earns a
-          hint, not a buzzer. Two misses and the guide steps in with a
-          micro-lesson — a plain explanation, a worked example, and a practice
-          question — before the expedition continues. Master the skill and the
-          chest opens, the fog lifts, and new islands come into reach.
+          Practice happens in short expeditions — 5 questions on one skill,
+          launched from a spot on the map. Wrong answers earn hints, not
+          buzzers.
         </p>
+        <details className="hiw-more">
+          <summary>The longer story</summary>
+          <p>
+            Two misses and the guide steps in with a micro-lesson: a plain
+            explanation, a worked example, and a practice question — then the
+            expedition continues. Master the skill and the chest opens, the
+            fog lifts, and new islands come into reach. Gems and streaks keep
+            it feeling like a game; the engine underneath keeps it honest.
+          </p>
+        </details>
       </section>
 
       <section className="hiw-section">
         <h2>🧑‍✈️ You can steer</h2>
         <p>
           The engine picks what's next, but you hold the wheel when you want
-          it. Want HCF covered this week? Create a <strong>quest</strong> from
-          your dashboard — write the questions yourself or let the AI draft
-          them for your review — and it appears on your child's map as a
-          special spot. To your child it's just more treasure;{' '}
-          <Link to="/login">sign in</Link> to try it.
+          it: create a <strong>quest</strong> and it lands on your child's map
+          as a special spot.
         </p>
+        <details className="hiw-more">
+          <summary>The longer story</summary>
+          <p>
+            Want a specific topic covered this week? From your dashboard,
+            write the questions yourself or let the AI draft them for your
+            review — nothing reaches your child unapproved. To them it's just
+            more treasure. <Link to="/login">Sign in</Link> to try it.
+          </p>
+        </details>
       </section>
 
       <section className="hiw-section">
         <h2>🗺️ What Mathiz covers</h2>
         <p>
-          The treasure map is a real curriculum: skills for US grades 2–5,
-          organized into islands that mirror how math is taught at school —
-          each skill unlocking once its prerequisites are mastered.
+          The treasure map is a real curriculum, organized into islands that
+          mirror how math is taught at school — each skill unlocking once its
+          prerequisites are mastered. Everything it covers today:
         </p>
         <CurriculumOutline />
       </section>
@@ -93,9 +153,12 @@ export default function HowItWorks() {
   )
 }
 
-// CurriculumOutline renders the islands as headed groups with skills listed
-// by grade band — compact and scannable, answering "does it cover what
-// school does?". Skeleton on first load; static summary if the fetch fails.
+// CurriculumOutline renders the islands as accordions: name + skill count +
+// grade range visible collapsed, skills by grade band on expand. Everything
+// (names, counts, grade ranges) derives from the API — no hardcoded
+// curriculum facts anywhere on this page. Skeleton on first load; a generic
+// (fact-free) note if the fetch fails so the page never shows an error wall
+// or stale hardcoded claims.
 function CurriculumOutline() {
   const [islands, setIslands] = useState<CurriculumIsland[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -115,13 +178,10 @@ function CurriculumOutline() {
   }, [])
 
   if (failed) {
-    // Static fallback — matches the shipped skill graph's shape.
     return (
       <p className="muted">
-        Five islands — Number &amp; Place Value, Addition &amp; Subtraction,
-        Multiplication &amp; Division, Fractions, and Measurement — covering
-        the core skills of US grades 2–5, from place value and number bonds
-        through long division, equivalent fractions, and decimals.
+        The curriculum outline couldn't load just now — refresh to see every
+        island and skill Mathiz teaches.
       </p>
     )
   }
@@ -133,7 +193,6 @@ function CurriculumOutline() {
           <div key={i} className="hiw-island">
             <Skeleton width="12rem" height="1rem" />
             <Skeleton width="100%" height="0.75rem" />
-            <Skeleton width="85%" height="0.75rem" />
           </div>
         ))}
       </div>
@@ -142,7 +201,7 @@ function CurriculumOutline() {
 
   return (
     <div className="hiw-islands">
-      {islands.map((island) => {
+      {islands.map((island, idx) => {
         // Group the island's skills (already grade-ordered) by grade band.
         const grades: { grade: number; names: string[] }[] = []
         for (const s of island.skills) {
@@ -150,16 +209,26 @@ function CurriculumOutline() {
           if (last && last.grade === s.grade) last.names.push(s.name)
           else grades.push({ grade: s.grade, names: [s.name] })
         }
+        const gradeSpan =
+          grades.length > 1
+            ? `grades ${grades[0].grade}–${grades[grades.length - 1].grade}`
+            : `grade ${grades[0]?.grade ?? ''}`
         return (
-          <div key={island.id} className="hiw-island">
-            <h3>{island.name}</h3>
+          // First island open by way of invitation; the rest are a click away.
+          <details key={island.id} className="hiw-island" open={idx === 0}>
+            <summary>
+              <h3>{island.name}</h3>
+              <span className="muted">
+                {island.skills.length} skills · {gradeSpan}
+              </span>
+            </summary>
             {grades.map((g) => (
               <p key={g.grade} className="hiw-grade-row">
                 <span className="hiw-grade">Grade {g.grade}</span>
                 {g.names.join(' · ')}
               </p>
             ))}
-          </div>
+          </details>
         )
       })}
     </div>
