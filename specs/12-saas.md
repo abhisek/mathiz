@@ -187,6 +187,7 @@ All under `/api/v1`. Parent endpoints require Supabase JWT; child endpoints devi
 | Method & Path | Auth | Purpose |
 |---|---|---|
 | `GET  /config` | none | Public boot config for SPA (Supabase URL + anon key) |
+| `GET  /curriculum` | none | Static skill-graph curriculum: islands (strands, canonical order) → skills (`id`, `name`, `grade`, `prereqs`), cacheable (`Cache-Control: public, max-age=3600`) |
 | `GET  /me` | parent | Account (auto-provisioned) + owned family space |
 | `POST /family` | parent | Create family space `{name}` (one per account, v1) |
 | `PATCH /family/{id}` | parent | Rename |
@@ -291,7 +292,10 @@ been doing" view. It writes nothing and reads only via
   micro-lessons. Individual answers are NOT timeline items; they live behind
   an expandable per-session detail
   (`GET /api/v1/children/{id}/activity/sessions/{sessionId}` → answers in
-  question order + hint count) so the feed stays scannable.
+  question order + hint count) so the feed stays scannable. Each expedition
+  item also carries an optional `category` — the first plan slot's category
+  (`frontier` | `review` | `booster`), i.e. why the engine scheduled the
+  expedition — omitted when the stored plan is empty.
 - **Pagination:** one `before` cursor over the global event sequence, applied
   to every underlying stream; each stream contributes up to `limit` items,
   the merge keeps the newest `limit` overall. `nextBefore` is the lowest

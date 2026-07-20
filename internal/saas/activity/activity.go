@@ -98,8 +98,11 @@ type ExpeditionItem struct {
 	Correct      int
 	DurationSecs int
 	Gems         int
-	Skills       []SkillRef
-	Quest        *QuestRef // nil for non-quest sessions
+	// Category is the first plan slot's category ("frontier" | "review" |
+	// "booster") — why this expedition happened. "" when the plan is empty.
+	Category string
+	Skills   []SkillRef
+	Quest    *QuestRef // nil for non-quest sessions
 }
 
 // MasteryItem is a transition worth a parent's attention.
@@ -233,6 +236,9 @@ func (r *Reader) expeditionItem(ctx context.Context, sum store.SessionSummaryRec
 		Correct:      sum.CorrectAnswers,
 		DurationSecs: sum.DurationSecs,
 		Gems:         sum.GemCount,
+	}
+	if len(sum.Plan) > 0 {
+		exp.Category = sum.Plan[0].Category
 	}
 	seen := map[string]bool{}
 	for _, slot := range sum.Plan {

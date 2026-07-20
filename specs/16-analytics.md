@@ -100,6 +100,7 @@ non-identifying.
 |---|---|---|
 | `landing_cta_clicked` | `persona: 'parent'\|'kid'` | Landing hero doors (`Landing.tsx`) |
 | `pricing_viewed` | — | Pricing mount (`Pricing.tsx`) |
+| `how_it_works_viewed` | — | How-it-works mount (`HowItWorks.tsx`) |
 | `signin_completed` | — | OTP verify / password sign-in success (`Login.tsx`) |
 | `family_created` | — | Create-family success (`dashboard/Layout.tsx`) |
 | `child_added` | `grade` | Add-child modal success (`dashboard/Kids.tsx`) |
@@ -107,6 +108,7 @@ non-identifying.
 | `coparent_invited` | — | Invite parent success (`dashboard/Family.tsx`) |
 | `coparent_accepted` | — | Accept-invite banner success (`dashboard/Layout.tsx`) |
 | `activity_viewed` | — | Activity page mount (`dashboard/Activity.tsx`) |
+| `curriculum_viewed` | — | Curriculum page mount (`dashboard/Curriculum.tsx`) |
 | `quest_created` | — | Create-quest modal success (`dashboard/Quests.tsx`) |
 | `quest_ai_generated` | `count` | AI generation success (`dashboard/QuestEditor.tsx`) |
 | `quest_published` | — | Publish success (`dashboard/QuestEditor.tsx`) |

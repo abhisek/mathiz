@@ -86,6 +86,8 @@ func (s *Server) routes() http.Handler {
 	// Pricing catalog is public and served regardless of billing config —
 	// see handlePricing.
 	mux.HandleFunc("GET /api/v1/pricing", s.handlePricing)
+	// Static skill-graph curriculum, public — see handleCurriculum.
+	mux.HandleFunc("GET /api/v1/curriculum", s.handleCurriculum)
 	mux.Handle("POST /api/v1/join/preview", s.rateLimited(http.HandlerFunc(s.handleJoinPreview)))
 	mux.Handle("POST /api/v1/join/redeem", s.rateLimited(http.HandlerFunc(s.handleJoinRedeem)))
 
