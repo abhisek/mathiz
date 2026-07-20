@@ -13,6 +13,7 @@ import { getSupabase } from '../../supa'
 import { type DashboardContext } from './context'
 import Kids from './Kids'
 import Activity from './Activity'
+import Curriculum from './Curriculum'
 import Quests from './Quests'
 import QuestEditor from './QuestEditor'
 import Family from './Family'
@@ -29,6 +30,7 @@ export default function Dashboard({ session }: Props) {
       <Route element={<DashboardLayout session={session} />}>
         <Route index element={<Kids />} />
         <Route path="activity" element={<Activity />} />
+        <Route path="curriculum" element={<Curriculum />} />
         <Route path="quests" element={<Quests />} />
         <Route path="quests/:id" element={<QuestEditor />} />
         <Route path="family" element={<Family />} />
@@ -121,11 +123,15 @@ function DashboardLayout({ session }: Props) {
         <nav className="dash-nav-items" aria-label="Dashboard">
           <DashNavLink to="/dashboard" end label="Kids" emoji="🧒" />
           <DashNavLink to="/dashboard/activity" label="Activity" emoji="🗓️" />
+          <DashNavLink to="/dashboard/curriculum" label="Curriculum" emoji="🗺️" />
           <DashNavLink to="/dashboard/quests" label="Quests" emoji="⭐" />
           <DashNavLink to="/dashboard/family" label="Family" emoji="👪" />
           {isOwner && <DashNavLink to="/dashboard/billing" label="Billing" emoji="⛵" />}
         </nav>
         <div className="dash-nav-foot">
+          <NavLink to="/how-it-works" className="muted dash-how-link">
+            How Mathiz teaches
+          </NavLink>
           <span className="muted dash-email">{session.user.email}</span>
           <button className="btn btn-ghost" onClick={signOut}>
             Sign out

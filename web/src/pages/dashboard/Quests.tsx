@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError, type ChildProfile, type Quest } from '../../api'
 import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
+import SkillSelect from '../../components/SkillSelect'
 import { useDashboard } from './context'
 import { QUEST_STATUS_LABEL } from './questStatus'
 
@@ -25,6 +26,22 @@ export default function Quests() {
   const [showCreate, setShowCreate] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Skill preselected for the create modal (deep link from the curriculum
+  // browser); "" = untagged, null = the modal wasn't deep-linked.
+  const [createSkillId, setCreateSkillId] = useState<string | null>(null)
+
+  // Deep link: /dashboard/quests?create=<skillId> opens the create modal
+  // with that skill preselected, then scrubs the param so refresh/back
+  // doesn't re-open it.
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (!searchParams.has('create')) return
+    setCreateSkillId(searchParams.get('create') ?? '')
+    setShowCreate(true)
+    const next = new URLSearchParams(searchParams)
+    next.delete('create')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const refresh = useCallback(async () => {
     try {
@@ -136,8 +153,9 @@ export default function Quests() {
         </button>
       </div>
       <p className="muted">
-        A quest is a one-off set of questions you write (or let the AI draft) —
-        it appears as a special spot on your child's treasure map.
+        Want a specific topic covered this week? Create a quest — it lands on
+        your child's treasure map as a special spot. Write the questions
+        yourself, or let the AI draft them for your review.
       </p>
       {error && <p className="form-error">{error}</p>}
       {current.length === 0 && archived.length === 0 ? (
@@ -167,7 +185,11 @@ export default function Quests() {
           token={token}
           familyId={familyId}
           kids={kids}
-          onClose={() => setShowCreate(false)}
+          initialSkillId={createSkillId ?? ''}
+          onClose={() => {
+            setShowCreate(false)
+            setCreateSkillId(null)
+          }}
           onCreated={async (q) => {
             // Straight into the editor page — the list refetches on return.
             navigate(`/dashboard/quests/${q.id}`)
@@ -182,19 +204,21 @@ function CreateQuestModal({
   token,
   familyId,
   kids,
+  initialSkillId = '',
   onClose,
   onCreated,
 }: {
   token: string
   familyId: string
   kids: ChildProfile[]
+  initialSkillId?: string
   onClose: () => void
   onCreated: (q: Quest) => Promise<void>
 }) {
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('')
   const [childId, setChildId] = useState('')
-  const [skillId, setSkillId] = useState('')
+  const [skillId, setSkillId] = useState(initialSkillId)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -252,15 +276,11 @@ function CreateQuestModal({
             </select>
           </label>
           <label>
-            Skill tag <span className="muted">(optional)</span>
-            <input
-              value={skillId}
-              onChange={(e) => setSkillId(e.target.value)}
-              placeholder="e.g. mult-2digit"
-            />
+            Skill <span className="muted">(optional)</span>
+            <SkillSelect value={skillId} onChange={setSkillId} />
             <span className="form-hint">
-              A skill id from the treasure map — tagged quests also push the
-              main map forward. Leave blank for standalone practice.
+              A skill from the treasure map — tagged quests also push the
+              main map forward.
             </span>
           </label>
           {error && <p className="form-error">{error}</p>}

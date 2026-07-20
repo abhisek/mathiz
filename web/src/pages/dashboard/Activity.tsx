@@ -384,6 +384,14 @@ function TimelineRow({
   return null
 }
 
+// Why the engine picked this expedition, in parent language. Unknown or
+// absent categories (older events, future values) simply render no chip.
+const WHY_CHIP: Record<string, string> = {
+  frontier: '🌱 New skill',
+  review: '🔄 Review — checking it stuck',
+  booster: '⭐ Confidence builder',
+}
+
 function ExpeditionRow({
   token,
   childId,
@@ -420,6 +428,7 @@ function ExpeditionRow({
   const what = exp.quest
     ? `${exp.quest.emoji || '⭐'} ${exp.quest.name}`
     : exp.skills.map((s) => s.name).join(' · ') || 'Expedition'
+  const whyChip = exp.category ? WHY_CHIP[exp.category] : undefined
 
   return (
     <div className={`timeline-expedition${open ? ' open' : ''}`}>
@@ -434,6 +443,7 @@ function ExpeditionRow({
             {exp.quest && exp.quest.createdBy && (
               <span className="muted timeline-quest-by"> quest by {exp.quest.createdBy}</span>
             )}
+            {whyChip && <span className="timeline-why">{whyChip}</span>}
           </strong>
           <span className="muted">
             {exp.correct}/{exp.questions} correct · {durationLabel(exp.durationSecs)} · 💎
