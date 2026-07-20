@@ -57,6 +57,7 @@ export default function Curriculum() {
     if (!childId) {
       setSkillStates({})
       setStatsLoading(false)
+      setStatsError(null)
       return
     }
     let cancelled = false
