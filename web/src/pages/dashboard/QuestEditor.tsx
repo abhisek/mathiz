@@ -12,6 +12,7 @@ import {
 import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
+import SkillSelect from '../../components/SkillSelect'
 import { useDashboard } from './context'
 import { QUEST_STATUS_LABEL } from './questStatus'
 
@@ -433,12 +434,8 @@ function QuestDetailsForm({
           </select>
         </label>
         <label>
-          Skill tag <span className="muted">(optional)</span>
-          <input
-            value={skillId}
-            onChange={(e) => setSkillId(e.target.value)}
-            placeholder="e.g. mult-2digit"
-          />
+          Skill <span className="muted">(optional)</span>
+          <SkillSelect value={skillId} onChange={setSkillId} />
         </label>
       </div>
       {error && <p className="form-error">{error}</p>}

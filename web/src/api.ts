@@ -127,6 +127,27 @@ export interface ChildStats {
   gems: { total: number; byType: Record<string, number> }
 }
 
+// ---- Public curriculum (GET /api/v1/curriculum, no auth) ----
+// The skill graph rendered for humans: islands in canonical order, each
+// island's skills ordered by grade. Static per binary — cache freely.
+
+export interface CurriculumSkill {
+  id: string
+  name: string
+  grade: number
+  prereqs: string[]
+}
+
+export interface CurriculumIsland {
+  id: string
+  name: string
+  skills: CurriculumSkill[]
+}
+
+export interface CurriculumInfo {
+  islands: CurriculumIsland[]
+}
+
 // ---- Parent quests (specs/15-quests.md) ----
 
 export type QuestStatus = 'draft' | 'active' | 'archived'
@@ -196,6 +217,10 @@ export interface ActivityExpedition {
   gems: number
   skills: ActivitySkillRef[]
   quest?: ActivityQuestRef
+  // Why the engine picked this expedition (may be absent on older events):
+  // frontier = a new skill, review = spaced-rep re-check, booster = an
+  // easier confidence run.
+  category?: 'frontier' | 'review' | 'booster'
 }
 
 export interface ActivityMastery {
@@ -327,6 +352,9 @@ export const api = {
   bootConfig: () => request<BootConfig>('GET', '/api/v1/config', null),
   // Public: plan catalog + beta flag for the /pricing page (no auth).
   pricing: () => request<PricingInfo>('GET', '/api/v1/pricing', null),
+  // Public: the human-readable skill graph (no auth). Prefer
+  // cachedCurriculum() below — the catalog is static per binary.
+  curriculum: () => request<CurriculumInfo>('GET', '/api/v1/curriculum', null),
 
   // Parent (Supabase JWT)
   me: (token: string) =>
@@ -481,6 +509,19 @@ export const api = {
       '/api/v1/child/me',
       deviceToken,
     ),
+}
+
+// cachedCurriculum shares one curriculum fetch across the whole SPA — the
+// catalog is static per server binary, so every consumer (quest skill
+// pickers, /how-it-works, /dashboard/curriculum) reuses the same promise.
+// A failed fetch clears the cache so the next consumer can retry.
+let curriculumPromise: Promise<CurriculumInfo> | null = null
+export function cachedCurriculum(): Promise<CurriculumInfo> {
+  curriculumPromise ??= api.curriculum().catch((err) => {
+    curriculumPromise = null
+    throw err
+  })
+  return curriculumPromise
 }
 
 // Device token persistence for the kid's browser.

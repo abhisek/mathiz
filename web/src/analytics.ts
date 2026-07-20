@@ -139,6 +139,8 @@ export const track = {
   // Public funnel
   landingCtaClicked: (persona: 'parent' | 'kid') => capture('landing_cta_clicked', { persona }),
   pricingViewed: () => capture('pricing_viewed'),
+  // Fires when the public /how-it-works page mounts.
+  howItWorksViewed: () => capture('how_it_works_viewed'),
   signinCompleted: () => capture('signin_completed'),
 
   // Parent dashboard
@@ -148,6 +150,8 @@ export const track = {
   coparentInvited: () => capture('coparent_invited'),
   coparentAccepted: () => capture('coparent_accepted'),
   activityViewed: () => capture('activity_viewed'),
+  // Fires when the parent /dashboard/curriculum page mounts.
+  curriculumViewed: () => capture('curriculum_viewed'),
   questCreated: () => capture('quest_created'),
   questAiGenerated: (count: number) => capture('quest_ai_generated', { count }),
   questPublished: () => capture('quest_published'),

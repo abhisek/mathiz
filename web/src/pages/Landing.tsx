@@ -106,6 +106,7 @@ export default function Landing() {
       </section>
 
       <footer className="landing-footer">
+        <Link to="/how-it-works">How it works</Link>
         <Link to="/pricing">Pricing</Link>
         <Link to="/terms">Terms</Link>
         <Link to="/privacy">Privacy</Link>

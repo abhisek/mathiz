@@ -52,7 +52,8 @@ export default function Pricing() {
         <p>
           1 credit = 1 expedition: 5 AI-generated questions made just for your
           child, with hints and micro-lessons included. Every family starts
-          with {starter} free expeditions.
+          with {starter} free expeditions. Curious what powers them?{' '}
+          <Link to="/how-it-works">how the engine works →</Link>
         </p>
       </section>
 
