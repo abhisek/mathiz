@@ -302,6 +302,11 @@ func (m *Manager) StartQuest(ctx context.Context, childUID, questUID string) (*E
 	state.GemService = gemSvc
 	gemSvc.ResetSession()
 
+	// Durable quest attribution: the quest UID and its name AS-OF-PLAY ride
+	// the start event (for tagged quests the plan carries the real skill ID,
+	// so without this the session would be indistinguishable from a dig).
+	// Deliberately denormalized — events record facts at play time, so the
+	// activity timeline survives quest deletion and rename.
 	_ = eventRepo.AppendSessionEvent(ctx, store.SessionEventData{
 		SessionID: sessionID,
 		Action:    "start",
@@ -310,6 +315,8 @@ func (m *Manager) StartQuest(ctx context.Context, childUID, questUID string) (*E
 			Tier:     sess.TierString(tier),
 			Category: string(category),
 		}},
+		QuestUID:  play.QuestUID,
+		QuestName: play.Name,
 	})
 
 	learnerProfile := ""

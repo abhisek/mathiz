@@ -167,6 +167,70 @@ func TestActivityTimelineResponseShape(t *testing.T) {
 	expectStatus(t, resp, 400, "bad from")
 }
 
+// TestActivityQuestFilter: ?quest=<uid> returns only expeditions attributed
+// to that quest (kinds is overridden), with the event's as-of-play name even
+// though no such quest exists in the control plane anymore.
+func TestActivityQuestFilter(t *testing.T) {
+	f := newActivityFixture(t)
+
+	// Seed a quest-attributed session on top of the fixture's normal dig.
+	repo := f.e.st.EventRepoFor(f.childA.ID)
+	ctx := t.Context()
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	must(repo.AppendSessionEvent(ctx, store.SessionEventData{
+		SessionID: "sess-q", Action: "start",
+		PlanSummary: []store.PlanSlotSummaryData{{SkillID: "pv-hundreds", Tier: "learn", Category: "frontier"}},
+		QuestUID:    "q-9", QuestName: "Quest Nine",
+	}))
+	must(repo.AppendSessionEvent(ctx, store.SessionEventData{
+		SessionID: "sess-q", Action: "end", QuestionsServed: 2, CorrectAnswers: 2, DurationSecs: 60,
+	}))
+
+	var page activityPageJSON
+	resp := f.e.call(t, "GET", "/api/v1/children/"+f.childA.ID+"/activity?quest=q-9", f.owner, nil, &page)
+	expectStatus(t, resp, 200, "quest filter")
+	if len(page.Items) != 1 {
+		t.Fatalf("items = %d, want 1 (only the quest expedition)", len(page.Items))
+	}
+	it := page.Items[0]
+	if it.Kind != "expedition" || it.Expedition == nil || it.Expedition.SessionID != "sess-q" {
+		t.Fatalf("item = %+v", it)
+	}
+	// The quest is long gone from the quests table — the name still comes
+	// from the event (durable attribution).
+	if it.Expedition.Quest == nil || it.Expedition.Quest.ID != "q-9" ||
+		it.Expedition.Quest.Name != "Quest Nine" {
+		t.Errorf("quest ref = %+v", it.Expedition.Quest)
+	}
+
+	// quest overrides kinds — a kinds value that would otherwise 400 or
+	// exclude expeditions is ignored.
+	page = activityPageJSON{}
+	resp = f.e.call(t, "GET", "/api/v1/children/"+f.childA.ID+"/activity?quest=q-9&kinds=mastery",
+		f.owner, nil, &page)
+	expectStatus(t, resp, 200, "quest filter overrides kinds")
+	if len(page.Items) != 1 || page.Items[0].Kind != "expedition" {
+		t.Fatalf("quest+kinds items = %+v", page.Items)
+	}
+
+	// A quest with no sessions filters everything out.
+	page = activityPageJSON{}
+	resp = f.e.call(t, "GET", "/api/v1/children/"+f.childA.ID+"/activity?quest=q-nope", f.owner, nil, &page)
+	expectStatus(t, resp, 200, "empty quest filter")
+	if len(page.Items) != 0 {
+		t.Fatalf("q-nope items = %+v", page.Items)
+	}
+
+	// Authz unchanged: a stranger probing the filtered route gets 404.
+	resp = f.e.call(t, "GET", "/api/v1/children/"+f.childA.ID+"/activity?quest=q-9", f.stranger, nil, nil)
+	expectStatus(t, resp, 404, "stranger quest filter")
+}
+
 func TestActivitySessionDetail(t *testing.T) {
 	f := newActivityFixture(t)
 

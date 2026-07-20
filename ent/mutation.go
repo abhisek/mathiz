@@ -14912,6 +14912,8 @@ type SessionEventMutation struct {
 	addduration_secs    *int
 	plan_summary        *[]schema.PlanSlotSummary
 	appendplan_summary  []schema.PlanSlotSummary
+	quest_uid           *string
+	quest_name          *string
 	clearedFields       map[string]struct{}
 	done                bool
 	oldValue            func(context.Context) (*SessionEvent, error)
@@ -15449,6 +15451,104 @@ func (m *SessionEventMutation) ResetPlanSummary() {
 	delete(m.clearedFields, sessionevent.FieldPlanSummary)
 }
 
+// SetQuestUID sets the "quest_uid" field.
+func (m *SessionEventMutation) SetQuestUID(s string) {
+	m.quest_uid = &s
+}
+
+// QuestUID returns the value of the "quest_uid" field in the mutation.
+func (m *SessionEventMutation) QuestUID() (r string, exists bool) {
+	v := m.quest_uid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuestUID returns the old "quest_uid" field's value of the SessionEvent entity.
+// If the SessionEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SessionEventMutation) OldQuestUID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuestUID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuestUID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuestUID: %w", err)
+	}
+	return oldValue.QuestUID, nil
+}
+
+// ClearQuestUID clears the value of the "quest_uid" field.
+func (m *SessionEventMutation) ClearQuestUID() {
+	m.quest_uid = nil
+	m.clearedFields[sessionevent.FieldQuestUID] = struct{}{}
+}
+
+// QuestUIDCleared returns if the "quest_uid" field was cleared in this mutation.
+func (m *SessionEventMutation) QuestUIDCleared() bool {
+	_, ok := m.clearedFields[sessionevent.FieldQuestUID]
+	return ok
+}
+
+// ResetQuestUID resets all changes to the "quest_uid" field.
+func (m *SessionEventMutation) ResetQuestUID() {
+	m.quest_uid = nil
+	delete(m.clearedFields, sessionevent.FieldQuestUID)
+}
+
+// SetQuestName sets the "quest_name" field.
+func (m *SessionEventMutation) SetQuestName(s string) {
+	m.quest_name = &s
+}
+
+// QuestName returns the value of the "quest_name" field in the mutation.
+func (m *SessionEventMutation) QuestName() (r string, exists bool) {
+	v := m.quest_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuestName returns the old "quest_name" field's value of the SessionEvent entity.
+// If the SessionEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SessionEventMutation) OldQuestName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuestName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuestName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuestName: %w", err)
+	}
+	return oldValue.QuestName, nil
+}
+
+// ClearQuestName clears the value of the "quest_name" field.
+func (m *SessionEventMutation) ClearQuestName() {
+	m.quest_name = nil
+	m.clearedFields[sessionevent.FieldQuestName] = struct{}{}
+}
+
+// QuestNameCleared returns if the "quest_name" field was cleared in this mutation.
+func (m *SessionEventMutation) QuestNameCleared() bool {
+	_, ok := m.clearedFields[sessionevent.FieldQuestName]
+	return ok
+}
+
+// ResetQuestName resets all changes to the "quest_name" field.
+func (m *SessionEventMutation) ResetQuestName() {
+	m.quest_name = nil
+	delete(m.clearedFields, sessionevent.FieldQuestName)
+}
+
 // Where appends a list predicates to the SessionEventMutation builder.
 func (m *SessionEventMutation) Where(ps ...predicate.SessionEvent) {
 	m.predicates = append(m.predicates, ps...)
@@ -15483,7 +15583,7 @@ func (m *SessionEventMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SessionEventMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 11)
 	if m.sequence != nil {
 		fields = append(fields, sessionevent.FieldSequence)
 	}
@@ -15511,6 +15611,12 @@ func (m *SessionEventMutation) Fields() []string {
 	if m.plan_summary != nil {
 		fields = append(fields, sessionevent.FieldPlanSummary)
 	}
+	if m.quest_uid != nil {
+		fields = append(fields, sessionevent.FieldQuestUID)
+	}
+	if m.quest_name != nil {
+		fields = append(fields, sessionevent.FieldQuestName)
+	}
 	return fields
 }
 
@@ -15537,6 +15643,10 @@ func (m *SessionEventMutation) Field(name string) (ent.Value, bool) {
 		return m.DurationSecs()
 	case sessionevent.FieldPlanSummary:
 		return m.PlanSummary()
+	case sessionevent.FieldQuestUID:
+		return m.QuestUID()
+	case sessionevent.FieldQuestName:
+		return m.QuestName()
 	}
 	return nil, false
 }
@@ -15564,6 +15674,10 @@ func (m *SessionEventMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldDurationSecs(ctx)
 	case sessionevent.FieldPlanSummary:
 		return m.OldPlanSummary(ctx)
+	case sessionevent.FieldQuestUID:
+		return m.OldQuestUID(ctx)
+	case sessionevent.FieldQuestName:
+		return m.OldQuestName(ctx)
 	}
 	return nil, fmt.Errorf("unknown SessionEvent field %s", name)
 }
@@ -15635,6 +15749,20 @@ func (m *SessionEventMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPlanSummary(v)
+		return nil
+	case sessionevent.FieldQuestUID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuestUID(v)
+		return nil
+	case sessionevent.FieldQuestName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuestName(v)
 		return nil
 	}
 	return fmt.Errorf("unknown SessionEvent field %s", name)
@@ -15720,6 +15848,12 @@ func (m *SessionEventMutation) ClearedFields() []string {
 	if m.FieldCleared(sessionevent.FieldPlanSummary) {
 		fields = append(fields, sessionevent.FieldPlanSummary)
 	}
+	if m.FieldCleared(sessionevent.FieldQuestUID) {
+		fields = append(fields, sessionevent.FieldQuestUID)
+	}
+	if m.FieldCleared(sessionevent.FieldQuestName) {
+		fields = append(fields, sessionevent.FieldQuestName)
+	}
 	return fields
 }
 
@@ -15736,6 +15870,12 @@ func (m *SessionEventMutation) ClearField(name string) error {
 	switch name {
 	case sessionevent.FieldPlanSummary:
 		m.ClearPlanSummary()
+		return nil
+	case sessionevent.FieldQuestUID:
+		m.ClearQuestUID()
+		return nil
+	case sessionevent.FieldQuestName:
+		m.ClearQuestName()
 		return nil
 	}
 	return fmt.Errorf("unknown SessionEvent nullable field %s", name)
@@ -15771,6 +15911,12 @@ func (m *SessionEventMutation) ResetField(name string) error {
 		return nil
 	case sessionevent.FieldPlanSummary:
 		m.ResetPlanSummary()
+		return nil
+	case sessionevent.FieldQuestUID:
+		m.ResetQuestUID()
+		return nil
+	case sessionevent.FieldQuestName:
+		m.ResetQuestName()
 		return nil
 	}
 	return fmt.Errorf("unknown SessionEvent field %s", name)

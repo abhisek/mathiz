@@ -134,6 +134,13 @@ func parseTimelineQuery(w http.ResponseWriter, r *http.Request) (activity.Timeli
 			}
 		}
 	}
+	if v := get.Get("quest"); v != "" {
+		// A quest filter implies expeditions — only expeditions carry quest
+		// attribution — so the kinds param is deliberately ignored/overridden
+		// when quest is set.
+		q.QuestUID = v
+		q.Kinds = nil
+	}
 	for _, tp := range []struct {
 		name string
 		dst  *time.Time

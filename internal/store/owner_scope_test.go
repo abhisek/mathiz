@@ -392,6 +392,7 @@ func TestSessionSummariesJoinPlan(t *testing.T) {
 	if err := alice.AppendSessionEvent(ctx, SessionEventData{
 		SessionID: "sess-1", Action: "start",
 		PlanSummary: []PlanSlotSummaryData{{SkillID: "add-1", Tier: "learn", Category: "core"}},
+		QuestUID:    "q-77", QuestName: "HCF Week",
 	}); err != nil {
 		t.Fatalf("alice start: %v", err)
 	}
@@ -422,6 +423,10 @@ func TestSessionSummariesJoinPlan(t *testing.T) {
 	if len(got.Plan) != 1 || got.Plan[0].SkillID != "add-1" ||
 		got.Plan[0].Tier != "learn" || got.Plan[0].Category != "core" {
 		t.Errorf("summary Plan = %+v, want alice's start plan", got.Plan)
+	}
+	// Quest attribution rides the start event and joins onto the summary.
+	if got.QuestUID != "q-77" || got.QuestName != "HCF Week" {
+		t.Errorf("summary quest = (%q, %q), want (q-77, HCF Week)", got.QuestUID, got.QuestName)
 	}
 
 	// Cursor pagination: nothing strictly older than the end event's sequence.

@@ -468,6 +468,65 @@ func TestQuestExpeditionOwnership(t *testing.T) {
 	}
 }
 
+// TestQuestStartEventCarriesQuestAttribution proves the durable-attribution
+// invariant: a quest expedition's session start event denormalizes the quest
+// UID and its as-of-play name (so the activity timeline can attribute tagged
+// quest sessions and survive quest deletion/rename), while map digs leave
+// both fields empty.
+func TestQuestStartEventCarriesQuestAttribution(t *testing.T) {
+	st, err := store.Open("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+	src := newFakeQuestSource(rootSkillID(t), 2) // tagged: plan carries the real skill
+	m := NewManager(Config{
+		Store: st,
+		Toolset: func(ctx context.Context, eventRepo store.EventRepo) (*Toolset, error) {
+			return &Toolset{Generator: &fakeGenerator{}}, nil
+		},
+		Quests: src,
+	})
+	ctx := context.Background()
+
+	exp, err := m.StartQuest(ctx, "child-1", "quest-1")
+	if err != nil {
+		t.Fatalf("start quest: %v", err)
+	}
+	answerCurrent(t, m, "child-1", exp.ID, "4")
+	if res := answerCurrent(t, m, "child-1", exp.ID, "4"); !res.Done {
+		t.Fatalf("expedition should end after 2 questions")
+	}
+
+	// A plain map dig afterwards must NOT carry quest attribution.
+	dig, err := m.Start(ctx, "child-1", rootSkillID(t))
+	if err != nil {
+		t.Fatalf("start dig: %v", err)
+	}
+	for !answerCurrent(t, m, "child-1", dig.ID, "4").Done {
+	}
+
+	sums, err := st.EventRepoFor("child-1").QuerySessionSummaries(ctx, store.QueryOpts{})
+	if err != nil {
+		t.Fatalf("summaries: %v", err)
+	}
+	if len(sums) != 2 {
+		t.Fatalf("summaries = %d, want 2 (quest + dig)", len(sums))
+	}
+	// Newest first: the dig, then the quest session.
+	if sums[0].QuestUID != "" || sums[0].QuestName != "" {
+		t.Errorf("dig summary quest = (%q, %q), want empty", sums[0].QuestUID, sums[0].QuestName)
+	}
+	if sums[1].QuestUID != "quest-1" || sums[1].QuestName != "Captain's Quest" {
+		t.Errorf("quest summary quest = (%q, %q), want (quest-1, Captain's Quest)", sums[1].QuestUID, sums[1].QuestName)
+	}
+	// Tagged quest: the plan carries the REAL skill (no synthetic quest:
+	// prefix) — exactly why the event-level attribution exists.
+	if len(sums[1].Plan) != 1 || sums[1].Plan[0].SkillID != rootSkillID(t) {
+		t.Errorf("quest summary plan = %+v, want the tagged skill", sums[1].Plan)
+	}
+}
+
 // TestQuestThenSkillStartDoesNotReuse guards the reuse check: an untouched
 // quest expedition must not satisfy a skill Start (and vice versa).
 func TestQuestThenSkillStartDoesNotReuse(t *testing.T) {

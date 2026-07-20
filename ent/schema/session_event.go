@@ -42,6 +42,14 @@ func (SessionEvent) Fields() []ent.Field {
 		field.JSON("plan_summary", []PlanSlotSummary{}).
 			Optional().
 			Comment("Serialized plan (on start only)"),
+		field.String("quest_uid").
+			Optional().
+			Default("").
+			Comment("Quest attribution: quest UID (on quest session start only)"),
+		field.String("quest_name").
+			Optional().
+			Default("").
+			Comment("Quest attribution: quest name as-of-play (on quest session start only)"),
 	}
 }
 

@@ -33,7 +33,9 @@ func (r *eventRepo) AppendSessionEvent(ctx context.Context, data SessionEventDat
 		SetAction(data.Action).
 		SetQuestionsServed(data.QuestionsServed).
 		SetCorrectAnswers(data.CorrectAnswers).
-		SetDurationSecs(data.DurationSecs)
+		SetDurationSecs(data.DurationSecs).
+		SetQuestUID(data.QuestUID).
+		SetQuestName(data.QuestName)
 
 	if len(planSummary) > 0 {
 		builder = builder.SetPlanSummary(planSummary)

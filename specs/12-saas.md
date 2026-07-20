@@ -322,15 +322,22 @@ been doing" view. It writes nothing and reads only via
   the merge keeps the newest `limit` overall. `nextBefore` is the lowest
   sequence in the returned page and is omitted when the page came back short
   (no more data).
-- **Quest attribution:** untagged quest sessions plan the synthetic
-  `quest:<uid>` skill ID; the reader resolves it through the quests service
-  (name, emoji, authoring parent's display name) into a `quest` object on the
-  expedition item. Lookups degrade — deleted quest or missing member name
-  yields a bare ID / empty name, never a failed timeline. **Limitation:**
-  skill-tagged quest sessions plan the real skill ID and are therefore
-  indistinguishable from normal digs; they appear without quest attribution.
+- **Quest attribution:** session "start" events written since 2026-07 carry
+  the quest UID and its AS-OF-PLAY name (`store.SessionEventData.QuestUID/
+  QuestName`, denormalized on purpose — attribution survives quest deletion
+  and rename, and covers skill-tagged quest sessions whose plan carries the
+  real skill ID). The reader prefers those event fields; the quests-service
+  lookup only ENRICHES (emoji, authoring parent's display name) and its
+  failure never removes the event's name. Legacy fallback: untagged quest
+  sessions from before the change plan the synthetic `quest:<uid>` skill ID
+  and still resolve through the lookup, degrading to a bare ID when the
+  quest is gone. **Remaining limitation:** tagged-quest sessions recorded
+  BEFORE 2026-07 have neither marker and stay indistinguishable from normal
+  digs (append-only events, no backfill).
 - **Authz:** `CanManageChild` — any family member (owner or co-parent) may
   read; strangers get 404. Endpoints:
   `GET /api/v1/children/{id}/activity` (`before`, `limit` ≤ 50 default 20,
-  `kinds=expedition,mastery,lesson`, `from`/`to` RFC3339) and the session
-  detail above.
+  `kinds=expedition,mastery,lesson`, `from`/`to` RFC3339, and
+  `quest=<uid>` — expeditions attributed to that quest only; overrides
+  `kinds` and pages past non-matching stretches inside the reader) and the
+  session detail above.

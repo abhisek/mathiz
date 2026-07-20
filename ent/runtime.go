@@ -499,6 +499,14 @@ func init() {
 	sessioneventDescDurationSecs := sessioneventFields[4].Descriptor()
 	// sessionevent.DefaultDurationSecs holds the default value on creation for the duration_secs field.
 	sessionevent.DefaultDurationSecs = sessioneventDescDurationSecs.Default.(int)
+	// sessioneventDescQuestUID is the schema descriptor for quest_uid field.
+	sessioneventDescQuestUID := sessioneventFields[6].Descriptor()
+	// sessionevent.DefaultQuestUID holds the default value on creation for the quest_uid field.
+	sessionevent.DefaultQuestUID = sessioneventDescQuestUID.Default.(string)
+	// sessioneventDescQuestName is the schema descriptor for quest_name field.
+	sessioneventDescQuestName := sessioneventFields[7].Descriptor()
+	// sessionevent.DefaultQuestName holds the default value on creation for the quest_name field.
+	sessionevent.DefaultQuestName = sessioneventDescQuestName.Default.(string)
 	snapshotFields := schema.Snapshot{}.Fields()
 	_ = snapshotFields
 	// snapshotDescTimestamp is the schema descriptor for timestamp field.

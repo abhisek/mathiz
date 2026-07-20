@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/abhisek/mathiz/internal/saas/credits"
+	"github.com/abhisek/mathiz/internal/saas/quests"
 )
 
 // questTestFixture bootstraps family A (with a child + device token) and a
@@ -207,6 +208,108 @@ func TestQuestAPILifecycle(t *testing.T) {
 	}
 	resp = e.call(t, "POST", "/api/v1/game/quests/"+quest.ID+"/expeditions", f.childToken, map[string]any{}, nil)
 	expectStatus(t, resp, 409, "restart finished quest")
+}
+
+// TestQuestListProgress: the list endpoint carries per-child progress — one
+// entry for a child-targeted quest, one per active child (ordered by name)
+// for an all-children quest, harmless zeros for drafts.
+func TestQuestListProgress(t *testing.T) {
+	f := newQuestFixture(t)
+	e := f.env
+
+	// A second child so the all-children fan-out is observable. "Abe" is
+	// created AFTER Alice but sorts BEFORE her — proving the fan-out is
+	// ordered by child name, not creation order.
+	var abe childJSON
+	resp := e.call(t, "POST", "/api/v1/family/"+f.spaceID+"/children", f.parentA,
+		map[string]any{"name": "Abe", "grade": 4}, &abe)
+	expectStatus(t, resp, 201, "add Abe")
+
+	addQuestion := func(questID, text, answer string) string {
+		t.Helper()
+		var saved struct {
+			Question questAPIQuestion `json:"question"`
+		}
+		resp := e.call(t, "POST", "/api/v1/quests/"+questID+"/questions", f.parentA, map[string]any{
+			"text": text, "answer": answer, "answerType": "integer", "format": "numeric",
+		}, &saved)
+		expectStatus(t, resp, 201, "add question")
+		return saved.Question.ID
+	}
+
+	// Quest 1: targeted at Alice, two questions, one answered correctly.
+	var targeted questJSON
+	resp = e.call(t, "POST", "/api/v1/family/"+f.spaceID+"/quests", f.parentA,
+		map[string]any{"name": "Alice only", "childId": f.childID}, &targeted)
+	expectStatus(t, resp, 201, "create targeted quest")
+	q1a := addQuestion(targeted.ID, "What is 1 + 1?", "2")
+	addQuestion(targeted.ID, "What is 2 + 3?", "5")
+	e.call(t, "POST", "/api/v1/quests/"+targeted.ID+"/publish", f.parentA, map[string]any{}, nil)
+
+	// Quest 2: all children, one question; Abe finished it, Alice untouched.
+	var everyone questJSON
+	resp = e.call(t, "POST", "/api/v1/family/"+f.spaceID+"/quests", f.parentA,
+		map[string]any{"name": "Everyone"}, &everyone)
+	expectStatus(t, resp, 201, "create all-children quest")
+	q2a := addQuestion(everyone.ID, "What is 4 + 4?", "8")
+	e.call(t, "POST", "/api/v1/quests/"+everyone.ID+"/publish", f.parentA, map[string]any{}, nil)
+
+	// Quest 3: an unplayed draft — progress must still be present (zeros).
+	var draft questJSON
+	resp = e.call(t, "POST", "/api/v1/family/"+f.spaceID+"/quests", f.parentA,
+		map[string]any{"name": "Draft", "childId": f.childID}, &draft)
+	expectStatus(t, resp, 201, "create draft quest")
+
+	// Seed play progress through the quests service (the same rows the game
+	// writes via RecordAnswer during an expedition).
+	svc := quests.New(e.st.Client(), nil, nil)
+	if _, err := svc.RecordAnswer(t.Context(), targeted.ID, f.childID, q1a, true); err != nil {
+		t.Fatalf("record targeted answer: %v", err)
+	}
+	if _, err := svc.RecordAnswer(t.Context(), everyone.ID, abe.ID, q2a, true); err != nil {
+		t.Fatalf("record everyone answer: %v", err)
+	}
+
+	var list struct {
+		Quests []questJSON `json:"quests"`
+	}
+	resp = e.call(t, "GET", "/api/v1/family/"+f.spaceID+"/quests", f.parentA, nil, &list)
+	expectStatus(t, resp, 200, "list quests")
+	byID := map[string]questJSON{}
+	for _, q := range list.Quests {
+		byID[q.ID] = q
+	}
+
+	// Child-targeted quest: exactly one entry, the played child.
+	got := byID[targeted.ID].Progress
+	if len(got) != 1 {
+		t.Fatalf("targeted progress = %+v, want 1 entry", got)
+	}
+	want := questProgressJSON{ChildID: f.childID, Name: "Alice", Correct: 1, Total: 2, Done: false}
+	if got[0] != want {
+		t.Errorf("targeted progress = %+v, want %+v", got[0], want)
+	}
+
+	// All-children quest: one entry per active child, ordered by name.
+	got = byID[everyone.ID].Progress
+	if len(got) != 2 {
+		t.Fatalf("all-children progress = %+v, want 2 entries", got)
+	}
+	if got[0].Name != "Abe" || got[1].Name != "Alice" {
+		t.Errorf("fan-out order = [%s, %s], want [Abe, Alice] (by name, not creation)", got[0].Name, got[1].Name)
+	}
+	if got[0] != (questProgressJSON{ChildID: abe.ID, Name: "Abe", Correct: 1, Total: 1, Done: true}) {
+		t.Errorf("Abe on all-children quest = %+v", got[0])
+	}
+	if got[1].Correct != 0 || got[1].Total != 1 || got[1].Done {
+		t.Errorf("Alice on all-children quest = %+v", got[1])
+	}
+
+	// Draft quest: progress present with harmless zeros.
+	got = byID[draft.ID].Progress
+	if len(got) != 1 || got[0].Correct != 0 || got[0].Total != 0 || got[0].Done {
+		t.Errorf("draft progress = %+v, want one zeroed entry", got)
+	}
 }
 
 func TestQuestKidRoutesAreScoped(t *testing.T) {

@@ -148,6 +148,13 @@ type SessionEventData struct {
 	CorrectAnswers  int
 	DurationSecs    int
 	PlanSummary     []PlanSlotSummaryData
+	// QuestUID/QuestName attribute a quest session to its parent quest
+	// (set on the "start" event of quest expeditions only; empty for map
+	// digs). The name is denormalized as-of-play, deliberately: events
+	// capture facts at play time, so attribution survives quest deletion
+	// and rename.
+	QuestUID  string
+	QuestName string
 }
 
 // PlanSlotSummaryData is the serialized form of a plan slot for events.
@@ -279,6 +286,8 @@ type SessionSummaryRecord struct {
 	DurationSecs    int
 	GemCount        int                   // gems awarded in this session
 	Plan            []PlanSlotSummaryData // plan from the matching "start" event
+	QuestUID        string                // quest attribution from the "start" event ("" = not a quest)
+	QuestName       string                // quest name as-of-play from the "start" event
 }
 
 // MasteryEventRecord is a hydrated mastery transition event for display.

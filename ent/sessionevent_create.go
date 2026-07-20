@@ -115,6 +115,34 @@ func (_c *SessionEventCreate) SetPlanSummary(v []schema.PlanSlotSummary) *Sessio
 	return _c
 }
 
+// SetQuestUID sets the "quest_uid" field.
+func (_c *SessionEventCreate) SetQuestUID(v string) *SessionEventCreate {
+	_c.mutation.SetQuestUID(v)
+	return _c
+}
+
+// SetNillableQuestUID sets the "quest_uid" field if the given value is not nil.
+func (_c *SessionEventCreate) SetNillableQuestUID(v *string) *SessionEventCreate {
+	if v != nil {
+		_c.SetQuestUID(*v)
+	}
+	return _c
+}
+
+// SetQuestName sets the "quest_name" field.
+func (_c *SessionEventCreate) SetQuestName(v string) *SessionEventCreate {
+	_c.mutation.SetQuestName(v)
+	return _c
+}
+
+// SetNillableQuestName sets the "quest_name" field if the given value is not nil.
+func (_c *SessionEventCreate) SetNillableQuestName(v *string) *SessionEventCreate {
+	if v != nil {
+		_c.SetQuestName(*v)
+	}
+	return _c
+}
+
 // Mutation returns the SessionEventMutation object of the builder.
 func (_c *SessionEventCreate) Mutation() *SessionEventMutation {
 	return _c.mutation
@@ -169,6 +197,14 @@ func (_c *SessionEventCreate) defaults() {
 	if _, ok := _c.mutation.DurationSecs(); !ok {
 		v := sessionevent.DefaultDurationSecs
 		_c.mutation.SetDurationSecs(v)
+	}
+	if _, ok := _c.mutation.QuestUID(); !ok {
+		v := sessionevent.DefaultQuestUID
+		_c.mutation.SetQuestUID(v)
+	}
+	if _, ok := _c.mutation.QuestName(); !ok {
+		v := sessionevent.DefaultQuestName
+		_c.mutation.SetQuestName(v)
 	}
 }
 
@@ -269,6 +305,14 @@ func (_c *SessionEventCreate) createSpec() (*SessionEvent, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.PlanSummary(); ok {
 		_spec.SetField(sessionevent.FieldPlanSummary, field.TypeJSON, value)
 		_node.PlanSummary = value
+	}
+	if value, ok := _c.mutation.QuestUID(); ok {
+		_spec.SetField(sessionevent.FieldQuestUID, field.TypeString, value)
+		_node.QuestUID = value
+	}
+	if value, ok := _c.mutation.QuestName(); ok {
+		_spec.SetField(sessionevent.FieldQuestName, field.TypeString, value)
+		_node.QuestName = value
 	}
 	return _node, _spec
 }

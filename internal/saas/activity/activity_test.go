@@ -232,6 +232,184 @@ func TestTimelinePaginationWalk(t *testing.T) {
 	}
 }
 
+// seedQuestSession writes one finished session attributed to a quest via the
+// durable start-event fields (QuestUID/QuestName), planning skillID — a real
+// skill for tagged quests. Returns nothing; sequence order follows call order.
+func seedQuestSession(t *testing.T, st *store.Store, childUID, sessionID, questUID, questName, skillID string) {
+	t.Helper()
+	ctx := context.Background()
+	repo := st.EventRepoFor(childUID)
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatalf("seed quest session: %v", err)
+		}
+	}
+	must(repo.AppendSessionEvent(ctx, store.SessionEventData{
+		SessionID: sessionID, Action: "start",
+		PlanSummary: []store.PlanSlotSummaryData{{SkillID: skillID, Tier: "learn", Category: "frontier"}},
+		QuestUID:    questUID, QuestName: questName,
+	}))
+	must(repo.AppendAnswerEvent(ctx, store.AnswerEventData{
+		SessionID: sessionID, SkillID: skillID, Tier: "learn", Category: "frontier",
+		QuestionText: "What is 6 + 6?", CorrectAnswer: "12",
+		LearnerAnswer: "12", Correct: true, TimeMs: 2000, AnswerFormat: "integer",
+	}))
+	must(repo.AppendSessionEvent(ctx, store.SessionEventData{
+		SessionID: sessionID, Action: "end", QuestionsServed: 1, CorrectAnswers: 1, DurationSecs: 45,
+	}))
+}
+
+// TestTaggedQuestSessionAttribution: a tagged quest session plans the REAL
+// skill, so attribution must come from the start event's QuestUID/QuestName.
+// The event's as-of-play name wins over the live lookup (rename-proof); the
+// lookup only enriches emoji/createdBy.
+func TestTaggedQuestSessionAttribution(t *testing.T) {
+	st := openTestStore(t)
+	const child = "child-1"
+	seedQuestSession(t, st, child, "sess-q", "q-tag", "HCF Week", "pv-hundreds")
+
+	quests := &fakeQuests{name: "Renamed Since", emoji: "🧭", createdBy: "acct-1"}
+	r := NewReader(st, quests, func(_ context.Context, _ string) (string, error) {
+		return "Abhisek", nil
+	})
+	page, err := r.Timeline(context.Background(), child, TimelineQuery{Kinds: []string{KindExpedition}})
+	if err != nil {
+		t.Fatalf("timeline: %v", err)
+	}
+	if len(page.Items) != 1 {
+		t.Fatalf("items = %d, want 1", len(page.Items))
+	}
+	exp := page.Items[0].Expedition
+	q := exp.Quest
+	if q == nil || q.ID != "q-tag" {
+		t.Fatalf("quest ref = %+v, want ID q-tag", q)
+	}
+	if q.Name != "HCF Week" {
+		t.Errorf("quest name = %q, want the as-of-play event name HCF Week", q.Name)
+	}
+	if q.Emoji != "🧭" || q.CreatedBy != "Abhisek" {
+		t.Errorf("enrichment = (%q, %q), want (🧭, Abhisek)", q.Emoji, q.CreatedBy)
+	}
+	// The real tagged skill still shows as a skill.
+	if len(exp.Skills) != 1 || exp.Skills[0].ID != "pv-hundreds" {
+		t.Errorf("skills = %+v, want pv-hundreds", exp.Skills)
+	}
+}
+
+// TestQuestAttributionSurvivesDeletion: no Quests lookup at all, and an
+// erroring lookup, both keep the name that came from the event.
+func TestQuestAttributionSurvivesDeletion(t *testing.T) {
+	st := openTestStore(t)
+	const child = "child-1"
+	seedQuestSession(t, st, child, "sess-q", "q-gone", "Deleted Quest", "pv-hundreds")
+
+	for name, r := range map[string]*Reader{
+		"nil lookup":      NewReader(st, nil, nil),
+		"erroring lookup": NewReader(st, &fakeQuests{err: errors.New("quest deleted")}, nil),
+	} {
+		page, err := r.Timeline(context.Background(), child, TimelineQuery{Kinds: []string{KindExpedition}})
+		if err != nil {
+			t.Fatalf("%s: timeline: %v", name, err)
+		}
+		q := page.Items[0].Expedition.Quest
+		if q == nil || q.ID != "q-gone" || q.Name != "Deleted Quest" {
+			t.Errorf("%s: quest ref = %+v, want ID q-gone name from event", name, q)
+		}
+	}
+}
+
+// TestTimelineQuestFilter: quest=<uid> returns only matching expeditions and
+// pages past stretches of non-matching sessions instead of returning an
+// empty page with no cursor.
+func TestTimelineQuestFilter(t *testing.T) {
+	st := openTestStore(t)
+	const child = "child-1"
+	ctx := context.Background()
+	repo := st.EventRepoFor(child)
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	// Oldest → newest: q-A (event fields), 4 normal digs, q-A again via the
+	// LEGACY synthetic plan prefix, one session of a different quest.
+	seedQuestSession(t, st, child, "sess-q1", "q-A", "Quest A", "pv-hundreds")
+	for i := 0; i < 4; i++ {
+		sid := "sess-dig-" + string(rune('a'+i))
+		must(repo.AppendSessionEvent(ctx, store.SessionEventData{
+			SessionID: sid, Action: "start",
+			PlanSummary: []store.PlanSlotSummaryData{{SkillID: "pv-hundreds", Tier: "learn", Category: "frontier"}},
+		}))
+		must(repo.AppendSessionEvent(ctx, store.SessionEventData{
+			SessionID: sid, Action: "end", QuestionsServed: 1, CorrectAnswers: 1, DurationSecs: 30,
+		}))
+	}
+	must(repo.AppendSessionEvent(ctx, store.SessionEventData{
+		SessionID: "sess-q2", Action: "start",
+		PlanSummary: []store.PlanSlotSummaryData{{SkillID: "quest:q-A", Tier: "learn", Category: "review"}},
+	}))
+	must(repo.AppendSessionEvent(ctx, store.SessionEventData{
+		SessionID: "sess-q2", Action: "end", QuestionsServed: 1, CorrectAnswers: 0, DurationSecs: 20,
+	}))
+	seedQuestSession(t, st, child, "sess-other", "q-B", "Quest B", "pv-hundreds")
+
+	r := NewReader(st, nil, nil)
+
+	// Limit 2: page 1 must dig past the newest non-matching session AND the
+	// 4-dig stretch to find both q-A sessions (durable + legacy attribution).
+	page, err := r.Timeline(ctx, child, TimelineQuery{QuestUID: "q-A", Limit: 2})
+	if err != nil {
+		t.Fatalf("quest filter: %v", err)
+	}
+	if len(page.Items) != 2 {
+		t.Fatalf("page 1 items = %d, want 2", len(page.Items))
+	}
+	if got := page.Items[0].Expedition; got.SessionID != "sess-q2" || got.Quest == nil || got.Quest.ID != "q-A" {
+		t.Errorf("page 1 item 0 = %+v quest %+v", got, got.Quest)
+	}
+	if got := page.Items[1].Expedition; got.SessionID != "sess-q1" || got.Quest == nil ||
+		got.Quest.ID != "q-A" || got.Quest.Name != "Quest A" {
+		t.Errorf("page 1 item 1 = %+v quest %+v", got, got.Quest)
+	}
+	// Full page → cursor present; the next page walks to exhaustion, empty.
+	if page.NextBefore == 0 {
+		t.Fatal("full filtered page must carry a cursor")
+	}
+	page2, err := r.Timeline(ctx, child, TimelineQuery{QuestUID: "q-A", Limit: 2, Before: page.NextBefore})
+	if err != nil {
+		t.Fatalf("quest filter page 2: %v", err)
+	}
+	if len(page2.Items) != 0 || page2.NextBefore != 0 {
+		t.Errorf("page 2 = %+v, want empty end of stream", page2.Items)
+	}
+
+	// The kinds param is ignored under a quest filter (documented behavior):
+	// even a bogus kind doesn't 400 and only expeditions come back.
+	page, err = r.Timeline(ctx, child, TimelineQuery{QuestUID: "q-B", Kinds: []string{"mastery"}})
+	if err != nil {
+		t.Fatalf("quest filter with kinds: %v", err)
+	}
+	if len(page.Items) != 1 || page.Items[0].Kind != KindExpedition ||
+		page.Items[0].Expedition.SessionID != "sess-other" {
+		t.Errorf("q-B filter = %+v", page.Items)
+	}
+
+	// Unknown quest → empty, not an error.
+	page, err = r.Timeline(ctx, child, TimelineQuery{QuestUID: "q-nope"})
+	if err != nil || len(page.Items) != 0 {
+		t.Errorf("unknown quest filter = %v items %d", err, len(page.Items))
+	}
+
+	// Owner isolation holds under the filter too.
+	page, err = r.Timeline(ctx, "child-2", TimelineQuery{QuestUID: "q-A"})
+	if err != nil || len(page.Items) != 0 {
+		t.Errorf("cross-child quest filter = %v items %d", err, len(page.Items))
+	}
+}
+
 func TestTimelineKindFilter(t *testing.T) {
 	st := openTestStore(t)
 	const child = "child-1"

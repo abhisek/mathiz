@@ -138,6 +138,46 @@ func (_u *SessionEventUpdate) ClearPlanSummary() *SessionEventUpdate {
 	return _u
 }
 
+// SetQuestUID sets the "quest_uid" field.
+func (_u *SessionEventUpdate) SetQuestUID(v string) *SessionEventUpdate {
+	_u.mutation.SetQuestUID(v)
+	return _u
+}
+
+// SetNillableQuestUID sets the "quest_uid" field if the given value is not nil.
+func (_u *SessionEventUpdate) SetNillableQuestUID(v *string) *SessionEventUpdate {
+	if v != nil {
+		_u.SetQuestUID(*v)
+	}
+	return _u
+}
+
+// ClearQuestUID clears the value of the "quest_uid" field.
+func (_u *SessionEventUpdate) ClearQuestUID() *SessionEventUpdate {
+	_u.mutation.ClearQuestUID()
+	return _u
+}
+
+// SetQuestName sets the "quest_name" field.
+func (_u *SessionEventUpdate) SetQuestName(v string) *SessionEventUpdate {
+	_u.mutation.SetQuestName(v)
+	return _u
+}
+
+// SetNillableQuestName sets the "quest_name" field if the given value is not nil.
+func (_u *SessionEventUpdate) SetNillableQuestName(v *string) *SessionEventUpdate {
+	if v != nil {
+		_u.SetQuestName(*v)
+	}
+	return _u
+}
+
+// ClearQuestName clears the value of the "quest_name" field.
+func (_u *SessionEventUpdate) ClearQuestName() *SessionEventUpdate {
+	_u.mutation.ClearQuestName()
+	return _u
+}
+
 // Mutation returns the SessionEventMutation object of the builder.
 func (_u *SessionEventUpdate) Mutation() *SessionEventMutation {
 	return _u.mutation
@@ -231,6 +271,18 @@ func (_u *SessionEventUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if _u.mutation.PlanSummaryCleared() {
 		_spec.ClearField(sessionevent.FieldPlanSummary, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.QuestUID(); ok {
+		_spec.SetField(sessionevent.FieldQuestUID, field.TypeString, value)
+	}
+	if _u.mutation.QuestUIDCleared() {
+		_spec.ClearField(sessionevent.FieldQuestUID, field.TypeString)
+	}
+	if value, ok := _u.mutation.QuestName(); ok {
+		_spec.SetField(sessionevent.FieldQuestName, field.TypeString, value)
+	}
+	if _u.mutation.QuestNameCleared() {
+		_spec.ClearField(sessionevent.FieldQuestName, field.TypeString)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -361,6 +413,46 @@ func (_u *SessionEventUpdateOne) ClearPlanSummary() *SessionEventUpdateOne {
 	return _u
 }
 
+// SetQuestUID sets the "quest_uid" field.
+func (_u *SessionEventUpdateOne) SetQuestUID(v string) *SessionEventUpdateOne {
+	_u.mutation.SetQuestUID(v)
+	return _u
+}
+
+// SetNillableQuestUID sets the "quest_uid" field if the given value is not nil.
+func (_u *SessionEventUpdateOne) SetNillableQuestUID(v *string) *SessionEventUpdateOne {
+	if v != nil {
+		_u.SetQuestUID(*v)
+	}
+	return _u
+}
+
+// ClearQuestUID clears the value of the "quest_uid" field.
+func (_u *SessionEventUpdateOne) ClearQuestUID() *SessionEventUpdateOne {
+	_u.mutation.ClearQuestUID()
+	return _u
+}
+
+// SetQuestName sets the "quest_name" field.
+func (_u *SessionEventUpdateOne) SetQuestName(v string) *SessionEventUpdateOne {
+	_u.mutation.SetQuestName(v)
+	return _u
+}
+
+// SetNillableQuestName sets the "quest_name" field if the given value is not nil.
+func (_u *SessionEventUpdateOne) SetNillableQuestName(v *string) *SessionEventUpdateOne {
+	if v != nil {
+		_u.SetQuestName(*v)
+	}
+	return _u
+}
+
+// ClearQuestName clears the value of the "quest_name" field.
+func (_u *SessionEventUpdateOne) ClearQuestName() *SessionEventUpdateOne {
+	_u.mutation.ClearQuestName()
+	return _u
+}
+
 // Mutation returns the SessionEventMutation object of the builder.
 func (_u *SessionEventUpdateOne) Mutation() *SessionEventMutation {
 	return _u.mutation
@@ -484,6 +576,18 @@ func (_u *SessionEventUpdateOne) sqlSave(ctx context.Context) (_node *SessionEve
 	}
 	if _u.mutation.PlanSummaryCleared() {
 		_spec.ClearField(sessionevent.FieldPlanSummary, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.QuestUID(); ok {
+		_spec.SetField(sessionevent.FieldQuestUID, field.TypeString, value)
+	}
+	if _u.mutation.QuestUIDCleared() {
+		_spec.ClearField(sessionevent.FieldQuestUID, field.TypeString)
+	}
+	if value, ok := _u.mutation.QuestName(); ok {
+		_spec.SetField(sessionevent.FieldQuestName, field.TypeString, value)
+	}
+	if _u.mutation.QuestNameCleared() {
+		_spec.ClearField(sessionevent.FieldQuestName, field.TypeString)
 	}
 	_node = &SessionEvent{config: _u.config}
 	_spec.Assign = _node.assignValues

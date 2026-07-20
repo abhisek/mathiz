@@ -94,6 +94,16 @@ func DurationSecs(v int) predicate.SessionEvent {
 	return predicate.SessionEvent(sql.FieldEQ(FieldDurationSecs, v))
 }
 
+// QuestUID applies equality check predicate on the "quest_uid" field. It's identical to QuestUIDEQ.
+func QuestUID(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldEQ(FieldQuestUID, v))
+}
+
+// QuestName applies equality check predicate on the "quest_name" field. It's identical to QuestNameEQ.
+func QuestName(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldEQ(FieldQuestName, v))
+}
+
 // SequenceEQ applies the EQ predicate on the "sequence" field.
 func SequenceEQ(v int64) predicate.SessionEvent {
 	return predicate.SessionEvent(sql.FieldEQ(FieldSequence, v))
@@ -497,6 +507,156 @@ func PlanSummaryIsNil() predicate.SessionEvent {
 // PlanSummaryNotNil applies the NotNil predicate on the "plan_summary" field.
 func PlanSummaryNotNil() predicate.SessionEvent {
 	return predicate.SessionEvent(sql.FieldNotNull(FieldPlanSummary))
+}
+
+// QuestUIDEQ applies the EQ predicate on the "quest_uid" field.
+func QuestUIDEQ(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldEQ(FieldQuestUID, v))
+}
+
+// QuestUIDNEQ applies the NEQ predicate on the "quest_uid" field.
+func QuestUIDNEQ(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldNEQ(FieldQuestUID, v))
+}
+
+// QuestUIDIn applies the In predicate on the "quest_uid" field.
+func QuestUIDIn(vs ...string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldIn(FieldQuestUID, vs...))
+}
+
+// QuestUIDNotIn applies the NotIn predicate on the "quest_uid" field.
+func QuestUIDNotIn(vs ...string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldNotIn(FieldQuestUID, vs...))
+}
+
+// QuestUIDGT applies the GT predicate on the "quest_uid" field.
+func QuestUIDGT(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldGT(FieldQuestUID, v))
+}
+
+// QuestUIDGTE applies the GTE predicate on the "quest_uid" field.
+func QuestUIDGTE(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldGTE(FieldQuestUID, v))
+}
+
+// QuestUIDLT applies the LT predicate on the "quest_uid" field.
+func QuestUIDLT(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldLT(FieldQuestUID, v))
+}
+
+// QuestUIDLTE applies the LTE predicate on the "quest_uid" field.
+func QuestUIDLTE(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldLTE(FieldQuestUID, v))
+}
+
+// QuestUIDContains applies the Contains predicate on the "quest_uid" field.
+func QuestUIDContains(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldContains(FieldQuestUID, v))
+}
+
+// QuestUIDHasPrefix applies the HasPrefix predicate on the "quest_uid" field.
+func QuestUIDHasPrefix(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldHasPrefix(FieldQuestUID, v))
+}
+
+// QuestUIDHasSuffix applies the HasSuffix predicate on the "quest_uid" field.
+func QuestUIDHasSuffix(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldHasSuffix(FieldQuestUID, v))
+}
+
+// QuestUIDIsNil applies the IsNil predicate on the "quest_uid" field.
+func QuestUIDIsNil() predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldIsNull(FieldQuestUID))
+}
+
+// QuestUIDNotNil applies the NotNil predicate on the "quest_uid" field.
+func QuestUIDNotNil() predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldNotNull(FieldQuestUID))
+}
+
+// QuestUIDEqualFold applies the EqualFold predicate on the "quest_uid" field.
+func QuestUIDEqualFold(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldEqualFold(FieldQuestUID, v))
+}
+
+// QuestUIDContainsFold applies the ContainsFold predicate on the "quest_uid" field.
+func QuestUIDContainsFold(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldContainsFold(FieldQuestUID, v))
+}
+
+// QuestNameEQ applies the EQ predicate on the "quest_name" field.
+func QuestNameEQ(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldEQ(FieldQuestName, v))
+}
+
+// QuestNameNEQ applies the NEQ predicate on the "quest_name" field.
+func QuestNameNEQ(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldNEQ(FieldQuestName, v))
+}
+
+// QuestNameIn applies the In predicate on the "quest_name" field.
+func QuestNameIn(vs ...string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldIn(FieldQuestName, vs...))
+}
+
+// QuestNameNotIn applies the NotIn predicate on the "quest_name" field.
+func QuestNameNotIn(vs ...string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldNotIn(FieldQuestName, vs...))
+}
+
+// QuestNameGT applies the GT predicate on the "quest_name" field.
+func QuestNameGT(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldGT(FieldQuestName, v))
+}
+
+// QuestNameGTE applies the GTE predicate on the "quest_name" field.
+func QuestNameGTE(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldGTE(FieldQuestName, v))
+}
+
+// QuestNameLT applies the LT predicate on the "quest_name" field.
+func QuestNameLT(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldLT(FieldQuestName, v))
+}
+
+// QuestNameLTE applies the LTE predicate on the "quest_name" field.
+func QuestNameLTE(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldLTE(FieldQuestName, v))
+}
+
+// QuestNameContains applies the Contains predicate on the "quest_name" field.
+func QuestNameContains(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldContains(FieldQuestName, v))
+}
+
+// QuestNameHasPrefix applies the HasPrefix predicate on the "quest_name" field.
+func QuestNameHasPrefix(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldHasPrefix(FieldQuestName, v))
+}
+
+// QuestNameHasSuffix applies the HasSuffix predicate on the "quest_name" field.
+func QuestNameHasSuffix(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldHasSuffix(FieldQuestName, v))
+}
+
+// QuestNameIsNil applies the IsNil predicate on the "quest_name" field.
+func QuestNameIsNil() predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldIsNull(FieldQuestName))
+}
+
+// QuestNameNotNil applies the NotNil predicate on the "quest_name" field.
+func QuestNameNotNil() predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldNotNull(FieldQuestName))
+}
+
+// QuestNameEqualFold applies the EqualFold predicate on the "quest_name" field.
+func QuestNameEqualFold(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldEqualFold(FieldQuestName, v))
+}
+
+// QuestNameContainsFold applies the ContainsFold predicate on the "quest_name" field.
+func QuestNameContainsFold(v string) predicate.SessionEvent {
+	return predicate.SessionEvent(sql.FieldContainsFold(FieldQuestName, v))
 }
 
 // And groups predicates with the AND operator between them.

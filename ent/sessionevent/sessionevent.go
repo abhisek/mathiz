@@ -31,6 +31,10 @@ const (
 	FieldDurationSecs = "duration_secs"
 	// FieldPlanSummary holds the string denoting the plan_summary field in the database.
 	FieldPlanSummary = "plan_summary"
+	// FieldQuestUID holds the string denoting the quest_uid field in the database.
+	FieldQuestUID = "quest_uid"
+	// FieldQuestName holds the string denoting the quest_name field in the database.
+	FieldQuestName = "quest_name"
 	// Table holds the table name of the sessionevent in the database.
 	Table = "session_events"
 )
@@ -47,6 +51,8 @@ var Columns = []string{
 	FieldCorrectAnswers,
 	FieldDurationSecs,
 	FieldPlanSummary,
+	FieldQuestUID,
+	FieldQuestName,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -74,6 +80,10 @@ var (
 	DefaultCorrectAnswers int
 	// DefaultDurationSecs holds the default value on creation for the "duration_secs" field.
 	DefaultDurationSecs int
+	// DefaultQuestUID holds the default value on creation for the "quest_uid" field.
+	DefaultQuestUID string
+	// DefaultQuestName holds the default value on creation for the "quest_name" field.
+	DefaultQuestName string
 )
 
 // OrderOption defines the ordering options for the SessionEvent queries.
@@ -122,4 +132,14 @@ func ByCorrectAnswers(opts ...sql.OrderTermOption) OrderOption {
 // ByDurationSecs orders the results by the duration_secs field.
 func ByDurationSecs(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDurationSecs, opts...).ToFunc()
+}
+
+// ByQuestUID orders the results by the quest_uid field.
+func ByQuestUID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldQuestUID, opts...).ToFunc()
+}
+
+// ByQuestName orders the results by the quest_name field.
+func ByQuestName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldQuestName, opts...).ToFunc()
 }
