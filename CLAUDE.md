@@ -24,7 +24,8 @@ needed), `frontend` (web/ patterns — read it BEFORE touching web/),
 `analytics` (PostHog pattern + child-privacy rules — read it BEFORE any
 tracking/telemetry change), `add-event-type`, `add-math-skill`,
 `add-billing-provider`, `verify`,
-`db-backup` (pg_dump backups via `scripts/db-backup.sh`).
+`db-backup` (pg_dump backups via `scripts/db-backup.sh`),
+`user-feedback` (intake protocol when the owner pastes user reports).
 If a PR changes a frontend pattern, update `.claude/skills/frontend/SKILL.md`
 in the same PR (same rule as `docs/personas.md` for user-facing flows).
 
