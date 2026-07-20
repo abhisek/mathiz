@@ -94,9 +94,13 @@ type MasteryChangeView struct {
 }
 
 // AnswerResultView is the grading response for one answer.
+//
+// CorrectAnswer/Explanation are omitted on a WRONG answer to a quest
+// question: quest questions repeat until solved, so the reveal is sealed
+// until the question can never gate again (see Manager.Answer).
 type AnswerResultView struct {
 	Correct       bool   `json:"correct"`
-	CorrectAnswer string `json:"correctAnswer"`
+	CorrectAnswer string `json:"correctAnswer,omitempty"`
 	Explanation   string `json:"explanation,omitempty"`
 	HintAvailable bool   `json:"hintAvailable"`
 	Streak        int    `json:"streak"`

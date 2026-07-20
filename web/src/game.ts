@@ -74,9 +74,13 @@ export interface ExpeditionSummary {
   questComplete?: boolean
 }
 
+// correctAnswer/explanation are absent on a WRONG answer to a quest
+// question: quest questions repeat until solved, so the server keeps the
+// answer sealed until the question can never gate again. Map digs always
+// carry both on a wrong answer.
 export interface AnswerResult {
   correct: boolean
-  correctAnswer: string
+  correctAnswer?: string
   explanation?: string
   hintAvailable: boolean
   streak: number
