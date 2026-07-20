@@ -62,7 +62,7 @@ device token stored in the browser.
 | Hints after a wrong answer | expedition overlay | `POST .../hint` |
 | The guide's micro-lesson after two wrong answers on a skill: explanation, worked example, practice question | expedition overlay | `POST .../lesson`, `POST .../lesson/answer` |
 | Mastery celebration: chest opens, fog lifts on newly unlocked spots, expedition ends triumphantly | expedition overlay | mastery transition in answer response |
-| Quest card above the islands ("⭐ The Captain left you a quest") with a progress ring; trophy when every question is solved | `/play` map | `quests[]` in `GET /api/v1/game/map` |
+| Quest card above the islands ("⭐ The Captain left you a quest") with a progress ring; completed quests collapse into one tappable "🏆 N quests completed" trophy row | `/play` map | `quests[]` in `GET /api/v1/game/map` |
 | Quest expedition: up to 5 not-yet-solved quest questions per run (chunked until done), same gems/streaks/hints/1-credit charge; tagged quests advance the main map, "Quest complete!" celebration at the end | `/play` expedition overlay | `POST /api/v1/game/quests/{id}/expeditions` (+ the standard expedition endpoints) |
 | Guide's notebook: revisit every past tip, grouped by island | 🧭 button on `/play` | `GET /api/v1/game/notebook` |
 | Gem vault: collection by gem type | 💎 button on `/play` | gem counts from map response |

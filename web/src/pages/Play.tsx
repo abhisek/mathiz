@@ -325,30 +325,31 @@ export default function Play() {
         {!map && !mapError && <div className="boot boot-dark">Charting the map… 🧭</div>}
         {map?.quests && map.quests.length > 0 && (
           <div className="quest-cards">
-            {map.quests.map((q) => (
-              <button
-                key={q.id}
-                className={`quest-card${q.done ? ' quest-card-done' : ''}`}
-                onClick={() => void startQuest(q)}
-                disabled={q.done || phase !== 'idle'}
-              >
-                {q.done ? (
-                  <span className="quest-card-marker">🏆</span>
-                ) : (
+            {/* Full cards only for quests still in progress — completed
+                quests collapse into one trophy row below so the map never
+                accumulates finished-quest cards (the completion moment is
+                already celebrated in the expedition summary). */}
+            {map.quests
+              .filter((q) => !q.done)
+              .map((q) => (
+                <button
+                  key={q.id}
+                  className="quest-card"
+                  onClick={() => void startQuest(q)}
+                  disabled={phase !== 'idle'}
+                >
                   <QuestRing correct={q.correct} total={q.total} emoji={q.emoji || '⭐'} />
-                )}
-                <span className="quest-card-text">
-                  <span className="quest-card-title">
-                    {q.done
-                      ? 'Quest complete!'
-                      : `⭐ The Captain left you a quest: ${q.name}`}
+                  <span className="quest-card-text">
+                    <span className="quest-card-title">
+                      ⭐ The Captain left you a quest: {q.name}
+                    </span>
+                    <span className="quest-card-progress">
+                      {q.correct} of {q.total} solved
+                    </span>
                   </span>
-                  <span className="quest-card-progress">
-                    {q.done ? q.name : `${q.correct} of ${q.total} solved`}
-                  </span>
-                </span>
-              </button>
-            ))}
+                </button>
+              ))}
+            <QuestTrophies quests={map.quests.filter((q) => q.done)} />
           </div>
         )}
         {map?.islands.map((island) => (
@@ -462,6 +463,38 @@ function NotebookDrawer({
           })}
         </div>
       ))}
+    </div>
+  )
+}
+
+// QuestTrophies collapses completed quests into one compact, tappable row —
+// "🏆 2 quests completed" — expanding to the list of past trophies. Kids tap
+// shiny things (see the gem-vault feedback), so the row is a disclosure, not
+// a dead label.
+function QuestTrophies({ quests }: { quests: QuestMapItem[] }) {
+  const [open, setOpen] = useState(false)
+  if (quests.length === 0) return null
+  return (
+    <div className="quest-trophies">
+      <button
+        className="quest-trophies-row"
+        onClick={() => setOpen((s) => !s)}
+        aria-expanded={open}
+      >
+        🏆 {quests.length === 1 ? '1 quest completed' : `${quests.length} quests completed`}
+        <span className="quest-trophies-caret" aria-hidden>
+          {open ? '▾' : '▸'}
+        </span>
+      </button>
+      {open && (
+        <ul className="quest-trophies-list">
+          {quests.map((q) => (
+            <li key={q.id}>
+              {q.emoji || '⭐'} {q.name} ✓
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
