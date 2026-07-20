@@ -57,10 +57,10 @@ func newActivityFixture(t *testing.T) *activityFixture {
 	}
 	must(repo.AppendSessionEvent(ctx, store.SessionEventData{
 		SessionID: "sess-a", Action: "start",
-		PlanSummary: []store.PlanSlotSummaryData{{SkillID: "pv-hundreds", Tier: "learn", Category: "core"}},
+		PlanSummary: []store.PlanSlotSummaryData{{SkillID: "pv-hundreds", Tier: "learn", Category: "frontier"}},
 	}))
 	must(repo.AppendAnswerEvent(ctx, store.AnswerEventData{
-		SessionID: "sess-a", SkillID: "pv-hundreds", Tier: "learn", Category: "core",
+		SessionID: "sess-a", SkillID: "pv-hundreds", Tier: "learn", Category: "frontier",
 		QuestionText: "2+2?", CorrectAnswer: "4", LearnerAnswer: "4",
 		Correct: true, TimeMs: 1500, AnswerFormat: "integer",
 	}))
@@ -128,6 +128,9 @@ func TestActivityTimelineResponseShape(t *testing.T) {
 	if exp.Expedition.SessionID != "sess-a" || exp.Expedition.Questions != 1 ||
 		exp.Expedition.Correct != 1 || exp.Expedition.DurationSecs != 90 {
 		t.Errorf("expedition payload = %+v", exp.Expedition)
+	}
+	if exp.Expedition.Category != "frontier" {
+		t.Errorf("expedition category = %q, want frontier (first plan slot)", exp.Expedition.Category)
 	}
 	if len(exp.Expedition.Skills) != 1 || exp.Expedition.Skills[0].ID != "pv-hundreds" ||
 		exp.Expedition.Skills[0].Name != "Place Value to 1,000" {

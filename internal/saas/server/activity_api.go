@@ -33,6 +33,7 @@ type expeditionItemJSON struct {
 	Correct      int            `json:"correct"`
 	DurationSecs int            `json:"durationSecs"`
 	Gems         int            `json:"gems"`
+	Category     string         `json:"category,omitempty"` // "frontier" | "review" | "booster"
 	Skills       []skillRefJSON `json:"skills"`
 	Quest        *questRefJSON  `json:"quest,omitempty"`
 }
@@ -81,6 +82,7 @@ func toActivityItemJSON(it activity.TimelineItem) activityItemJSON {
 			Correct:      it.Expedition.Correct,
 			DurationSecs: it.Expedition.DurationSecs,
 			Gems:         it.Expedition.Gems,
+			Category:     it.Expedition.Category,
 			Skills:       make([]skillRefJSON, len(it.Expedition.Skills)),
 		}
 		for i, sk := range it.Expedition.Skills {

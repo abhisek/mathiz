@@ -54,15 +54,15 @@ func seedStream(t *testing.T, st *store.Store, childUID string) {
 
 	must(repo.AppendSessionEvent(ctx, store.SessionEventData{
 		SessionID: "sess-1", Action: "start",
-		PlanSummary: []store.PlanSlotSummaryData{{SkillID: "pv-hundreds", Tier: "learn", Category: "core"}},
+		PlanSummary: []store.PlanSlotSummaryData{{SkillID: "pv-hundreds", Tier: "learn", Category: "frontier"}},
 	}))
 	must(repo.AppendAnswerEvent(ctx, store.AnswerEventData{
-		SessionID: "sess-1", SkillID: "pv-hundreds", Tier: "learn", Category: "core",
+		SessionID: "sess-1", SkillID: "pv-hundreds", Tier: "learn", Category: "frontier",
 		QuestionText: "What is the value of 3 in 345?", CorrectAnswer: "300",
 		LearnerAnswer: "300", Correct: true, TimeMs: 4200, AnswerFormat: "integer",
 	}))
 	must(repo.AppendAnswerEvent(ctx, store.AnswerEventData{
-		SessionID: "sess-1", SkillID: "pv-hundreds", Tier: "learn", Category: "core",
+		SessionID: "sess-1", SkillID: "pv-hundreds", Tier: "learn", Category: "frontier",
 		QuestionText: "What is the value of 4 in 345?", CorrectAnswer: "40",
 		LearnerAnswer: "4", Correct: false, TimeMs: 8100, AnswerFormat: "integer",
 	}))
@@ -92,10 +92,10 @@ func seedStream(t *testing.T, st *store.Store, childUID string) {
 	// Untagged quest session: the synthetic quest plan ID.
 	must(repo.AppendSessionEvent(ctx, store.SessionEventData{
 		SessionID: "sess-2", Action: "start",
-		PlanSummary: []store.PlanSlotSummaryData{{SkillID: "quest:q-123", Tier: "learn", Category: "quest"}},
+		PlanSummary: []store.PlanSlotSummaryData{{SkillID: "quest:q-123", Tier: "learn", Category: "review"}},
 	}))
 	must(repo.AppendAnswerEvent(ctx, store.AnswerEventData{
-		SessionID: "sess-2", SkillID: "quest:q-123", Tier: "learn", Category: "quest",
+		SessionID: "sess-2", SkillID: "quest:q-123", Tier: "learn", Category: "review",
 		QuestionText: "What is 12 + 8?", CorrectAnswer: "20",
 		LearnerAnswer: "20", Correct: true, TimeMs: 3000, AnswerFormat: "integer",
 	}))
@@ -157,6 +157,9 @@ func TestTimelineMergeAndAttribution(t *testing.T) {
 	if len(quest.Skills) != 0 {
 		t.Errorf("quest expedition skills = %+v, want none (synthetic ID is attribution)", quest.Skills)
 	}
+	if quest.Category != "review" {
+		t.Errorf("quest expedition category = %q, want review (first plan slot)", quest.Category)
+	}
 
 	// Normal expedition: skills resolved via the graph, gems joined.
 	dig := page.Items[1].Expedition
@@ -170,6 +173,9 @@ func TestTimelineMergeAndAttribution(t *testing.T) {
 	}
 	if dig.Quest != nil {
 		t.Errorf("dig quest = %+v, want nil", dig.Quest)
+	}
+	if dig.Category != "frontier" {
+		t.Errorf("dig category = %q, want frontier (first plan slot)", dig.Category)
 	}
 
 	// Mastery + lesson payloads.
