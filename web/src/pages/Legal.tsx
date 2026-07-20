@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-// Minimal legal placeholder pages (/terms, /privacy, /contact). Static and
-// Supabase-free, honest v1 documents — enough for payment-provider review,
-// clearly marked as placeholders until counsel-reviewed versions land.
+// Minimal legal pages (/terms, /privacy, /contact). Static and Supabase-free,
+// honest v1 documents — enough for payment-provider review. NOTE for the
+// repo: still awaiting counsel review; the UI no longer says "placeholder"
+// (users shouldn't see our to-do list), but the content is v1 until then.
 
 const LAST_UPDATED = 'July 19, 2026'
 
@@ -17,9 +18,7 @@ function LegalPage({ title, children }: { title: string; children: ReactNode }) 
 
       <article className="legal-card">
         <h1>{title}</h1>
-        <p className="legal-meta">
-          Version 1 (initial placeholder document) · Last updated: {LAST_UPDATED}
-        </p>
+        <p className="legal-meta">Version 1 · Last updated: {LAST_UPDATED}</p>
         {children}
       </article>
 
@@ -126,9 +125,6 @@ export function Contact() {
         <a className="legal-mail" href="mailto:support@mathiz.app">
           support@mathiz.app
         </a>
-      </p>
-      <p className="muted">
-        (Placeholder support address — final support contact to be confirmed.)
       </p>
     </LegalPage>
   )
