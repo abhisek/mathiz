@@ -152,6 +152,16 @@ export interface CurriculumInfo {
 
 export type QuestStatus = 'draft' | 'active' | 'archived'
 
+// Per-child completion on the quest list: a single entry for child-targeted
+// quests, one per active child (name-ordered) otherwise.
+export interface QuestProgress {
+  childId: string
+  name: string
+  correct: number
+  total: number
+  done: boolean
+}
+
 export interface Quest {
   id: string
   name: string
@@ -161,6 +171,7 @@ export interface Quest {
   status: QuestStatus
   questionCount: number
   createdAt: string
+  progress?: QuestProgress[] // present on the family list endpoint
 }
 
 export interface QuestQuestion {
@@ -409,12 +420,21 @@ export const api = {
   activity: (
     token: string,
     childId: string,
-    opts?: { before?: number; limit?: number; kinds?: string[]; from?: string; to?: string },
+    opts?: {
+      before?: number
+      limit?: number
+      kinds?: string[]
+      from?: string
+      to?: string
+      // Only expedition items for this quest UID (kinds are moot when set).
+      quest?: string
+    },
   ) => {
     const params = new URLSearchParams()
     if (opts?.before !== undefined) params.set('before', String(opts.before))
     if (opts?.limit !== undefined) params.set('limit', String(opts.limit))
     if (opts?.kinds && opts.kinds.length > 0) params.set('kinds', opts.kinds.join(','))
+    if (opts?.quest) params.set('quest', opts.quest)
     if (opts?.from) params.set('from', opts.from)
     if (opts?.to) params.set('to', opts.to)
     const qs = params.toString()
