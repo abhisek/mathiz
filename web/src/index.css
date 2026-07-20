@@ -2842,3 +2842,40 @@ table.sessions th {
   color: var(--accent-deep);
   text-decoration: underline;
 }
+
+/* ---- Completed-quest trophy row (Play map) ----
+   Completed quests collapse into one tappable row instead of
+   accumulating full cards; expands to the list of past trophies. */
+
+.quest-trophies-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 14px;
+  padding: 0.5rem 1rem;
+  background: rgb(253 246 227 / 0.16);
+  color: #f6e8c8;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.quest-trophies-row:hover {
+  background: rgb(253 246 227 / 0.26);
+}
+
+.quest-trophies-caret {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.quest-trophies-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0.2rem 1rem 0.4rem;
+  color: rgb(246 232 200 / 0.85);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}

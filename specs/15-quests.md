@@ -68,7 +68,14 @@ unchanged.
 A floating bottle/scroll card above the islands when quests exist:
 "⭐ The Captain left you a quest: <name>" with a progress ring. Tap →
 standard expedition overlay. Finishing every question → "Quest complete!"
-celebration; the card shows a trophy afterwards. Zero new modes.
+celebration. Zero new modes.
+
+Completed quests do NOT keep full cards (2026-07 fix — they accumulated
+forever): the map shows full cards only for in-progress quests; completed
+ones collapse client-side into one tappable "🏆 N quests completed" row
+that expands to the trophy list. The celebration moment lives in the
+expedition summary; archiving the quest (parent-side) remains what removes
+it from the map payload entirely.
 
 ## 6. Testing
 
