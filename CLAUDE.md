@@ -204,7 +204,9 @@ endpoint — this is how E2E tests stub the LLM), bare `GEMINI_API_KEY` /
 `mathiz serve`: see `.env.example` — `MATHIZ_DATABASE_URL` (postgres),
 `MATHIZ_SUPABASE_URL` / `_ANON_KEY` / `_JWT_SECRET`, `MATHIZ_SERVER_ADDR`,
 `MATHIZ_SESSION_IDLE_MINUTES`, `MATHIZ_CORS_ORIGINS`,
-`MATHIZ_TRUST_PROXY`.
+`MATHIZ_TRUST_PROXY`, `MATHIZ_LOG_FILE` (optional file tee),
+`MATHIZ_LOG_FORMAT` (`text`|`json`), `MATHIZ_LOG_LEVEL`
+(canonical one-line-per-request logging; see specs/12-saas.md).
 
 Billing: `MATHIZ_BILLING_PROVIDER` (empty = billing off/everything free;
 `fake` = dev provider; `stripe` = real payments — also needs

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/abhisek/mathiz/ent"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/family"
+	"github.com/abhisek/mathiz/internal/saas/logctx"
 )
 
 // ---- Wire types ----
@@ -188,9 +188,14 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, p authz.Princi
 			return
 		}
 		if inv != nil {
+			// Both lookups fall back to "" on error (the banner still
+			// renders); annotate the request line so the failure isn't
+			// invisible.
 			pending := map[string]any{"id": inv.UID, "familyName": "", "invitedBy": ""}
 			if invSp, err := s.family.Space(r.Context(), inv.FamilySpaceID); err == nil {
 				pending["familyName"] = invSp.Name
+			} else {
+				logctx.Add(r.Context(), "invite_space_err", err.Error())
 			}
 			if inviter, err := s.family.Account(r.Context(), inv.CreatedBy); err == nil {
 				name := inviter.DisplayName
@@ -198,6 +203,8 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, p authz.Princi
 					name = inviter.Email
 				}
 				pending["invitedBy"] = name
+			} else {
+				logctx.Add(r.Context(), "invite_account_err", err.Error())
 			}
 			resp["pendingInvite"] = pending
 		}
@@ -217,10 +224,13 @@ func (s *Server) handleCreateFamily(w http.ResponseWriter, r *http.Request, p au
 		writeServiceError(w, err)
 		return
 	}
-	// Free starter credits: kids play immediately, no card required.
+	// Free starter credits: kids play immediately, no card required. A
+	// failed grant is non-fatal (the chokepoint retries it at session
+	// start) — annotate the request line and proceed.
 	if s.credits != nil {
 		if err := s.credits.EnsureStarterGrant(r.Context(), sp.UID); err != nil {
-			log.Printf("starter grant for %s: %v", sp.UID, err)
+			logctx.Add(r.Context(), "starter_grant_err", err.Error())
+			logctx.Add(r.Context(), "space", sp.UID)
 		}
 	}
 	writeJSON(w, http.StatusCreated, toSpaceJSON(sp))

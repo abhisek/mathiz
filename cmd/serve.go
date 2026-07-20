@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -58,6 +60,18 @@ func runServe(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Structured logging: stdout always, plus an optional file tee
+	// (MATHIZ_LOG_FILE). Fails fast on an unopenable file — a silently
+	// dropped log path is worse than a crash at boot.
+	logger, closeLog, err := server.NewLogger(os.Stdout, cfg)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = closeLog() }()
+	// Bridge the stdlib log package too: stray log.Printf from dependencies
+	// lands in the same stream instead of vanishing to stderr.
+	slog.SetDefault(logger)
 
 	st, err := store.Open(cfg.DatabaseURL)
 	if err != nil {
@@ -172,6 +186,7 @@ func runServe(ctx context.Context) error {
 		Billing:  billingSvc,
 		Quests:   questsSvc,
 		Activity: activityReader,
+		Logger:   logger,
 	})
 
 	httpServer := &http.Server{
@@ -183,9 +198,29 @@ func runServe(ctx context.Context) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Canonical startup summary: address, database kind, and which optional
+	// services this process is running.
+	dbKind := "sqlite"
+	if strings.HasPrefix(cfg.DatabaseURL, "postgres://") || strings.HasPrefix(cfg.DatabaseURL, "postgresql://") {
+		dbKind = "postgres"
+	}
+	billingProvider := "off"
+	if billingSvc != nil {
+		billingProvider = billingSvc.Provider().Name()
+	}
+	logger.Info("mathiz serve listening",
+		"addr", cfg.Addr,
+		"db", dbKind,
+		"game", gameMgr != nil,
+		"quests", questsSvc != nil,
+		"billing", billingSvc != nil,
+		"billing_provider", billingProvider,
+		"analytics", cfg.PostHogAPIKey != "",
+		"activity", activityReader != nil,
+	)
+
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("mathiz serve listening on %s", cfg.Addr)
 		errCh <- httpServer.ListenAndServe()
 	}()
 
@@ -196,7 +231,7 @@ func runServe(ctx context.Context) error {
 		}
 		return err
 	case <-ctx.Done():
-		log.Println("shutting down...")
+		logger.Info("shutting down")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		return httpServer.Shutdown(shutdownCtx)

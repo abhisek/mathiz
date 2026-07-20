@@ -93,6 +93,9 @@ Kids never see prices or balances. Design:
   run a Go binary and reach Postgres. Put TLS in front.
 - LLM API keys stay server-side; browsers never see them.
 - `MATHIZ_SESSION_IDLE_MINUTES` bounds idle learning-session lifetime.
+- Logging: one structured line per request on stdout (`MATHIZ_LOG_FORMAT`
+  `text`/`json`, `MATHIZ_LOG_LEVEL`); `MATHIZ_LOG_FILE` tees to a file.
+  No built-in rotation — use logrotate or your container's log driver.
 
 ## API surface
 

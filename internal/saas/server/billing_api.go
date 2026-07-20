@@ -1,13 +1,13 @@
 package server
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/abhisek/mathiz/ent"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/billing"
 	"github.com/abhisek/mathiz/internal/saas/credits"
+	"github.com/abhisek/mathiz/internal/saas/logctx"
 )
 
 // Billing API — parent-only. The kid surface never sees prices or balances.
@@ -117,12 +117,17 @@ func (s *Server) handleBillingPortal(w http.ResponseWriter, r *http.Request, p a
 func (s *Server) applyProviderEvents(w http.ResponseWriter, r *http.Request, parseErrMsg string) bool {
 	events, err := s.billing.Provider().ParseWebhook(r)
 	if err != nil {
+		recordErrDetail(w, err)
 		writeError(w, http.StatusBadRequest, parseErrMsg)
 		return false
 	}
 	for _, ev := range events {
 		if err := s.billing.Apply(r.Context(), ev); err != nil {
-			log.Printf("billing: apply %s (%s): %v", ev.Type, ev.EventID, err)
+			// The canonical request line is the record of the failed apply:
+			// event type + provider event ID + the real error.
+			logctx.Add(r.Context(), "billing_event", string(ev.Type))
+			logctx.Add(r.Context(), "billing_event_id", ev.EventID)
+			recordErrDetail(w, err)
 			writeError(w, http.StatusInternalServerError, "event application failed")
 			return false
 		}

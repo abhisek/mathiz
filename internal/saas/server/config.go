@@ -62,6 +62,18 @@ type Config struct {
 	// host is empty. Never served to the browser — the SPA is handed the
 	// same-origin /relay path instead.
 	PostHogHost string
+
+	// LogFile optionally tees the structured log to an append-mode file in
+	// addition to stdout. Unset = stdout only. If the file can't be opened,
+	// startup fails. No built-in rotation — rotate externally.
+	LogFile string
+
+	// LogFormat selects the slog handler: "text" (default; canonical
+	// key=value) or "json".
+	LogFormat string
+
+	// LogLevel is the minimum level: debug|info|warn|error (default info).
+	LogLevel string
 }
 
 // ConfigFromEnv builds a Config from MATHIZ_* environment variables.
@@ -80,6 +92,9 @@ func ConfigFromEnv() (*Config, error) {
 		PublicBaseURL:       os.Getenv("MATHIZ_PUBLIC_BASE_URL"),
 		PostHogAPIKey:       os.Getenv("MATHIZ_POSTHOG_API_KEY"),
 		PostHogHost:         strings.TrimRight(os.Getenv("MATHIZ_POSTHOG_HOST"), "/"),
+		LogFile:             os.Getenv("MATHIZ_LOG_FILE"),
+		LogFormat:           envOr("MATHIZ_LOG_FORMAT", "text"),
+		LogLevel:            envOr("MATHIZ_LOG_LEVEL", "info"),
 	}
 	if cfg.PostHogAPIKey != "" && cfg.PostHogHost == "" {
 		cfg.PostHogHost = "https://us.i.posthog.com"
@@ -101,6 +116,16 @@ func (c *Config) Validate() error {
 	}
 	if c.SupabaseURL == "" && c.SupabaseJWTSecret == "" {
 		return fmt.Errorf("configure MATHIZ_SUPABASE_URL and/or MATHIZ_SUPABASE_JWT_SECRET for parent auth")
+	}
+	switch c.LogFormat {
+	case "", "text", "json":
+	default:
+		return fmt.Errorf("unsupported MATHIZ_LOG_FORMAT %q (available: text, json)", c.LogFormat)
+	}
+	switch c.LogLevel {
+	case "", "debug", "info", "warn", "error":
+	default:
+		return fmt.Errorf("unsupported MATHIZ_LOG_LEVEL %q (available: debug, info, warn, error)", c.LogLevel)
 	}
 	return nil
 }

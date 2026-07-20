@@ -106,6 +106,7 @@ Whoever runs `mathiz serve` for their family or a community.
 | Split SPA deployments | `MATHIZ_CORS_ORIGINS` |
 | Monetisation on/off + provider (off = everything free; fake for dev; Stripe/Paddle planned) | `MATHIZ_BILLING_PROVIDER`, `MATHIZ_BILLING_PRICE_*` — see [specs/14-monetisation.md](../specs/14-monetisation.md) |
 | Product analytics on/off (off = default; child identity is never sent — family-level only) | `MATHIZ_POSTHOG_API_KEY`, `MATHIZ_POSTHOG_HOST` — see [specs/16-analytics.md](../specs/16-analytics.md) |
+| Structured logs: one canonical line per request on stdout, optional file tee (rotate externally) | `MATHIZ_LOG_FILE`, `MATHIZ_LOG_FORMAT` (`text`/`json`), `MATHIZ_LOG_LEVEL` |
 | Per-child LLM usage events (auditing/cost attribution) | logged into each child's event stream |
 
 Full setup: [docs/saas.md](./saas.md) · env reference: [.env.example](../.env.example)
