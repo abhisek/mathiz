@@ -57,7 +57,9 @@ func newPostHogRelay(upstream string) (http.Handler, error) {
 			IdleConnTimeout:       90 * time.Second,
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			// Analytics is best-effort; the SPA fires and forgets.
+			// Analytics is best-effort; the SPA fires and forgets. The
+			// upstream error still lands on the canonical request line.
+			recordErrDetail(w, err)
 			w.WriteHeader(http.StatusBadGateway)
 		},
 	}

@@ -215,9 +215,30 @@ All under `/api/v1`. Parent endpoints require Supabase JWT; child endpoints devi
 | `MATHIZ_SUPABASE_JWT_SECRET` | no | Enables HS256 verification (legacy Supabase keys) |
 | `MATHIZ_SERVER_ADDR` | no (`:8080`) | Listen address |
 | `MATHIZ_LLM_PROVIDER`, `MATHIZ_*_API_KEY` | yes | Existing LLM config, server-side only |
+| `MATHIZ_LOG_FILE` | no | Tee the structured log to an append-mode file (stdout always) |
+| `MATHIZ_LOG_FORMAT` | no (`text`) | `text` (key=value) or `json` |
+| `MATHIZ_LOG_LEVEL` | no (`info`) | `debug`\|`info`\|`warn`\|`error` |
 
-`mathiz serve` fails fast if the database is unreachable or no Supabase verification
-method is configured.
+`mathiz serve` fails fast if the database is unreachable, no Supabase verification
+method is configured, the log format/level is unknown, or `MATHIZ_LOG_FILE`
+cannot be opened.
+
+### Canonical request logging
+
+`mathiz serve` emits ONE structured `log/slog` line per HTTP request
+(wide-event style), from an outermost middleware in
+`internal/saas/server/reqlog.go`: `method`, `route` (the Go 1.22 ServeMux
+pattern when matched, else the raw path — keeps cardinality low), `status`,
+`dur_ms`, `bytes`, `ip` (proxy-aware via `MATHIZ_TRUST_PROXY`), plus
+everything the request accumulated in its `internal/saas/logctx` bag: auth
+middlewares add `principal` + `account`/`child` (UIDs only — never emails or
+names), `writeError` records the client-visible message as `err`, and
+internal failures record the real cause as `err_detail` while HTTP bodies
+stay generic. Handler panics are recovered to a 500 and logged on the same
+line with `panic` + a trimmed `stack`. Level policy: 5xx→Error, 4xx→Warn,
+`/api/*` and `/relay/*`→Info, SPA assets→Debug. Output: stdout, optionally
+teed to `MATHIZ_LOG_FILE` (no built-in rotation); `slog.SetDefault` bridges
+stray stdlib `log` calls into the same stream.
 
 ## 9. Web App (`web/`)
 

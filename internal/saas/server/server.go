@@ -4,7 +4,7 @@
 package server
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/abhisek/mathiz/internal/saas/activity"
@@ -20,6 +20,7 @@ import (
 
 // Deps carries everything a Server needs. WebUI, Game, Credits, Billing,
 // and Quests are optional — their routes 404 / fall through when nil.
+// Logger is optional too (nil = slog.Default()) so tests need no wiring.
 type Deps struct {
 	Config   *Config
 	Store    *store.Store
@@ -31,6 +32,7 @@ type Deps struct {
 	Billing  *billing.Service
 	Quests   *quests.Service
 	Activity *activity.Reader
+	Logger   *slog.Logger
 }
 
 // Server wires config, services, and routes.
@@ -47,6 +49,7 @@ type Server struct {
 	billing  *billing.Service
 	quests   *quests.Service
 	activity *activity.Reader
+	logger   *slog.Logger
 
 	joinLimiter *ipLimiter
 	handler     http.Handler
@@ -66,8 +69,12 @@ func New(d Deps) *Server {
 		billing:  d.Billing,
 		quests:   d.Quests,
 		activity: d.Activity,
+		logger:   d.Logger,
 		// Join endpoints are unauthenticated: keep brute force slow.
 		joinLimiter: newIPLimiter(1, 10),
+	}
+	if s.logger == nil {
+		s.logger = slog.Default()
 	}
 	if d.Quests != nil {
 		s.checker.SetQuests(d.Quests)
@@ -171,7 +178,8 @@ func (s *Server) routes() http.Handler {
 			// /api/v1/config stops advertising posthogKey/"/relay" — otherwise
 			// the SPA boots analytics against a route that 404s.
 			s.cfg.PostHogAPIKey = ""
-			log.Printf("posthog relay disabled: bad MATHIZ_POSTHOG_HOST %q: %v (analytics off)", s.cfg.PostHogHost, err)
+			s.logger.Warn("posthog relay disabled (analytics off)",
+				"posthog_host", s.cfg.PostHogHost, "err", err.Error())
 		}
 	}
 
@@ -187,7 +195,9 @@ func (s *Server) routes() http.Handler {
 		mux.Handle("/", s.webui)
 	}
 
-	return s.withCORS(mux)
+	// Request logging is OUTERMOST so even CORS preflights get a canonical
+	// line; withCORS stays inside it.
+	return s.withRequestLog(s.withCORS(mux))
 }
 
 // withCORS adds CORS headers for explicitly allowed origins. The embedded

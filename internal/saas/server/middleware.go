@@ -3,7 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -16,6 +16,7 @@ import (
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/family"
+	"github.com/abhisek/mathiz/internal/saas/logctx"
 )
 
 // parentHandler receives the verified principal and provisioned account.
@@ -40,10 +41,13 @@ func (s *Server) withParent(h parentHandler) http.Handler {
 		}
 		acct, err := s.family.EnsureAccount(r.Context(), id.SupabaseUserID, id.Email, id.DisplayName)
 		if err != nil {
-			log.Printf("ensure account: %v", err)
+			recordErrDetail(w, fmt.Errorf("ensure account: %w", err))
 			writeError(w, http.StatusInternalServerError, "account provisioning failed")
 			return
 		}
+		// Canonical-line identity: UIDs only, never emails or names.
+		logctx.Add(r.Context(), "principal", "parent")
+		logctx.Add(r.Context(), "account", acct.UID)
 		p := authz.Principal{Kind: authz.KindParent, AccountID: acct.UID}
 		h(w, r, p, acct)
 	})
@@ -62,6 +66,9 @@ func (s *Server) withChild(h childHandler) http.Handler {
 			writeError(w, http.StatusUnauthorized, "invalid credentials")
 			return
 		}
+		// Canonical-line identity: UIDs only, never names.
+		logctx.Add(r.Context(), "principal", "child")
+		logctx.Add(r.Context(), "child", child.UID)
 		h(w, r, authz.ChildPrincipal(child), child)
 	})
 }
@@ -71,14 +78,24 @@ func (s *Server) withChild(h childHandler) http.Handler {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		// Headers are gone; all we can do is put it on the canonical line
+		// (typically the client hung up mid-body).
+		recordErrDetail(w, fmt.Errorf("encode response: %w", err))
+	}
 }
 
 type errorBody struct {
 	Error string `json:"error"`
 }
 
+// writeError sends the JSON error body AND records the message into the
+// request-log shim so it lands on the canonical line as err=<msg>. Fail-open
+// when w is not our shim (tests exercising handlers directly).
 func writeError(w http.ResponseWriter, status int, msg string) {
+	if lw, ok := w.(*logWriter); ok {
+		lw.setErr(msg)
+	}
 	writeJSON(w, status, errorBody{Error: msg})
 }
 
@@ -88,6 +105,7 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
+		recordErrDetail(w, err)
 		writeError(w, http.StatusBadRequest, "malformed request body")
 		return false
 	}
@@ -120,7 +138,9 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		errors.Is(err, family.ErrOwnerRemoval):
 		writeError(w, http.StatusBadRequest, err.Error())
 	default:
-		log.Printf("internal error: %v", err)
+		// The HTTP body stays generic; the REAL error rides the canonical
+		// request line as err_detail.
+		recordErrDetail(w, err)
 		writeError(w, http.StatusInternalServerError, "internal error")
 	}
 }
