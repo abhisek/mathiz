@@ -222,6 +222,76 @@ func TestQuestWrongAnswerKeepsQuestionInPlay(t *testing.T) {
 	}
 }
 
+// TestQuestAnswersSealedUntilSolved guards the sealed-answer policy
+// (specs/15-quests.md): quest questions repeat until solved, so a wrong
+// answer must not reveal the correct answer or the explanation — a child
+// could copy the reveal on the retry. The explanation is revealed on a
+// correct answer (the question can never gate again), and hints still flow.
+func TestQuestAnswersSealedUntilSolved(t *testing.T) {
+	src := newFakeQuestSource("", 2)
+	m := newQuestTestManager(t, src)
+	ctx := context.Background()
+
+	exp, err := m.StartQuest(ctx, "child-1", "quest-1")
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	// Wrong answer: sealed — no correct answer, no explanation.
+	res := answerCurrent(t, m, "child-1", exp.ID, "7")
+	if res.Correct {
+		t.Fatal("wrong answer graded correct")
+	}
+	if res.CorrectAnswer != "" {
+		t.Errorf("wrong quest answer revealed CorrectAnswer = %q", res.CorrectAnswer)
+	}
+	if res.Explanation != "" {
+		t.Errorf("wrong quest answer revealed Explanation = %q", res.Explanation)
+	}
+	// The learning scaffolds still flow: the hint is available and served.
+	if !res.HintAvailable {
+		t.Error("hint should still be available on a sealed wrong answer")
+	}
+	if _, err := m.Hint(ctx, "child-1", exp.ID); err != nil {
+		t.Errorf("hint: %v", err)
+	}
+
+	// Correct answer: the explanation is the closure reveal.
+	res = answerCurrent(t, m, "child-1", exp.ID, "4")
+	if !res.Correct {
+		t.Fatal("correct answer graded wrong")
+	}
+	if res.CorrectAnswer != "4" {
+		t.Errorf("correct quest answer CorrectAnswer = %q, want 4", res.CorrectAnswer)
+	}
+	if res.Explanation != "2 and 2 make 4." {
+		t.Errorf("correct quest answer Explanation = %q", res.Explanation)
+	}
+}
+
+// TestMapDigWrongAnswerStillReveals is the regression guard for the map:
+// adaptive dig questions never repeat, so a wrong answer keeps revealing the
+// correct answer and the explanation (pure learning).
+func TestMapDigWrongAnswerStillReveals(t *testing.T) {
+	m := newTestManager(t, &fakeGenerator{})
+	ctx := context.Background()
+
+	exp, err := m.Start(ctx, "child-1", rootSkillID(t))
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	res := answerCurrent(t, m, "child-1", exp.ID, "7")
+	if res.Correct {
+		t.Fatal("wrong answer graded correct")
+	}
+	if res.CorrectAnswer != "4" {
+		t.Errorf("map dig wrong answer CorrectAnswer = %q, want 4", res.CorrectAnswer)
+	}
+	if res.Explanation != "2 and 2 together make 4." {
+		t.Errorf("map dig wrong answer Explanation = %q", res.Explanation)
+	}
+}
+
 func TestQuestStartChargesOnceAndReuses(t *testing.T) {
 	st, err := store.Open("file::memory:?cache=shared")
 	if err != nil {

@@ -558,6 +558,17 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 		TotalQuestions:    exp.totalQuestions(),
 		LessonPending:     state.PendingLesson,
 	}
+	// Sealed answers for quests (specs/15-quests.md): quest questions are
+	// fixed and a missed one comes back on a later expedition, so revealing
+	// the answer here would let the child copy it on the retry. Reveal only
+	// when this exact question can never gate again — on a correct answer.
+	// Map digs generate a fresh question every time, so their reveal-on-miss
+	// stays. Presentation policy only: hints, diagnosis, lessons, gems, and
+	// streaks are untouched.
+	if exp.quest != nil && !state.LastAnswerCorrect {
+		result.CorrectAnswer = ""
+		result.Explanation = ""
+	}
 	if award := state.PendingGemAward; award != nil {
 		result.Gem = &GemAwardView{Type: string(award.Type), Rarity: string(award.Rarity), Reason: award.Reason}
 	}

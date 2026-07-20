@@ -77,6 +77,30 @@ that expands to the trophy list. The celebration moment lives in the
 expedition summary; archiving the quest (parent-side) remains what removes
 it from the map payload entirely.
 
+### Sealed answers (2026-07)
+
+Quest questions are FIXED and repeat until answered correctly, and the
+wrong-answer feedback used to reveal the correct answer + explanation — so
+a child could copy the reveal onto the retry and "solve" the quest,
+polluting completion and (for tagged quests) mastery signals. A real child
+found this. Principle: **reveal the answer only when this exact question
+can never gate again.**
+
+- Wrong quest answer: the response (`game.Manager.Answer`) omits
+  `correctAnswer` and `explanation`; the client shows a playful sealed
+  line. The learning scaffolds are untouched — hint, diagnosis, and after
+  two misses the micro-lesson, which teaches the METHOD with different
+  numbers (its practice reveal is safe).
+- Correct quest answer: the explanation is the closure reveal — the
+  question is retired and can no longer gate.
+- Adaptive map digs are unchanged: their questions are freshly generated
+  and never repeat, so reveal-on-miss there is pure learning.
+
+This is presentation policy in the game layer only; the session engine
+(`internal/session`) still grades and records normally, and answer
+checking stays server-side (the question payload never carries the
+answer).
+
 ## 6. Testing
 
 Service: CRUD + authz (cross-family 404), publish gating, generation

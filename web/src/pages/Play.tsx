@@ -677,9 +677,18 @@ function ExpeditionOverlay({
             ) : (
               <>
                 <div className="feedback-big">🌊 Not quite!</div>
-                <p className="feedback-answer">
-                  The treasure was <strong>{result.correctAnswer}</strong>
-                </p>
+                {result.correctAnswer ? (
+                  <p className="feedback-answer">
+                    The treasure was <strong>{result.correctAnswer}</strong>
+                  </p>
+                ) : (
+                  // Quest questions come back until solved — the server keeps
+                  // the answer sealed so it can't be copied on the retry.
+                  <p className="feedback-answer">
+                    The Captain keeps the answer sealed until you crack it! 🗝️ Try again on your
+                    next voyage.
+                  </p>
+                )}
                 {result.explanation && <p className="feedback-explain">{result.explanation}</p>}
                 {result.hintAvailable && !hint && (
                   <button className="btn btn-secondary" onClick={onHint}>
