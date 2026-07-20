@@ -31,8 +31,11 @@ const (
 )
 
 // questSkillPrefix marks the synthetic skill ID an untagged quest session
-// plans with (see game.StartQuest). Tagged quest sessions carry the real
-// skill ID and are indistinguishable from normal digs — documented limitation.
+// plans with (see game.StartQuest). It is the LEGACY attribution fallback:
+// sessions started since 2026-07 carry the quest UID and as-of-play name on
+// the start event itself (store.SessionSummaryRecord.QuestUID/QuestName),
+// which also covers tagged quest sessions — those plan the real skill ID and
+// were previously indistinguishable from normal digs.
 const questSkillPrefix = "quest:"
 
 // ErrBadKind is returned for a kind filter outside
@@ -75,6 +78,9 @@ type TimelineQuery struct {
 	Kinds  []string  // subset of expedition/mastery/lesson; empty = all
 	From   time.Time // optional inclusive lower time bound
 	To     time.Time // optional inclusive upper time bound
+	// QuestUID restricts the page to expeditions attributed to this quest.
+	// A quest filter implies expeditions — Kinds is ignored when set.
+	QuestUID string
 }
 
 // SkillRef names a skill on a timeline item.
@@ -151,15 +157,21 @@ func (r *Reader) Timeline(ctx context.Context, childUID string, q TimelineQuery)
 	}
 
 	want := map[string]bool{}
-	if len(q.Kinds) == 0 {
+	switch {
+	case q.QuestUID != "":
+		// A quest filter implies expeditions: only expeditions carry quest
+		// attribution, so Kinds is deliberately ignored here.
+		want[KindExpedition] = true
+	case len(q.Kinds) == 0:
 		want[KindExpedition], want[KindMastery], want[KindLesson] = true, true, true
-	}
-	for _, k := range q.Kinds {
-		switch k {
-		case KindExpedition, KindMastery, KindLesson:
-			want[k] = true
-		default:
-			return TimelinePage{}, fmt.Errorf("%w: %q", ErrBadKind, k)
+	default:
+		for _, k := range q.Kinds {
+			switch k {
+			case KindExpedition, KindMastery, KindLesson:
+				want[k] = true
+			default:
+				return TimelinePage{}, fmt.Errorf("%w: %q", ErrBadKind, k)
+			}
 		}
 	}
 
@@ -170,7 +182,13 @@ func (r *Reader) Timeline(ctx context.Context, childUID string, q TimelineQuery)
 	var items []TimelineItem
 
 	if want[KindExpedition] {
-		sums, err := repo.QuerySessionSummaries(ctx, opts)
+		var sums []store.SessionSummaryRecord
+		var err error
+		if q.QuestUID != "" {
+			sums, err = r.questSessions(ctx, repo, opts, limit, q.QuestUID)
+		} else {
+			sums, err = repo.QuerySessionSummaries(ctx, opts)
+		}
 		if err != nil {
 			return TimelinePage{}, fmt.Errorf("query sessions: %w", err)
 		}
@@ -228,7 +246,9 @@ func (r *Reader) Timeline(ctx context.Context, childUID string, q TimelineQuery)
 }
 
 // expeditionItem hydrates one session summary: plan skills resolved through
-// the skill graph and quest attribution from the synthetic "quest:" plan ID.
+// the skill graph and quest attribution — preferably from the start event's
+// durable QuestUID/QuestName (covers tagged quests, survives quest deletion),
+// falling back to the legacy synthetic "quest:" plan ID for old events.
 func (r *Reader) expeditionItem(ctx context.Context, sum store.SessionSummaryRecord, questCache map[string]*QuestRef) TimelineItem {
 	exp := &ExpeditionItem{
 		SessionID:    sum.SessionID,
@@ -240,14 +260,17 @@ func (r *Reader) expeditionItem(ctx context.Context, sum store.SessionSummaryRec
 	if len(sum.Plan) > 0 {
 		exp.Category = sum.Plan[0].Category
 	}
+	if sum.QuestUID != "" {
+		exp.Quest = r.questRef(ctx, sum.QuestUID, sum.QuestName, questCache)
+	}
 	seen := map[string]bool{}
 	for _, slot := range sum.Plan {
 		if questUID, ok := strings.CutPrefix(slot.SkillID, questSkillPrefix); ok {
 			// Untagged quest session: the synthetic ID is attribution, not a
-			// skill. (Tagged quests plan the real skill and are not
-			// distinguishable here.)
+			// skill. Legacy fallback — events written since 2026-07 already
+			// resolved this from sum.QuestUID above.
 			if exp.Quest == nil {
-				exp.Quest = r.questRef(ctx, questUID, questCache)
+				exp.Quest = r.questRef(ctx, questUID, "", questCache)
 			}
 			continue
 		}
@@ -260,28 +283,78 @@ func (r *Reader) expeditionItem(ctx context.Context, sum store.SessionSummaryRec
 	return TimelineItem{Kind: KindExpedition, Seq: sum.Sequence, At: sum.Timestamp, Expedition: exp}
 }
 
-// questRef resolves quest attribution, degrading to a bare ID when the
-// lookup is missing or fails — attribution must never fail the timeline.
-func (r *Reader) questRef(ctx context.Context, questUID string, cache map[string]*QuestRef) *QuestRef {
-	if ref, ok := cache[questUID]; ok {
-		return ref
-	}
-	ref := &QuestRef{ID: questUID}
-	cache[questUID] = ref
-	if r.quests == nil {
-		return ref
-	}
-	name, emoji, createdBy, err := r.quests.QuestMeta(ctx, questUID)
-	if err != nil {
-		return ref // quest deleted since — keep the bare ID
-	}
-	ref.Name, ref.Emoji = name, emoji
-	if createdBy != "" && r.memberName != nil {
-		if display, err := r.memberName(ctx, createdBy); err == nil {
-			ref.CreatedBy = display
+// questRef resolves quest attribution. eventName is the as-of-play name from
+// the session start event and always wins when present; the live QuestMeta
+// lookup only ENRICHES (emoji, createdBy — and the name for legacy events
+// that carry none). Lookup failure degrades, never removes the event's name
+// and never fails the timeline.
+func (r *Reader) questRef(ctx context.Context, questUID, eventName string, cache map[string]*QuestRef) *QuestRef {
+	base, ok := cache[questUID]
+	if !ok {
+		base = &QuestRef{ID: questUID}
+		cache[questUID] = base
+		if r.quests != nil {
+			if name, emoji, createdBy, err := r.quests.QuestMeta(ctx, questUID); err == nil {
+				base.Name, base.Emoji = name, emoji
+				if createdBy != "" && r.memberName != nil {
+					if display, err := r.memberName(ctx, createdBy); err == nil {
+						base.CreatedBy = display
+					}
+				}
+			}
 		}
 	}
-	return ref
+	ref := *base
+	if eventName != "" {
+		ref.Name = eventName
+	}
+	return &ref
+}
+
+// questSessions fetches up to limit finished sessions attributed to
+// questUID. Filtering happens here, inside an internal paging loop (same
+// shape as notableMastery), so a stretch of non-matching sessions can't
+// come back as an empty page with no cursor and terminate pagination early.
+func (r *Reader) questSessions(ctx context.Context, repo store.EventRepo, opts store.QueryOpts, limit int, questUID string) ([]store.SessionSummaryRecord, error) {
+	var out []store.SessionSummaryRecord
+	before := opts.Before
+	for {
+		o := opts
+		o.Before = before
+		o.Limit = limit
+		batch, err := repo.QuerySessionSummaries(ctx, o)
+		if err != nil {
+			return nil, fmt.Errorf("query sessions: %w", err)
+		}
+		for _, sum := range batch {
+			if sessionQuestUID(sum) != questUID {
+				continue
+			}
+			out = append(out, sum)
+			if len(out) == limit {
+				return out, nil
+			}
+		}
+		if len(batch) < o.Limit {
+			return out, nil // stream exhausted
+		}
+		before = batch[len(batch)-1].Sequence
+	}
+}
+
+// sessionQuestUID extracts the quest a session is attributed to: the start
+// event's durable QuestUID when present, else the legacy synthetic
+// "quest:<uid>" plan-skill prefix; "" for normal digs.
+func sessionQuestUID(sum store.SessionSummaryRecord) string {
+	if sum.QuestUID != "" {
+		return sum.QuestUID
+	}
+	for _, slot := range sum.Plan {
+		if uid, ok := strings.CutPrefix(slot.SkillID, questSkillPrefix); ok {
+			return uid
+		}
+	}
+	return ""
 }
 
 // notableMastery fetches up to limit mastery transitions a parent cares

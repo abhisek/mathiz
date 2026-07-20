@@ -697,6 +697,8 @@ var (
 		{Name: "correct_answers", Type: field.TypeInt, Default: 0},
 		{Name: "duration_secs", Type: field.TypeInt, Default: 0},
 		{Name: "plan_summary", Type: field.TypeJSON, Nullable: true},
+		{Name: "quest_uid", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "quest_name", Type: field.TypeString, Nullable: true, Default: ""},
 	}
 	// SessionEventsTable holds the schema information for the "session_events" table.
 	SessionEventsTable = &schema.Table{

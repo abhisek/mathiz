@@ -101,6 +101,36 @@ This is presentation policy in the game layer only; the session engine
 checking stays server-side (the question payload never carries the
 answer).
 
+### Completion visibility & attribution (2026-07)
+
+Parents could publish a quest but not see who finished it, and tagged quest
+sessions vanished into the activity feed as ordinary digs. Three additions:
+
+- **Per-child progress in the list API**: each quest in
+  `GET /api/v1/family/{id}/quests` carries
+  `progress: [{childId, name, correct, total, done}, …]` — one entry for a
+  child-targeted quest, one per active (non-archived) child ordered by child
+  name for an all-children quest. Data comes from the existing
+  `quest_progress` rows (`ProgressFor`); `done = total>0 && correct>=total`.
+  Drafts get entries too (harmless zeros). Family-scale N×M queries,
+  deliberately simple.
+- **Durable attribution in session events**: the quest expedition's session
+  "start" event now denormalizes `quest_uid` + `quest_name`. The name is the
+  name AS-OF-PLAY, deliberately — events record facts at play time, the
+  event-sourcing-native choice — so activity attribution survives quest
+  deletion and rename, and tagged quest sessions (whose plan carries the
+  real skill ID) are attributable at all. The live quests lookup only
+  enriches (emoji, authoring parent); the legacy synthetic `quest:<uid>`
+  plan ID remains as fallback for pre-change events.
+- **Activity quest filter**: `GET /api/v1/children/{id}/activity?quest=<uid>`
+  returns only expeditions attributed to that quest (the `kinds` param is
+  overridden — a quest filter implies expeditions). Filtering happens inside
+  the reader with an internal paging loop, so a stretch of non-matching
+  sessions can't end pagination early.
+
+Historical tagged-quest sessions (recorded before this change) remain
+unattributed — events are append-only, no backfill.
+
 ## 6. Testing
 
 Service: CRUD + authz (cross-family 404), publish gating, generation

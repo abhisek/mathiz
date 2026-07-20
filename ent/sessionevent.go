@@ -36,7 +36,11 @@ type SessionEvent struct {
 	// Actual duration in seconds (on end only)
 	DurationSecs int `json:"duration_secs,omitempty"`
 	// Serialized plan (on start only)
-	PlanSummary  []schema.PlanSlotSummary `json:"plan_summary,omitempty"`
+	PlanSummary []schema.PlanSlotSummary `json:"plan_summary,omitempty"`
+	// Quest attribution: quest UID (on quest session start only)
+	QuestUID string `json:"quest_uid,omitempty"`
+	// Quest attribution: quest name as-of-play (on quest session start only)
+	QuestName    string `json:"quest_name,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -49,7 +53,7 @@ func (*SessionEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case sessionevent.FieldID, sessionevent.FieldSequence, sessionevent.FieldQuestionsServed, sessionevent.FieldCorrectAnswers, sessionevent.FieldDurationSecs:
 			values[i] = new(sql.NullInt64)
-		case sessionevent.FieldOwnerID, sessionevent.FieldSessionID, sessionevent.FieldAction:
+		case sessionevent.FieldOwnerID, sessionevent.FieldSessionID, sessionevent.FieldAction, sessionevent.FieldQuestUID, sessionevent.FieldQuestName:
 			values[i] = new(sql.NullString)
 		case sessionevent.FieldTimestamp:
 			values[i] = new(sql.NullTime)
@@ -130,6 +134,18 @@ func (_m *SessionEvent) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field plan_summary: %w", err)
 				}
 			}
+		case sessionevent.FieldQuestUID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field quest_uid", values[i])
+			} else if value.Valid {
+				_m.QuestUID = value.String
+			}
+		case sessionevent.FieldQuestName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field quest_name", values[i])
+			} else if value.Valid {
+				_m.QuestName = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -192,6 +208,12 @@ func (_m *SessionEvent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("plan_summary=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PlanSummary))
+	builder.WriteString(", ")
+	builder.WriteString("quest_uid=")
+	builder.WriteString(_m.QuestUID)
+	builder.WriteString(", ")
+	builder.WriteString("quest_name=")
+	builder.WriteString(_m.QuestName)
 	builder.WriteByte(')')
 	return builder.String()
 }

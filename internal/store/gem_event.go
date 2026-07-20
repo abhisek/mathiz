@@ -172,7 +172,11 @@ func (r *eventRepo) QuerySessionSummaries(ctx context.Context, opts QueryOpts) (
 		return nil, fmt.Errorf("query session starts: %w", err)
 	}
 	planBySession := make(map[string][]PlanSlotSummaryData, len(starts))
+	questBySession := make(map[string][2]string, len(starts)) // [uid, name]
 	for _, st := range starts {
+		if st.QuestUID != "" {
+			questBySession[st.SessionID] = [2]string{st.QuestUID, st.QuestName}
+		}
 		if len(st.PlanSummary) == 0 {
 			continue
 		}
@@ -198,6 +202,8 @@ func (r *eventRepo) QuerySessionSummaries(ctx context.Context, opts QueryOpts) (
 			DurationSecs:    e.DurationSecs,
 			GemCount:        gemsBySession[e.SessionID],
 			Plan:            planBySession[e.SessionID],
+			QuestUID:        questBySession[e.SessionID][0],
+			QuestName:       questBySession[e.SessionID][1],
 		}
 	}
 	return records, nil

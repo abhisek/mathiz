@@ -124,6 +124,16 @@ non-identifying.
 Adding an event = a typed helper in `analytics.ts` + a row in this table,
 same PR. See `.claude/skills/analytics/SKILL.md`.
 
+Note on quest usage questions ("do quests get used"): the client-side
+`kind: 'skill'|'quest'` property answers volume only. For per-quest
+server-side analysis, session start events used to make skill-TAGGED quest
+sessions indistinguishable from normal digs; since 2026-07 they carry the
+quest UID + as-of-play name (`specs/15-quests.md`, "Completion visibility &
+attribution"), so quest sessions are attributable from our own event store —
+for sessions recorded after that change; historical tagged-quest sessions
+remain unattributed. No child-identifying data is involved either way
+(events are owner-scoped server data, not PostHog).
+
 ## Phase 2 (not implemented)
 
 Server-side billing events (subscription started / renewed / canceled,

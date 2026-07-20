@@ -1,12 +1,15 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"sort"
 
 	"github.com/abhisek/mathiz/ent"
 	"github.com/abhisek/mathiz/internal/saas/authz"
 	"github.com/abhisek/mathiz/internal/saas/credits"
+	"github.com/abhisek/mathiz/internal/saas/family"
 	"github.com/abhisek/mathiz/internal/saas/quests"
 )
 
@@ -25,6 +28,18 @@ type questJSON struct {
 	Status        string `json:"status"`
 	QuestionCount int    `json:"questionCount"`
 	CreatedAt     string `json:"createdAt"`
+	// Progress is per-child completion, list endpoint only: one entry for a
+	// child-targeted quest, one per active child (ordered by name) for an
+	// all-children quest.
+	Progress []questProgressJSON `json:"progress,omitempty"`
+}
+
+type questProgressJSON struct {
+	ChildID string `json:"childId"`
+	Name    string `json:"name"`
+	Correct int    `json:"correct"`
+	Total   int    `json:"total"`
+	Done    bool   `json:"done"`
 }
 
 type questQuestionJSON struct {
@@ -128,6 +143,19 @@ func (s *Server) handleListQuests(w http.ResponseWriter, r *http.Request, p auth
 		writeQuestError(w, err)
 		return
 	}
+	// Active children once, ordered by name, for the per-quest progress
+	// fan-out (family-scale N×M queries — fine).
+	children, err := s.family.Children(r.Context(), spaceID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	sort.Slice(children, func(i, j int) bool {
+		if children[i].Name != children[j].Name {
+			return children[i].Name < children[j].Name
+		}
+		return children[i].UID < children[j].UID
+	})
 	out := make([]questJSON, len(list))
 	for i, q := range list {
 		n, err := s.quests.CountQuestions(r.Context(), q.UID)
@@ -136,8 +164,57 @@ func (s *Server) handleListQuests(w http.ResponseWriter, r *http.Request, p auth
 			return
 		}
 		out[i] = toQuestJSON(q, n)
+		out[i].Progress, err = s.questProgress(r.Context(), q, children)
+		if err != nil {
+			writeQuestError(w, err)
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"quests": out})
+}
+
+// questProgress builds the per-child progress entries for one quest: the
+// targeted child only, or every active child (in the given name order) for
+// an all-children quest. Draft quests get entries too (harmless zeros).
+func (s *Server) questProgress(ctx context.Context, q *ent.Quest, children []*ent.ChildProfile) ([]questProgressJSON, error) {
+	targets := children
+	if q.ChildUID != "" {
+		targets = nil
+		for _, c := range children {
+			if c.UID == q.ChildUID {
+				targets = []*ent.ChildProfile{c}
+				break
+			}
+		}
+		if targets == nil {
+			// Targeted child not in the active list (archived since): still
+			// show that child's progress; a vanished profile just yields no
+			// entries rather than failing the list.
+			c, err := s.family.Child(ctx, q.ChildUID)
+			if errors.Is(err, family.ErrNotFound) {
+				return []questProgressJSON{}, nil
+			}
+			if err != nil {
+				return nil, err
+			}
+			targets = []*ent.ChildProfile{c}
+		}
+	}
+	out := make([]questProgressJSON, 0, len(targets))
+	for _, c := range targets {
+		correct, total, err := s.quests.ProgressFor(ctx, q.UID, c.UID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, questProgressJSON{
+			ChildID: c.UID,
+			Name:    c.Name,
+			Correct: correct,
+			Total:   total,
+			Done:    total > 0 && correct >= total,
+		})
+	}
+	return out, nil
 }
 
 func (s *Server) handleGetQuest(w http.ResponseWriter, r *http.Request, p authz.Principal, acct *ent.Account) {
