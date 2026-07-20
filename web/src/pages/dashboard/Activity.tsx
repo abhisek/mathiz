@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
   api,
   type ActivityItem,
@@ -34,12 +34,39 @@ export default function Activity() {
     track.activityViewed()
   }, [])
 
-  const [childId, setChildId] = useState<string | null>(null)
-  // First child is the default pick once the roster lands.
-  useEffect(() => {
-    if (childId && kids.some((k) => k.id === childId)) return
-    setChildId(kids[0]?.id ?? null)
-  }, [kids, childId])
+  // URL params drive the deep-linkable state: ?child=<id> picks the child
+  // chip (unknown/absent falls back to the first child), ?quest=<uid>
+  // filters the timeline to that quest's expeditions. Chip clicks write the
+  // URL, so any filtered view is linkable/shareable.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const childParam = searchParams.get('child')
+  const childId =
+    childParam && kids.some((k) => k.id === childParam)
+      ? childParam
+      : (kids[0]?.id ?? null)
+  const questId = searchParams.get('quest')
+
+  // The quest's name rides along as router state from the Quests page chips
+  // (the URL alone can't know it before the first response lands).
+  const location = useLocation()
+  const questNameFromState = (location.state as { questName?: string } | null)
+    ?.questName
+
+  function selectChild(id: string) {
+    setSearchParams((cur) => {
+      const next = new URLSearchParams(cur)
+      next.set('child', id)
+      return next
+    })
+  }
+
+  function clearQuest() {
+    setSearchParams((cur) => {
+      const next = new URLSearchParams(cur)
+      next.delete('quest')
+      return next
+    })
+  }
 
   const [kinds, setKinds] = useState<string[]>(KIND_TOGGLES.map((t) => t.kind))
   const [range, setRange] = useState<RangeKey>('30')
@@ -72,7 +99,9 @@ export default function Activity() {
 
   useEffect(() => {
     fetchGeneration.current += 1
-    if (!childId || kinds.length === 0) {
+    // Kind toggles are moot under a quest filter (the server forces
+    // expeditions), so "no kinds picked" only blanks the unfiltered view.
+    if (!childId || (!questId && kinds.length === 0)) {
       setItems([])
       setNextBefore(null)
       setLoading(false)
@@ -87,8 +116,10 @@ export default function Activity() {
       .activity(token, childId, {
         limit: PAGE_SIZE,
         // All kinds on = no filter param — the server default.
-        kinds: kinds.length === KIND_TOGGLES.length ? undefined : kinds,
+        kinds:
+          questId || kinds.length === KIND_TOGGLES.length ? undefined : kinds,
         from: fromParam,
+        quest: questId ?? undefined,
       })
       .then((res) => {
         if (cancelled) return
@@ -106,7 +137,7 @@ export default function Activity() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, childId, kindsKey, fromParam])
+  }, [token, childId, kindsKey, fromParam, questId])
 
   const [loadMore, loadingMore] = useAction(async () => {
     if (!childId || nextBefore === null) return
@@ -115,8 +146,10 @@ export default function Activity() {
       const res = await api.activity(token, childId, {
         before: nextBefore,
         limit: PAGE_SIZE,
-        kinds: kinds.length === KIND_TOGGLES.length ? undefined : kinds,
+        kinds:
+          questId || kinds.length === KIND_TOGGLES.length ? undefined : kinds,
         from: fromParam,
+        quest: questId ?? undefined,
       })
       // Filters changed while this page was in flight — drop it.
       if (fetchGeneration.current !== generation) return
@@ -166,7 +199,7 @@ export default function Activity() {
             type="button"
             className={`chip${childId === k.id ? ' chip-active' : ''}`}
             aria-pressed={childId === k.id}
-            onClick={() => setChildId(k.id)}
+            onClick={() => selectChild(k.id)}
           >
             {k.name}
           </button>
@@ -174,18 +207,22 @@ export default function Activity() {
       </div>
 
       <div className="activity-filters">
-        <div className="activity-kinds">
-          {KIND_TOGGLES.map((t) => (
-            <button
-              key={t.kind}
-              className={`chip chip-small${kinds.includes(t.kind) ? ' chip-active' : ''}`}
-              aria-pressed={kinds.includes(t.kind)}
-              onClick={() => toggleKind(t.kind)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {/* Kind toggles vanish under a quest filter — the server only
+            returns that quest's expeditions anyway. Date range stays. */}
+        {!questId && (
+          <div className="activity-kinds">
+            {KIND_TOGGLES.map((t) => (
+              <button
+                key={t.kind}
+                className={`chip chip-small${kinds.includes(t.kind) ? ' chip-active' : ''}`}
+                aria-pressed={kinds.includes(t.kind)}
+                onClick={() => toggleKind(t.kind)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
         <label className="invite-ttl">
           Showing{' '}
           <select value={range} onChange={(e) => setRange(e.target.value as RangeKey)}>
@@ -195,6 +232,27 @@ export default function Activity() {
           </select>
         </label>
       </div>
+
+      {questId && (
+        <div className="quest-filter-pill">
+          <span>
+            ⭐ Quest:{' '}
+            {questNameFromState ??
+              (loading
+                ? '…'
+                : (items.find((i) => i.expedition?.quest)?.expedition?.quest
+                    ?.name ?? '(deleted quest)'))}
+          </span>
+          <button
+            type="button"
+            className="quest-filter-clear"
+            aria-label="Clear quest filter"
+            onClick={clearQuest}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {error && <p className="form-error">{error}</p>}
 
@@ -211,14 +269,21 @@ export default function Activity() {
             </div>
           ))}
         </div>
-      ) : kinds.length === 0 ? (
+      ) : !questId && kinds.length === 0 ? (
         <p className="muted">Pick at least one activity type above.</p>
       ) : items.length === 0 ? (
         <div className="empty">
-          <p>
-            Nothing here {range === 'all' ? 'yet' : 'in this period'} — quiet seas.
-            Adventures show up as soon as they happen.
-          </p>
+          {questId ? (
+            <p>
+              No expeditions for this quest yet — it may not have been played,
+              or it was played before quest tracking began.
+            </p>
+          ) : (
+            <p>
+              Nothing here {range === 'all' ? 'yet' : 'in this period'} — quiet
+              seas. Adventures show up as soon as they happen.
+            </p>
+          )}
         </div>
       ) : (
         <>

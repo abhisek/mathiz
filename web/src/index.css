@@ -2879,3 +2879,90 @@ table.sessions th {
   font-size: 0.88rem;
   line-height: 1.7;
 }
+
+/* ---- Quest completion chips (Quests list) + quest filter (Activity) ---- */
+
+/* A quest list item grows a second line (per-child progress chips), so the
+   li becomes a column; the original row layout moves to .quest-item-main. */
+.quest-list li.quest-item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.quest-item-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quest-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.4rem 0.65rem;
+}
+
+/* Chip variants: done = green, muted = not started yet. */
+.chip-done {
+  border-color: var(--good);
+  background: rgb(22 163 74 / 0.08);
+  color: var(--good);
+}
+
+.chip-done:hover {
+  border-color: var(--good);
+}
+
+.chip-muted {
+  color: var(--ink-soft);
+  opacity: 0.7;
+}
+
+.quest-done-note {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* Dismissible "filtered to one quest" pill above the Activity timeline. */
+.quest-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  border: 1.5px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.quest-filter-pill > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quest-filter-clear {
+  border: 0;
+  border-radius: 50%;
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.quest-filter-clear:hover {
+  background: rgb(108 78 245 / 0.15);
+}

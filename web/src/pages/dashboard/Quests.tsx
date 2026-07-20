@@ -77,6 +77,21 @@ export default function Quests() {
     }
   })
 
+  const [archivingQuestId, setArchivingQuestId] = useState<string | null>(null)
+
+  // Offered when every child is done with the quest; refetches just the list.
+  const [archive, archiving] = useAction(async (q: Quest) => {
+    setArchivingQuestId(q.id)
+    try {
+      await api.updateQuest(token, q.id, { status: 'archived' })
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setArchivingQuestId(null)
+    }
+  })
+
   if (hidden) {
     return (
       <section className="quests">
@@ -118,31 +133,71 @@ export default function Quests() {
   const current = quests.filter((q) => q.status !== 'archived')
   const archived = quests.filter((q) => q.status === 'archived')
 
-  const renderRow = (q: Quest) => (
-    <li key={q.id}>
-      <button className="quest-row" onClick={() => navigate(`/dashboard/quests/${q.id}`)}>
-        <span className="quest-row-emoji">{q.emoji || '⭐'}</span>
-        <span className="quest-row-name">
-          <strong>{q.name}</strong>
-          <span className="muted">
-            {targetName(q.childId)} · {q.questionCount}{' '}
-            {q.questionCount === 1 ? 'question' : 'questions'}
-            {q.skillId ? ` · ${q.skillId}` : ''}
-          </span>
-        </span>
-        <span className={`quest-status quest-status-${q.status}`}>
-          {QUEST_STATUS_LABEL[q.status] ?? q.status}
-        </span>
-      </button>
-      <button
-        className="btn btn-ghost btn-danger"
-        disabled={deleting}
-        onClick={() => void remove(q)}
-      >
-        {deleting && deletingQuestId === q.id ? 'Deleting…' : 'Delete'}
-      </button>
-    </li>
-  )
+  const renderRow = (q: Quest) => {
+    const progress = q.progress ?? []
+    const everyoneDone = progress.length > 0 && progress.every((p) => p.done)
+    return (
+      <li key={q.id} className="quest-item">
+        <div className="quest-item-main">
+          <button className="quest-row" onClick={() => navigate(`/dashboard/quests/${q.id}`)}>
+            <span className="quest-row-emoji">{q.emoji || '⭐'}</span>
+            <span className="quest-row-name">
+              <strong>{q.name}</strong>
+              <span className="muted">
+                {targetName(q.childId)} · {q.questionCount}{' '}
+                {q.questionCount === 1 ? 'question' : 'questions'}
+                {q.skillId ? ` · ${q.skillId}` : ''}
+              </span>
+            </span>
+            <span className={`quest-status quest-status-${q.status}`}>
+              {QUEST_STATUS_LABEL[q.status] ?? q.status}
+            </span>
+          </button>
+          <button
+            className="btn btn-ghost btn-danger"
+            disabled={deleting}
+            onClick={() => void remove(q)}
+          >
+            {deleting && deletingQuestId === q.id ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+        {progress.length > 0 && (
+          <div className="quest-progress">
+            {progress.map((p) => (
+              <button
+                key={p.childId}
+                type="button"
+                className={`chip chip-small${
+                  p.done ? ' chip-done' : p.correct === 0 ? ' chip-muted' : ''
+                }`}
+                title={`See ${p.name}'s expeditions for this quest`}
+                onClick={() =>
+                  navigate(
+                    `/dashboard/activity?child=${encodeURIComponent(p.childId)}&quest=${encodeURIComponent(q.id)}`,
+                    { state: { questName: q.name } },
+                  )
+                }
+              >
+                {p.done ? `✓ ${p.name}` : `${p.name} ${p.correct}/${p.total}`}
+              </button>
+            ))}
+            {everyoneDone && q.status !== 'archived' && (
+              <span className="quest-done-note muted">
+                Everyone's done 🎉{' '}
+                <button
+                  className="linklike"
+                  disabled={archiving}
+                  onClick={() => void archive(q)}
+                >
+                  {archiving && archivingQuestId === q.id ? 'Archiving…' : 'Archive'}
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+      </li>
+    )
+  }
 
   return (
     <section className="quests">
