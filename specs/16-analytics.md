@@ -100,6 +100,8 @@ non-identifying.
 |---|---|---|
 | `landing_cta_clicked` | `persona: 'parent'\|'kid'` | Landing hero doors (`Landing.tsx`) |
 | `pricing_viewed` | — | Pricing mount (`Pricing.tsx`) |
+| `share_opened` | `sheet: 'native'\|'panel'` | "Tell a friend" button (`ShareMathiz.tsx`: dashboard sidebar + landing footer) |
+| `share_link_copied` | — | Copy button in the share panel (`ShareMathiz.tsx`) |
 | `how_it_works_viewed` | — | How-it-works mount (`HowItWorks.tsx`) |
 | `signin_completed` | — | OTP verify / password sign-in success (`Login.tsx`) |
 | `family_created` | — | Create-family success (`dashboard/Layout.tsx`) |
@@ -123,6 +125,10 @@ non-identifying.
 
 Adding an event = a typed helper in `analytics.ts` + a row in this table,
 same PR. See `.claude/skills/analytics/SKILL.md`.
+
+Share attribution: the shared URL carries `?ref=share`, so landing-page
+events from shared links are distinguishable via the `$current_url`
+property posthog-js stamps on every event — no extra event needed.
 
 Note on quest usage questions ("do quests get used"): the client-side
 `kind: 'skill'|'quest'` property answers volume only. For per-quest
