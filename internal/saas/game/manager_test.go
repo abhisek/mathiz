@@ -617,3 +617,81 @@ func TestPlaySlotBlocksSecondSurface(t *testing.T) {
 	}
 	rel2()
 }
+
+// TestExpeditionProfileRefreshVersionsProfile proves the async learner-profile
+// refresh after an expedition appends the changed profile as an owner-scoped
+// version event in the child's stream.
+func TestExpeditionProfileRefreshVersionsProfile(t *testing.T) {
+	profileJSON := `{"summary":"Loves doubling numbers","strengths":["addition"],"weaknesses":["carrying"],"patterns":["answers fast"]}`
+	comp := lessons.NewCompressor(
+		llm.NewMockProvider(llm.MockResponse{Content: []byte(profileJSON)}),
+		lessons.DefaultCompressorConfig(),
+	)
+
+	st, err := store.Open("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+	m := NewManager(Config{
+		Store: st,
+		Toolset: func(ctx context.Context, eventRepo store.EventRepo) (*Toolset, error) {
+			return &Toolset{Generator: &fakeGenerator{}, Compressor: comp}, nil
+		},
+	})
+	ctx := context.Background()
+	root := rootSkillID(t)
+
+	exp, err := m.Start(ctx, "child-1", root)
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	var last *AnswerResultView
+	for i := 1; i <= QuestionsPerExpedition; i++ {
+		last = answerCurrent(t, m, "child-1", exp.ID, "4")
+	}
+	if !last.Done {
+		t.Fatalf("expedition should be done: %+v", last)
+	}
+
+	// The refresh runs async off the final snapshot save; poll the child's
+	// owner-scoped event stream.
+	repo := st.EventRepoFor("child-1")
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		events, err := repo.QueryLearnerProfileEvents(ctx, store.QueryOpts{})
+		if err != nil {
+			t.Fatalf("query profile events: %v", err)
+		}
+		if len(events) == 1 {
+			got := events[0]
+			if got.Summary != "Loves doubling numbers" ||
+				len(got.Strengths) != 1 || got.Strengths[0] != "addition" ||
+				len(got.Weaknesses) != 1 || got.Weaknesses[0] != "carrying" ||
+				len(got.Patterns) != 1 || got.Patterns[0] != "answers fast" {
+				t.Errorf("profile version = %+v, want the generated profile", got)
+			}
+			// The event stays in the child's stream only: another child and
+			// the local owner see nothing.
+			other, err := st.EventRepoFor("child-2").QueryLearnerProfileEvents(ctx, store.QueryOpts{})
+			if err != nil {
+				t.Fatalf("other child query: %v", err)
+			}
+			if len(other) != 0 {
+				t.Errorf("other child sees %d profile versions, want 0", len(other))
+			}
+			local, err := st.EventRepo().QueryLearnerProfileEvents(ctx, store.QueryOpts{})
+			if err != nil {
+				t.Fatalf("local query: %v", err)
+			}
+			if len(local) != 0 {
+				t.Errorf("local owner sees %d profile versions, want 0", len(local))
+			}
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no learner profile version event after expedition (have %d)", len(events))
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}

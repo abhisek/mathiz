@@ -80,6 +80,17 @@ owner_id string  — default "" — immutable — indexed (owner_id, sequence)
   subset of global ordering, and a single counter is simpler and contention-free at
   this scale.
 
+Learner profile versions are event-sourced since 2026-07: every time the async
+post-session refresh produces a profile whose content (summary + strengths/
+weaknesses/patterns) differs from the previous one, the shared persistence path
+(`session.SaveSnapshotWithProfile`, driven by both the TUI and the game
+manager) appends a `learner_profile_event` row to the owner's stream — an
+append-only history of the tutor's understanding of the learner. Snapshots
+still carry only the latest profile for fast reads (and keep pruning to the
+last 10); identical regenerations append nothing, and a failed append never
+breaks the session save. No consumer reads this history yet, deliberately —
+it exists so the record survives snapshot pruning until a use is decided.
+
 ### 3.2 Control plane (new ent schemas)
 
 Follows the codebase convention: no ent edges, plain UUID string keys + indexes.

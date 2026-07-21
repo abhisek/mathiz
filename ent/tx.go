@@ -38,6 +38,8 @@ type Tx struct {
 	Invite *InviteClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
 	LLMRequestEvent *LLMRequestEventClient
+	// LearnerProfileEvent is the client for interacting with the LearnerProfileEvent builders.
+	LearnerProfileEvent *LearnerProfileEventClient
 	// LessonEvent is the client for interacting with the LessonEvent builders.
 	LessonEvent *LessonEventClient
 	// MasteryEvent is the client for interacting with the MasteryEvent builders.
@@ -198,6 +200,7 @@ func (tx *Tx) init() {
 	tx.HintEvent = NewHintEventClient(tx.config)
 	tx.Invite = NewInviteClient(tx.config)
 	tx.LLMRequestEvent = NewLLMRequestEventClient(tx.config)
+	tx.LearnerProfileEvent = NewLearnerProfileEventClient(tx.config)
 	tx.LessonEvent = NewLessonEventClient(tx.config)
 	tx.MasteryEvent = NewMasteryEventClient(tx.config)
 	tx.ParentInvite = NewParentInviteClient(tx.config)

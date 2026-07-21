@@ -165,6 +165,18 @@ func (f LLMRequestEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LLMRequestEventMutation", m)
 }
 
+// The LearnerProfileEventFunc type is an adapter to allow the use of ordinary
+// function as LearnerProfileEvent mutator.
+type LearnerProfileEventFunc func(context.Context, *ent.LearnerProfileEventMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f LearnerProfileEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.LearnerProfileEventMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LearnerProfileEventMutation", m)
+}
+
 // The LessonEventFunc type is an adapter to allow the use of ordinary
 // function as LessonEvent mutator.
 type LessonEventFunc func(context.Context, *ent.LessonEventMutation) (ent.Value, error)

@@ -471,6 +471,41 @@ var (
 			},
 		},
 	}
+	// LearnerProfileEventsColumns holds the columns for the "learner_profile_events" table.
+	LearnerProfileEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "owner_id", Type: field.TypeString, Default: ""},
+		{Name: "summary", Type: field.TypeString, Size: 2147483647, Default: ""},
+		{Name: "strengths", Type: field.TypeJSON, Nullable: true},
+		{Name: "weaknesses", Type: field.TypeJSON, Nullable: true},
+		{Name: "patterns", Type: field.TypeJSON, Nullable: true},
+		{Name: "generated_at", Type: field.TypeString, Default: ""},
+	}
+	// LearnerProfileEventsTable holds the schema information for the "learner_profile_events" table.
+	LearnerProfileEventsTable = &schema.Table{
+		Name:       "learner_profile_events",
+		Columns:    LearnerProfileEventsColumns,
+		PrimaryKey: []*schema.Column{LearnerProfileEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "learnerprofileevent_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{LearnerProfileEventsColumns[1]},
+			},
+			{
+				Name:    "learnerprofileevent_timestamp",
+				Unique:  false,
+				Columns: []*schema.Column{LearnerProfileEventsColumns[2]},
+			},
+			{
+				Name:    "learnerprofileevent_owner_id_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{LearnerProfileEventsColumns[3], LearnerProfileEventsColumns[1]},
+			},
+		},
+	}
 	// LessonEventsColumns holds the columns for the "lesson_events" table.
 	LessonEventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -779,6 +814,7 @@ var (
 		HintEventsTable,
 		InvitesTable,
 		LlmRequestEventsTable,
+		LearnerProfileEventsTable,
 		LessonEventsTable,
 		MasteryEventsTable,
 		ParentInvitesTable,

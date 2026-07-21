@@ -68,6 +68,12 @@ func (m *mockEventRepo) QueryLLMEvents(_ context.Context, _ store.QueryOpts) ([]
 func (m *mockEventRepo) QueryLessonEvents(_ context.Context, _ store.QueryOpts) ([]store.LessonEventRecord, error) {
 	return nil, nil
 }
+func (m *mockEventRepo) AppendLearnerProfileEvent(_ context.Context, _ store.LearnerProfileEventData) error {
+	return nil
+}
+func (m *mockEventRepo) QueryLearnerProfileEvents(_ context.Context, _ store.QueryOpts) ([]store.LearnerProfileEventRecord, error) {
+	return nil, nil
+}
 func (m *mockEventRepo) GetLLMEvent(_ context.Context, _ int) (*store.LLMRequestEventRecord, error) {
 	return nil, nil
 }

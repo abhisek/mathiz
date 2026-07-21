@@ -35,15 +35,16 @@ const ownerIDColumn = "owner_id"
 // Invite, DeviceToken, CreditEntry, BillingState) are intentionally NOT
 // here — they have no owner_id column and are scoped by the authz layer.
 var ownerScopedTypes = map[string]bool{
-	ent.TypeAnswerEvent:     true,
-	ent.TypeDiagnosisEvent:  true,
-	ent.TypeGemEvent:        true,
-	ent.TypeHintEvent:       true,
-	ent.TypeLessonEvent:     true,
-	ent.TypeLLMRequestEvent: true,
-	ent.TypeMasteryEvent:    true,
-	ent.TypeSessionEvent:    true,
-	ent.TypeSnapshot:        true,
+	ent.TypeAnswerEvent:         true,
+	ent.TypeDiagnosisEvent:      true,
+	ent.TypeGemEvent:            true,
+	ent.TypeHintEvent:           true,
+	ent.TypeLearnerProfileEvent: true,
+	ent.TypeLessonEvent:         true,
+	ent.TypeLLMRequestEvent:     true,
+	ent.TypeMasteryEvent:        true,
+	ent.TypeSessionEvent:        true,
+	ent.TypeSnapshot:            true,
 }
 
 // registerOwnerGuard installs the query interceptor and mutation hook on the

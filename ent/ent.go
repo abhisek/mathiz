@@ -24,6 +24,7 @@ import (
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
 	"github.com/abhisek/mathiz/ent/invite"
+	"github.com/abhisek/mathiz/ent/learnerprofileevent"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
@@ -93,27 +94,28 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			account.Table:         account.ValidColumn,
-			answerevent.Table:     answerevent.ValidColumn,
-			billingstate.Table:    billingstate.ValidColumn,
-			childprofile.Table:    childprofile.ValidColumn,
-			creditentry.Table:     creditentry.ValidColumn,
-			devicetoken.Table:     devicetoken.ValidColumn,
-			diagnosisevent.Table:  diagnosisevent.ValidColumn,
-			familymember.Table:    familymember.ValidColumn,
-			familyspace.Table:     familyspace.ValidColumn,
-			gemevent.Table:        gemevent.ValidColumn,
-			hintevent.Table:       hintevent.ValidColumn,
-			invite.Table:          invite.ValidColumn,
-			llmrequestevent.Table: llmrequestevent.ValidColumn,
-			lessonevent.Table:     lessonevent.ValidColumn,
-			masteryevent.Table:    masteryevent.ValidColumn,
-			parentinvite.Table:    parentinvite.ValidColumn,
-			quest.Table:           quest.ValidColumn,
-			questprogress.Table:   questprogress.ValidColumn,
-			questquestion.Table:   questquestion.ValidColumn,
-			sessionevent.Table:    sessionevent.ValidColumn,
-			snapshot.Table:        snapshot.ValidColumn,
+			account.Table:             account.ValidColumn,
+			answerevent.Table:         answerevent.ValidColumn,
+			billingstate.Table:        billingstate.ValidColumn,
+			childprofile.Table:        childprofile.ValidColumn,
+			creditentry.Table:         creditentry.ValidColumn,
+			devicetoken.Table:         devicetoken.ValidColumn,
+			diagnosisevent.Table:      diagnosisevent.ValidColumn,
+			familymember.Table:        familymember.ValidColumn,
+			familyspace.Table:         familyspace.ValidColumn,
+			gemevent.Table:            gemevent.ValidColumn,
+			hintevent.Table:           hintevent.ValidColumn,
+			invite.Table:              invite.ValidColumn,
+			llmrequestevent.Table:     llmrequestevent.ValidColumn,
+			learnerprofileevent.Table: learnerprofileevent.ValidColumn,
+			lessonevent.Table:         lessonevent.ValidColumn,
+			masteryevent.Table:        masteryevent.ValidColumn,
+			parentinvite.Table:        parentinvite.ValidColumn,
+			quest.Table:               quest.ValidColumn,
+			questprogress.Table:       questprogress.ValidColumn,
+			questquestion.Table:       questquestion.ValidColumn,
+			sessionevent.Table:        sessionevent.ValidColumn,
+			snapshot.Table:            snapshot.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)
