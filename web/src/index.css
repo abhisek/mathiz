@@ -2966,3 +2966,56 @@ table.sessions th {
 .quest-filter-clear:hover {
   background: rgb(108 78 245 / 0.15);
 }
+
+/* Searchable skill combobox (SkillSelect) */
+
+.skill-select {
+  position: relative;
+}
+
+.skill-select-list {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  max-height: 15rem;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.skill-select-group {
+  padding: 0.45rem 0.6rem 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.skill-select-option {
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+
+.skill-select-option[data-active='true'] {
+  background: var(--accent-soft);
+}
+
+.skill-select-option[aria-selected='true'] {
+  font-weight: 600;
+}
+
+.skill-select-empty {
+  padding: 0.6rem;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}

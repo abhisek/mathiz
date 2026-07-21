@@ -136,6 +136,9 @@ export interface CurriculumSkill {
   name: string
   grade: number
   prereqs: string[]
+  // Search aliases (e.g. "GCF" for HCF & LCM). Optional: older servers
+  // don't send it, so consumers must treat it as possibly absent.
+  keywords?: string[]
 }
 
 export interface CurriculumIsland {
