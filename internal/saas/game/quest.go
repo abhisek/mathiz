@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -390,7 +390,7 @@ func (m *Manager) recordQuestProgress(ctx context.Context, exp *expedition, corr
 	}
 	remaining, err := m.cfg.Quests.RecordAnswer(ctx, q.uid, exp.childUID, q.questions[idx].UID, correct)
 	if err != nil {
-		log.Printf("game: record quest progress for %s: %v", exp.childUID, err)
+		slog.Error("game: record quest progress", "quest_uid", q.uid, "child_uid", exp.childUID, "err", err)
 		return
 	}
 	if remaining == 0 {

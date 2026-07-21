@@ -2,7 +2,7 @@ package session
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -105,7 +105,7 @@ func refreshProfile(ctx context.Context, snapRepo store.SnapshotRepo, eventRepo 
 	}
 	latest.Data.LearnerProfile = newProfile
 	if err := snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now(), Data: latest.Data}); err != nil {
-		log.Printf("session: save learner profile: %v", err)
+		slog.Error("session: save learner profile", "err", err)
 	}
 	// Version the profile as an owner-scoped event, but only when its
 	// content changed — an identical regeneration is not a new version.
@@ -119,7 +119,7 @@ func refreshProfile(ctx context.Context, snapRepo store.SnapshotRepo, eventRepo 
 		Patterns:    newProfile.Patterns,
 		GeneratedAt: newProfile.GeneratedAt,
 	}); err != nil {
-		log.Printf("session: append learner profile event: %v", err)
+		slog.Error("session: append learner profile event", "err", err)
 	}
 }
 
