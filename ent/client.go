@@ -26,6 +26,7 @@ import (
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
 	"github.com/abhisek/mathiz/ent/invite"
+	"github.com/abhisek/mathiz/ent/learnerprofileevent"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
@@ -68,6 +69,8 @@ type Client struct {
 	Invite *InviteClient
 	// LLMRequestEvent is the client for interacting with the LLMRequestEvent builders.
 	LLMRequestEvent *LLMRequestEventClient
+	// LearnerProfileEvent is the client for interacting with the LearnerProfileEvent builders.
+	LearnerProfileEvent *LearnerProfileEventClient
 	// LessonEvent is the client for interacting with the LessonEvent builders.
 	LessonEvent *LessonEventClient
 	// MasteryEvent is the client for interacting with the MasteryEvent builders.
@@ -108,6 +111,7 @@ func (c *Client) init() {
 	c.HintEvent = NewHintEventClient(c.config)
 	c.Invite = NewInviteClient(c.config)
 	c.LLMRequestEvent = NewLLMRequestEventClient(c.config)
+	c.LearnerProfileEvent = NewLearnerProfileEventClient(c.config)
 	c.LessonEvent = NewLessonEventClient(c.config)
 	c.MasteryEvent = NewMasteryEventClient(c.config)
 	c.ParentInvite = NewParentInviteClient(c.config)
@@ -206,29 +210,30 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:             ctx,
-		config:          cfg,
-		Account:         NewAccountClient(cfg),
-		AnswerEvent:     NewAnswerEventClient(cfg),
-		BillingState:    NewBillingStateClient(cfg),
-		ChildProfile:    NewChildProfileClient(cfg),
-		CreditEntry:     NewCreditEntryClient(cfg),
-		DeviceToken:     NewDeviceTokenClient(cfg),
-		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
-		FamilyMember:    NewFamilyMemberClient(cfg),
-		FamilySpace:     NewFamilySpaceClient(cfg),
-		GemEvent:        NewGemEventClient(cfg),
-		HintEvent:       NewHintEventClient(cfg),
-		Invite:          NewInviteClient(cfg),
-		LLMRequestEvent: NewLLMRequestEventClient(cfg),
-		LessonEvent:     NewLessonEventClient(cfg),
-		MasteryEvent:    NewMasteryEventClient(cfg),
-		ParentInvite:    NewParentInviteClient(cfg),
-		Quest:           NewQuestClient(cfg),
-		QuestProgress:   NewQuestProgressClient(cfg),
-		QuestQuestion:   NewQuestQuestionClient(cfg),
-		SessionEvent:    NewSessionEventClient(cfg),
-		Snapshot:        NewSnapshotClient(cfg),
+		ctx:                 ctx,
+		config:              cfg,
+		Account:             NewAccountClient(cfg),
+		AnswerEvent:         NewAnswerEventClient(cfg),
+		BillingState:        NewBillingStateClient(cfg),
+		ChildProfile:        NewChildProfileClient(cfg),
+		CreditEntry:         NewCreditEntryClient(cfg),
+		DeviceToken:         NewDeviceTokenClient(cfg),
+		DiagnosisEvent:      NewDiagnosisEventClient(cfg),
+		FamilyMember:        NewFamilyMemberClient(cfg),
+		FamilySpace:         NewFamilySpaceClient(cfg),
+		GemEvent:            NewGemEventClient(cfg),
+		HintEvent:           NewHintEventClient(cfg),
+		Invite:              NewInviteClient(cfg),
+		LLMRequestEvent:     NewLLMRequestEventClient(cfg),
+		LearnerProfileEvent: NewLearnerProfileEventClient(cfg),
+		LessonEvent:         NewLessonEventClient(cfg),
+		MasteryEvent:        NewMasteryEventClient(cfg),
+		ParentInvite:        NewParentInviteClient(cfg),
+		Quest:               NewQuestClient(cfg),
+		QuestProgress:       NewQuestProgressClient(cfg),
+		QuestQuestion:       NewQuestQuestionClient(cfg),
+		SessionEvent:        NewSessionEventClient(cfg),
+		Snapshot:            NewSnapshotClient(cfg),
 	}, nil
 }
 
@@ -246,29 +251,30 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:             ctx,
-		config:          cfg,
-		Account:         NewAccountClient(cfg),
-		AnswerEvent:     NewAnswerEventClient(cfg),
-		BillingState:    NewBillingStateClient(cfg),
-		ChildProfile:    NewChildProfileClient(cfg),
-		CreditEntry:     NewCreditEntryClient(cfg),
-		DeviceToken:     NewDeviceTokenClient(cfg),
-		DiagnosisEvent:  NewDiagnosisEventClient(cfg),
-		FamilyMember:    NewFamilyMemberClient(cfg),
-		FamilySpace:     NewFamilySpaceClient(cfg),
-		GemEvent:        NewGemEventClient(cfg),
-		HintEvent:       NewHintEventClient(cfg),
-		Invite:          NewInviteClient(cfg),
-		LLMRequestEvent: NewLLMRequestEventClient(cfg),
-		LessonEvent:     NewLessonEventClient(cfg),
-		MasteryEvent:    NewMasteryEventClient(cfg),
-		ParentInvite:    NewParentInviteClient(cfg),
-		Quest:           NewQuestClient(cfg),
-		QuestProgress:   NewQuestProgressClient(cfg),
-		QuestQuestion:   NewQuestQuestionClient(cfg),
-		SessionEvent:    NewSessionEventClient(cfg),
-		Snapshot:        NewSnapshotClient(cfg),
+		ctx:                 ctx,
+		config:              cfg,
+		Account:             NewAccountClient(cfg),
+		AnswerEvent:         NewAnswerEventClient(cfg),
+		BillingState:        NewBillingStateClient(cfg),
+		ChildProfile:        NewChildProfileClient(cfg),
+		CreditEntry:         NewCreditEntryClient(cfg),
+		DeviceToken:         NewDeviceTokenClient(cfg),
+		DiagnosisEvent:      NewDiagnosisEventClient(cfg),
+		FamilyMember:        NewFamilyMemberClient(cfg),
+		FamilySpace:         NewFamilySpaceClient(cfg),
+		GemEvent:            NewGemEventClient(cfg),
+		HintEvent:           NewHintEventClient(cfg),
+		Invite:              NewInviteClient(cfg),
+		LLMRequestEvent:     NewLLMRequestEventClient(cfg),
+		LearnerProfileEvent: NewLearnerProfileEventClient(cfg),
+		LessonEvent:         NewLessonEventClient(cfg),
+		MasteryEvent:        NewMasteryEventClient(cfg),
+		ParentInvite:        NewParentInviteClient(cfg),
+		Quest:               NewQuestClient(cfg),
+		QuestProgress:       NewQuestProgressClient(cfg),
+		QuestQuestion:       NewQuestQuestionClient(cfg),
+		SessionEvent:        NewSessionEventClient(cfg),
+		Snapshot:            NewSnapshotClient(cfg),
 	}, nil
 }
 
@@ -300,9 +306,9 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Account, c.AnswerEvent, c.BillingState, c.ChildProfile, c.CreditEntry,
 		c.DeviceToken, c.DiagnosisEvent, c.FamilyMember, c.FamilySpace, c.GemEvent,
-		c.HintEvent, c.Invite, c.LLMRequestEvent, c.LessonEvent, c.MasteryEvent,
-		c.ParentInvite, c.Quest, c.QuestProgress, c.QuestQuestion, c.SessionEvent,
-		c.Snapshot,
+		c.HintEvent, c.Invite, c.LLMRequestEvent, c.LearnerProfileEvent, c.LessonEvent,
+		c.MasteryEvent, c.ParentInvite, c.Quest, c.QuestProgress, c.QuestQuestion,
+		c.SessionEvent, c.Snapshot,
 	} {
 		n.Use(hooks...)
 	}
@@ -314,9 +320,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Account, c.AnswerEvent, c.BillingState, c.ChildProfile, c.CreditEntry,
 		c.DeviceToken, c.DiagnosisEvent, c.FamilyMember, c.FamilySpace, c.GemEvent,
-		c.HintEvent, c.Invite, c.LLMRequestEvent, c.LessonEvent, c.MasteryEvent,
-		c.ParentInvite, c.Quest, c.QuestProgress, c.QuestQuestion, c.SessionEvent,
-		c.Snapshot,
+		c.HintEvent, c.Invite, c.LLMRequestEvent, c.LearnerProfileEvent, c.LessonEvent,
+		c.MasteryEvent, c.ParentInvite, c.Quest, c.QuestProgress, c.QuestQuestion,
+		c.SessionEvent, c.Snapshot,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -351,6 +357,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Invite.mutate(ctx, m)
 	case *LLMRequestEventMutation:
 		return c.LLMRequestEvent.mutate(ctx, m)
+	case *LearnerProfileEventMutation:
+		return c.LearnerProfileEvent.mutate(ctx, m)
 	case *LessonEventMutation:
 		return c.LessonEvent.mutate(ctx, m)
 	case *MasteryEventMutation:
@@ -2101,6 +2109,139 @@ func (c *LLMRequestEventClient) mutate(ctx context.Context, m *LLMRequestEventMu
 	}
 }
 
+// LearnerProfileEventClient is a client for the LearnerProfileEvent schema.
+type LearnerProfileEventClient struct {
+	config
+}
+
+// NewLearnerProfileEventClient returns a client for the LearnerProfileEvent from the given config.
+func NewLearnerProfileEventClient(c config) *LearnerProfileEventClient {
+	return &LearnerProfileEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `learnerprofileevent.Hooks(f(g(h())))`.
+func (c *LearnerProfileEventClient) Use(hooks ...Hook) {
+	c.hooks.LearnerProfileEvent = append(c.hooks.LearnerProfileEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `learnerprofileevent.Intercept(f(g(h())))`.
+func (c *LearnerProfileEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.LearnerProfileEvent = append(c.inters.LearnerProfileEvent, interceptors...)
+}
+
+// Create returns a builder for creating a LearnerProfileEvent entity.
+func (c *LearnerProfileEventClient) Create() *LearnerProfileEventCreate {
+	mutation := newLearnerProfileEventMutation(c.config, OpCreate)
+	return &LearnerProfileEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of LearnerProfileEvent entities.
+func (c *LearnerProfileEventClient) CreateBulk(builders ...*LearnerProfileEventCreate) *LearnerProfileEventCreateBulk {
+	return &LearnerProfileEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *LearnerProfileEventClient) MapCreateBulk(slice any, setFunc func(*LearnerProfileEventCreate, int)) *LearnerProfileEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &LearnerProfileEventCreateBulk{err: fmt.Errorf("calling to LearnerProfileEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*LearnerProfileEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &LearnerProfileEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for LearnerProfileEvent.
+func (c *LearnerProfileEventClient) Update() *LearnerProfileEventUpdate {
+	mutation := newLearnerProfileEventMutation(c.config, OpUpdate)
+	return &LearnerProfileEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *LearnerProfileEventClient) UpdateOne(_m *LearnerProfileEvent) *LearnerProfileEventUpdateOne {
+	mutation := newLearnerProfileEventMutation(c.config, OpUpdateOne, withLearnerProfileEvent(_m))
+	return &LearnerProfileEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *LearnerProfileEventClient) UpdateOneID(id int) *LearnerProfileEventUpdateOne {
+	mutation := newLearnerProfileEventMutation(c.config, OpUpdateOne, withLearnerProfileEventID(id))
+	return &LearnerProfileEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for LearnerProfileEvent.
+func (c *LearnerProfileEventClient) Delete() *LearnerProfileEventDelete {
+	mutation := newLearnerProfileEventMutation(c.config, OpDelete)
+	return &LearnerProfileEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *LearnerProfileEventClient) DeleteOne(_m *LearnerProfileEvent) *LearnerProfileEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *LearnerProfileEventClient) DeleteOneID(id int) *LearnerProfileEventDeleteOne {
+	builder := c.Delete().Where(learnerprofileevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &LearnerProfileEventDeleteOne{builder}
+}
+
+// Query returns a query builder for LearnerProfileEvent.
+func (c *LearnerProfileEventClient) Query() *LearnerProfileEventQuery {
+	return &LearnerProfileEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeLearnerProfileEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a LearnerProfileEvent entity by its id.
+func (c *LearnerProfileEventClient) Get(ctx context.Context, id int) (*LearnerProfileEvent, error) {
+	return c.Query().Where(learnerprofileevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *LearnerProfileEventClient) GetX(ctx context.Context, id int) *LearnerProfileEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *LearnerProfileEventClient) Hooks() []Hook {
+	return c.hooks.LearnerProfileEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *LearnerProfileEventClient) Interceptors() []Interceptor {
+	return c.inters.LearnerProfileEvent
+}
+
+func (c *LearnerProfileEventClient) mutate(ctx context.Context, m *LearnerProfileEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&LearnerProfileEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&LearnerProfileEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&LearnerProfileEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&LearnerProfileEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown LearnerProfileEvent mutation op: %q", m.Op())
+	}
+}
+
 // LessonEventClient is a client for the LessonEvent schema.
 type LessonEventClient struct {
 	config
@@ -3170,13 +3311,13 @@ type (
 	hooks struct {
 		Account, AnswerEvent, BillingState, ChildProfile, CreditEntry, DeviceToken,
 		DiagnosisEvent, FamilyMember, FamilySpace, GemEvent, HintEvent, Invite,
-		LLMRequestEvent, LessonEvent, MasteryEvent, ParentInvite, Quest, QuestProgress,
-		QuestQuestion, SessionEvent, Snapshot []ent.Hook
+		LLMRequestEvent, LearnerProfileEvent, LessonEvent, MasteryEvent, ParentInvite,
+		Quest, QuestProgress, QuestQuestion, SessionEvent, Snapshot []ent.Hook
 	}
 	inters struct {
 		Account, AnswerEvent, BillingState, ChildProfile, CreditEntry, DeviceToken,
 		DiagnosisEvent, FamilyMember, FamilySpace, GemEvent, HintEvent, Invite,
-		LLMRequestEvent, LessonEvent, MasteryEvent, ParentInvite, Quest, QuestProgress,
-		QuestQuestion, SessionEvent, Snapshot []ent.Interceptor
+		LLMRequestEvent, LearnerProfileEvent, LessonEvent, MasteryEvent, ParentInvite,
+		Quest, QuestProgress, QuestQuestion, SessionEvent, Snapshot []ent.Interceptor
 	}
 )

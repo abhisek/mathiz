@@ -23,6 +23,7 @@ import (
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
 	"github.com/abhisek/mathiz/ent/invite"
+	"github.com/abhisek/mathiz/ent/learnerprofileevent"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
@@ -45,27 +46,28 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAccount         = "Account"
-	TypeAnswerEvent     = "AnswerEvent"
-	TypeBillingState    = "BillingState"
-	TypeChildProfile    = "ChildProfile"
-	TypeCreditEntry     = "CreditEntry"
-	TypeDeviceToken     = "DeviceToken"
-	TypeDiagnosisEvent  = "DiagnosisEvent"
-	TypeFamilyMember    = "FamilyMember"
-	TypeFamilySpace     = "FamilySpace"
-	TypeGemEvent        = "GemEvent"
-	TypeHintEvent       = "HintEvent"
-	TypeInvite          = "Invite"
-	TypeLLMRequestEvent = "LLMRequestEvent"
-	TypeLessonEvent     = "LessonEvent"
-	TypeMasteryEvent    = "MasteryEvent"
-	TypeParentInvite    = "ParentInvite"
-	TypeQuest           = "Quest"
-	TypeQuestProgress   = "QuestProgress"
-	TypeQuestQuestion   = "QuestQuestion"
-	TypeSessionEvent    = "SessionEvent"
-	TypeSnapshot        = "Snapshot"
+	TypeAccount             = "Account"
+	TypeAnswerEvent         = "AnswerEvent"
+	TypeBillingState        = "BillingState"
+	TypeChildProfile        = "ChildProfile"
+	TypeCreditEntry         = "CreditEntry"
+	TypeDeviceToken         = "DeviceToken"
+	TypeDiagnosisEvent      = "DiagnosisEvent"
+	TypeFamilyMember        = "FamilyMember"
+	TypeFamilySpace         = "FamilySpace"
+	TypeGemEvent            = "GemEvent"
+	TypeHintEvent           = "HintEvent"
+	TypeInvite              = "Invite"
+	TypeLLMRequestEvent     = "LLMRequestEvent"
+	TypeLearnerProfileEvent = "LearnerProfileEvent"
+	TypeLessonEvent         = "LessonEvent"
+	TypeMasteryEvent        = "MasteryEvent"
+	TypeParentInvite        = "ParentInvite"
+	TypeQuest               = "Quest"
+	TypeQuestProgress       = "QuestProgress"
+	TypeQuestQuestion       = "QuestQuestion"
+	TypeSessionEvent        = "SessionEvent"
+	TypeSnapshot            = "Snapshot"
 )
 
 // AccountMutation represents an operation that mutates the Account nodes in the graph.
@@ -9978,6 +9980,857 @@ func (m *LLMRequestEventMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *LLMRequestEventMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown LLMRequestEvent edge %s", name)
+}
+
+// LearnerProfileEventMutation represents an operation that mutates the LearnerProfileEvent nodes in the graph.
+type LearnerProfileEventMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	sequence         *int64
+	addsequence      *int64
+	timestamp        *time.Time
+	owner_id         *string
+	summary          *string
+	strengths        *[]string
+	appendstrengths  []string
+	weaknesses       *[]string
+	appendweaknesses []string
+	patterns         *[]string
+	appendpatterns   []string
+	generated_at     *string
+	clearedFields    map[string]struct{}
+	done             bool
+	oldValue         func(context.Context) (*LearnerProfileEvent, error)
+	predicates       []predicate.LearnerProfileEvent
+}
+
+var _ ent.Mutation = (*LearnerProfileEventMutation)(nil)
+
+// learnerprofileeventOption allows management of the mutation configuration using functional options.
+type learnerprofileeventOption func(*LearnerProfileEventMutation)
+
+// newLearnerProfileEventMutation creates new mutation for the LearnerProfileEvent entity.
+func newLearnerProfileEventMutation(c config, op Op, opts ...learnerprofileeventOption) *LearnerProfileEventMutation {
+	m := &LearnerProfileEventMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeLearnerProfileEvent,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withLearnerProfileEventID sets the ID field of the mutation.
+func withLearnerProfileEventID(id int) learnerprofileeventOption {
+	return func(m *LearnerProfileEventMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *LearnerProfileEvent
+		)
+		m.oldValue = func(ctx context.Context) (*LearnerProfileEvent, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().LearnerProfileEvent.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withLearnerProfileEvent sets the old LearnerProfileEvent of the mutation.
+func withLearnerProfileEvent(node *LearnerProfileEvent) learnerprofileeventOption {
+	return func(m *LearnerProfileEventMutation) {
+		m.oldValue = func(context.Context) (*LearnerProfileEvent, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m LearnerProfileEventMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m LearnerProfileEventMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *LearnerProfileEventMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *LearnerProfileEventMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().LearnerProfileEvent.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSequence sets the "sequence" field.
+func (m *LearnerProfileEventMutation) SetSequence(i int64) {
+	m.sequence = &i
+	m.addsequence = nil
+}
+
+// Sequence returns the value of the "sequence" field in the mutation.
+func (m *LearnerProfileEventMutation) Sequence() (r int64, exists bool) {
+	v := m.sequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSequence returns the old "sequence" field's value of the LearnerProfileEvent entity.
+// If the LearnerProfileEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearnerProfileEventMutation) OldSequence(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSequence is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSequence requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSequence: %w", err)
+	}
+	return oldValue.Sequence, nil
+}
+
+// AddSequence adds i to the "sequence" field.
+func (m *LearnerProfileEventMutation) AddSequence(i int64) {
+	if m.addsequence != nil {
+		*m.addsequence += i
+	} else {
+		m.addsequence = &i
+	}
+}
+
+// AddedSequence returns the value that was added to the "sequence" field in this mutation.
+func (m *LearnerProfileEventMutation) AddedSequence() (r int64, exists bool) {
+	v := m.addsequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSequence resets all changes to the "sequence" field.
+func (m *LearnerProfileEventMutation) ResetSequence() {
+	m.sequence = nil
+	m.addsequence = nil
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (m *LearnerProfileEventMutation) SetTimestamp(t time.Time) {
+	m.timestamp = &t
+}
+
+// Timestamp returns the value of the "timestamp" field in the mutation.
+func (m *LearnerProfileEventMutation) Timestamp() (r time.Time, exists bool) {
+	v := m.timestamp
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimestamp returns the old "timestamp" field's value of the LearnerProfileEvent entity.
+// If the LearnerProfileEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearnerProfileEventMutation) OldTimestamp(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimestamp is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimestamp requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimestamp: %w", err)
+	}
+	return oldValue.Timestamp, nil
+}
+
+// ResetTimestamp resets all changes to the "timestamp" field.
+func (m *LearnerProfileEventMutation) ResetTimestamp() {
+	m.timestamp = nil
+}
+
+// SetOwnerID sets the "owner_id" field.
+func (m *LearnerProfileEventMutation) SetOwnerID(s string) {
+	m.owner_id = &s
+}
+
+// OwnerID returns the value of the "owner_id" field in the mutation.
+func (m *LearnerProfileEventMutation) OwnerID() (r string, exists bool) {
+	v := m.owner_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOwnerID returns the old "owner_id" field's value of the LearnerProfileEvent entity.
+// If the LearnerProfileEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearnerProfileEventMutation) OldOwnerID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOwnerID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOwnerID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOwnerID: %w", err)
+	}
+	return oldValue.OwnerID, nil
+}
+
+// ResetOwnerID resets all changes to the "owner_id" field.
+func (m *LearnerProfileEventMutation) ResetOwnerID() {
+	m.owner_id = nil
+}
+
+// SetSummary sets the "summary" field.
+func (m *LearnerProfileEventMutation) SetSummary(s string) {
+	m.summary = &s
+}
+
+// Summary returns the value of the "summary" field in the mutation.
+func (m *LearnerProfileEventMutation) Summary() (r string, exists bool) {
+	v := m.summary
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSummary returns the old "summary" field's value of the LearnerProfileEvent entity.
+// If the LearnerProfileEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearnerProfileEventMutation) OldSummary(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSummary is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSummary requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSummary: %w", err)
+	}
+	return oldValue.Summary, nil
+}
+
+// ResetSummary resets all changes to the "summary" field.
+func (m *LearnerProfileEventMutation) ResetSummary() {
+	m.summary = nil
+}
+
+// SetStrengths sets the "strengths" field.
+func (m *LearnerProfileEventMutation) SetStrengths(s []string) {
+	m.strengths = &s
+	m.appendstrengths = nil
+}
+
+// Strengths returns the value of the "strengths" field in the mutation.
+func (m *LearnerProfileEventMutation) Strengths() (r []string, exists bool) {
+	v := m.strengths
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStrengths returns the old "strengths" field's value of the LearnerProfileEvent entity.
+// If the LearnerProfileEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearnerProfileEventMutation) OldStrengths(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStrengths is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStrengths requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStrengths: %w", err)
+	}
+	return oldValue.Strengths, nil
+}
+
+// AppendStrengths adds s to the "strengths" field.
+func (m *LearnerProfileEventMutation) AppendStrengths(s []string) {
+	m.appendstrengths = append(m.appendstrengths, s...)
+}
+
+// AppendedStrengths returns the list of values that were appended to the "strengths" field in this mutation.
+func (m *LearnerProfileEventMutation) AppendedStrengths() ([]string, bool) {
+	if len(m.appendstrengths) == 0 {
+		return nil, false
+	}
+	return m.appendstrengths, true
+}
+
+// ClearStrengths clears the value of the "strengths" field.
+func (m *LearnerProfileEventMutation) ClearStrengths() {
+	m.strengths = nil
+	m.appendstrengths = nil
+	m.clearedFields[learnerprofileevent.FieldStrengths] = struct{}{}
+}
+
+// StrengthsCleared returns if the "strengths" field was cleared in this mutation.
+func (m *LearnerProfileEventMutation) StrengthsCleared() bool {
+	_, ok := m.clearedFields[learnerprofileevent.FieldStrengths]
+	return ok
+}
+
+// ResetStrengths resets all changes to the "strengths" field.
+func (m *LearnerProfileEventMutation) ResetStrengths() {
+	m.strengths = nil
+	m.appendstrengths = nil
+	delete(m.clearedFields, learnerprofileevent.FieldStrengths)
+}
+
+// SetWeaknesses sets the "weaknesses" field.
+func (m *LearnerProfileEventMutation) SetWeaknesses(s []string) {
+	m.weaknesses = &s
+	m.appendweaknesses = nil
+}
+
+// Weaknesses returns the value of the "weaknesses" field in the mutation.
+func (m *LearnerProfileEventMutation) Weaknesses() (r []string, exists bool) {
+	v := m.weaknesses
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWeaknesses returns the old "weaknesses" field's value of the LearnerProfileEvent entity.
+// If the LearnerProfileEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearnerProfileEventMutation) OldWeaknesses(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWeaknesses is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWeaknesses requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWeaknesses: %w", err)
+	}
+	return oldValue.Weaknesses, nil
+}
+
+// AppendWeaknesses adds s to the "weaknesses" field.
+func (m *LearnerProfileEventMutation) AppendWeaknesses(s []string) {
+	m.appendweaknesses = append(m.appendweaknesses, s...)
+}
+
+// AppendedWeaknesses returns the list of values that were appended to the "weaknesses" field in this mutation.
+func (m *LearnerProfileEventMutation) AppendedWeaknesses() ([]string, bool) {
+	if len(m.appendweaknesses) == 0 {
+		return nil, false
+	}
+	return m.appendweaknesses, true
+}
+
+// ClearWeaknesses clears the value of the "weaknesses" field.
+func (m *LearnerProfileEventMutation) ClearWeaknesses() {
+	m.weaknesses = nil
+	m.appendweaknesses = nil
+	m.clearedFields[learnerprofileevent.FieldWeaknesses] = struct{}{}
+}
+
+// WeaknessesCleared returns if the "weaknesses" field was cleared in this mutation.
+func (m *LearnerProfileEventMutation) WeaknessesCleared() bool {
+	_, ok := m.clearedFields[learnerprofileevent.FieldWeaknesses]
+	return ok
+}
+
+// ResetWeaknesses resets all changes to the "weaknesses" field.
+func (m *LearnerProfileEventMutation) ResetWeaknesses() {
+	m.weaknesses = nil
+	m.appendweaknesses = nil
+	delete(m.clearedFields, learnerprofileevent.FieldWeaknesses)
+}
+
+// SetPatterns sets the "patterns" field.
+func (m *LearnerProfileEventMutation) SetPatterns(s []string) {
+	m.patterns = &s
+	m.appendpatterns = nil
+}
+
+// Patterns returns the value of the "patterns" field in the mutation.
+func (m *LearnerProfileEventMutation) Patterns() (r []string, exists bool) {
+	v := m.patterns
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPatterns returns the old "patterns" field's value of the LearnerProfileEvent entity.
+// If the LearnerProfileEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearnerProfileEventMutation) OldPatterns(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPatterns is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPatterns requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPatterns: %w", err)
+	}
+	return oldValue.Patterns, nil
+}
+
+// AppendPatterns adds s to the "patterns" field.
+func (m *LearnerProfileEventMutation) AppendPatterns(s []string) {
+	m.appendpatterns = append(m.appendpatterns, s...)
+}
+
+// AppendedPatterns returns the list of values that were appended to the "patterns" field in this mutation.
+func (m *LearnerProfileEventMutation) AppendedPatterns() ([]string, bool) {
+	if len(m.appendpatterns) == 0 {
+		return nil, false
+	}
+	return m.appendpatterns, true
+}
+
+// ClearPatterns clears the value of the "patterns" field.
+func (m *LearnerProfileEventMutation) ClearPatterns() {
+	m.patterns = nil
+	m.appendpatterns = nil
+	m.clearedFields[learnerprofileevent.FieldPatterns] = struct{}{}
+}
+
+// PatternsCleared returns if the "patterns" field was cleared in this mutation.
+func (m *LearnerProfileEventMutation) PatternsCleared() bool {
+	_, ok := m.clearedFields[learnerprofileevent.FieldPatterns]
+	return ok
+}
+
+// ResetPatterns resets all changes to the "patterns" field.
+func (m *LearnerProfileEventMutation) ResetPatterns() {
+	m.patterns = nil
+	m.appendpatterns = nil
+	delete(m.clearedFields, learnerprofileevent.FieldPatterns)
+}
+
+// SetGeneratedAt sets the "generated_at" field.
+func (m *LearnerProfileEventMutation) SetGeneratedAt(s string) {
+	m.generated_at = &s
+}
+
+// GeneratedAt returns the value of the "generated_at" field in the mutation.
+func (m *LearnerProfileEventMutation) GeneratedAt() (r string, exists bool) {
+	v := m.generated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGeneratedAt returns the old "generated_at" field's value of the LearnerProfileEvent entity.
+// If the LearnerProfileEvent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearnerProfileEventMutation) OldGeneratedAt(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGeneratedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGeneratedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGeneratedAt: %w", err)
+	}
+	return oldValue.GeneratedAt, nil
+}
+
+// ResetGeneratedAt resets all changes to the "generated_at" field.
+func (m *LearnerProfileEventMutation) ResetGeneratedAt() {
+	m.generated_at = nil
+}
+
+// Where appends a list predicates to the LearnerProfileEventMutation builder.
+func (m *LearnerProfileEventMutation) Where(ps ...predicate.LearnerProfileEvent) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the LearnerProfileEventMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *LearnerProfileEventMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.LearnerProfileEvent, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *LearnerProfileEventMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *LearnerProfileEventMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (LearnerProfileEvent).
+func (m *LearnerProfileEventMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *LearnerProfileEventMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.sequence != nil {
+		fields = append(fields, learnerprofileevent.FieldSequence)
+	}
+	if m.timestamp != nil {
+		fields = append(fields, learnerprofileevent.FieldTimestamp)
+	}
+	if m.owner_id != nil {
+		fields = append(fields, learnerprofileevent.FieldOwnerID)
+	}
+	if m.summary != nil {
+		fields = append(fields, learnerprofileevent.FieldSummary)
+	}
+	if m.strengths != nil {
+		fields = append(fields, learnerprofileevent.FieldStrengths)
+	}
+	if m.weaknesses != nil {
+		fields = append(fields, learnerprofileevent.FieldWeaknesses)
+	}
+	if m.patterns != nil {
+		fields = append(fields, learnerprofileevent.FieldPatterns)
+	}
+	if m.generated_at != nil {
+		fields = append(fields, learnerprofileevent.FieldGeneratedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *LearnerProfileEventMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case learnerprofileevent.FieldSequence:
+		return m.Sequence()
+	case learnerprofileevent.FieldTimestamp:
+		return m.Timestamp()
+	case learnerprofileevent.FieldOwnerID:
+		return m.OwnerID()
+	case learnerprofileevent.FieldSummary:
+		return m.Summary()
+	case learnerprofileevent.FieldStrengths:
+		return m.Strengths()
+	case learnerprofileevent.FieldWeaknesses:
+		return m.Weaknesses()
+	case learnerprofileevent.FieldPatterns:
+		return m.Patterns()
+	case learnerprofileevent.FieldGeneratedAt:
+		return m.GeneratedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *LearnerProfileEventMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case learnerprofileevent.FieldSequence:
+		return m.OldSequence(ctx)
+	case learnerprofileevent.FieldTimestamp:
+		return m.OldTimestamp(ctx)
+	case learnerprofileevent.FieldOwnerID:
+		return m.OldOwnerID(ctx)
+	case learnerprofileevent.FieldSummary:
+		return m.OldSummary(ctx)
+	case learnerprofileevent.FieldStrengths:
+		return m.OldStrengths(ctx)
+	case learnerprofileevent.FieldWeaknesses:
+		return m.OldWeaknesses(ctx)
+	case learnerprofileevent.FieldPatterns:
+		return m.OldPatterns(ctx)
+	case learnerprofileevent.FieldGeneratedAt:
+		return m.OldGeneratedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown LearnerProfileEvent field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LearnerProfileEventMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case learnerprofileevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSequence(v)
+		return nil
+	case learnerprofileevent.FieldTimestamp:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimestamp(v)
+		return nil
+	case learnerprofileevent.FieldOwnerID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOwnerID(v)
+		return nil
+	case learnerprofileevent.FieldSummary:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSummary(v)
+		return nil
+	case learnerprofileevent.FieldStrengths:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStrengths(v)
+		return nil
+	case learnerprofileevent.FieldWeaknesses:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWeaknesses(v)
+		return nil
+	case learnerprofileevent.FieldPatterns:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPatterns(v)
+		return nil
+	case learnerprofileevent.FieldGeneratedAt:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGeneratedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown LearnerProfileEvent field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *LearnerProfileEventMutation) AddedFields() []string {
+	var fields []string
+	if m.addsequence != nil {
+		fields = append(fields, learnerprofileevent.FieldSequence)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *LearnerProfileEventMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case learnerprofileevent.FieldSequence:
+		return m.AddedSequence()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LearnerProfileEventMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case learnerprofileevent.FieldSequence:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSequence(v)
+		return nil
+	}
+	return fmt.Errorf("unknown LearnerProfileEvent numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *LearnerProfileEventMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(learnerprofileevent.FieldStrengths) {
+		fields = append(fields, learnerprofileevent.FieldStrengths)
+	}
+	if m.FieldCleared(learnerprofileevent.FieldWeaknesses) {
+		fields = append(fields, learnerprofileevent.FieldWeaknesses)
+	}
+	if m.FieldCleared(learnerprofileevent.FieldPatterns) {
+		fields = append(fields, learnerprofileevent.FieldPatterns)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *LearnerProfileEventMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *LearnerProfileEventMutation) ClearField(name string) error {
+	switch name {
+	case learnerprofileevent.FieldStrengths:
+		m.ClearStrengths()
+		return nil
+	case learnerprofileevent.FieldWeaknesses:
+		m.ClearWeaknesses()
+		return nil
+	case learnerprofileevent.FieldPatterns:
+		m.ClearPatterns()
+		return nil
+	}
+	return fmt.Errorf("unknown LearnerProfileEvent nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *LearnerProfileEventMutation) ResetField(name string) error {
+	switch name {
+	case learnerprofileevent.FieldSequence:
+		m.ResetSequence()
+		return nil
+	case learnerprofileevent.FieldTimestamp:
+		m.ResetTimestamp()
+		return nil
+	case learnerprofileevent.FieldOwnerID:
+		m.ResetOwnerID()
+		return nil
+	case learnerprofileevent.FieldSummary:
+		m.ResetSummary()
+		return nil
+	case learnerprofileevent.FieldStrengths:
+		m.ResetStrengths()
+		return nil
+	case learnerprofileevent.FieldWeaknesses:
+		m.ResetWeaknesses()
+		return nil
+	case learnerprofileevent.FieldPatterns:
+		m.ResetPatterns()
+		return nil
+	case learnerprofileevent.FieldGeneratedAt:
+		m.ResetGeneratedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown LearnerProfileEvent field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *LearnerProfileEventMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *LearnerProfileEventMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *LearnerProfileEventMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *LearnerProfileEventMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *LearnerProfileEventMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *LearnerProfileEventMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *LearnerProfileEventMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown LearnerProfileEvent unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *LearnerProfileEventMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown LearnerProfileEvent edge %s", name)
 }
 
 // LessonEventMutation represents an operation that mutates the LessonEvent nodes in the graph.

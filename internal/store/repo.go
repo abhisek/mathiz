@@ -239,6 +239,28 @@ type LearnerProfileData struct {
 	GeneratedAt string   `json:"generated_at"`
 }
 
+// LearnerProfileEventData captures a changed learner-profile version for
+// persistence. Only versions that differ from the previous profile are
+// appended — identical regenerations write nothing.
+type LearnerProfileEventData struct {
+	Summary     string
+	Strengths   []string
+	Weaknesses  []string
+	Patterns    []string
+	GeneratedAt string // RFC3339
+}
+
+// LearnerProfileEventRecord is a hydrated learner-profile version.
+type LearnerProfileEventRecord struct {
+	Sequence    int64
+	Timestamp   time.Time
+	Summary     string
+	Strengths   []string
+	Weaknesses  []string
+	Patterns    []string
+	GeneratedAt string
+}
+
 // DiagnosisEventData captures a diagnosis result for persistence.
 type DiagnosisEventData struct {
 	SessionID       string
@@ -362,6 +384,13 @@ type EventRepo interface {
 	// QueryLessonEvents returns lesson events matching the query options,
 	// newest first.
 	QueryLessonEvents(ctx context.Context, opts QueryOpts) ([]LessonEventRecord, error)
+
+	// AppendLearnerProfileEvent records a changed learner-profile version.
+	AppendLearnerProfileEvent(ctx context.Context, data LearnerProfileEventData) error
+
+	// QueryLearnerProfileEvents returns learner-profile versions matching the
+	// query options, newest first.
+	QueryLearnerProfileEvents(ctx context.Context, opts QueryOpts) ([]LearnerProfileEventRecord, error)
 
 	// AppendGemEvent records a gem award event.
 	AppendGemEvent(ctx context.Context, data GemEventData) error

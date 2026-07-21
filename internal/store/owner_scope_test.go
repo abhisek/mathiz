@@ -279,6 +279,90 @@ func TestOwnerIsolationLessonEvents(t *testing.T) {
 	}
 }
 
+func TestOwnerIsolationLearnerProfileEvents(t *testing.T) {
+	s := openIsolationStore(t)
+	ctx := context.Background()
+
+	alice := s.EventRepoFor(testOwner(t, "alice"))
+	bob := s.EventRepoFor(testOwner(t, "bob"))
+
+	v1 := LearnerProfileEventData{
+		Summary:     "Alice is strong on addition",
+		Strengths:   []string{"addition", "counting"},
+		Weaknesses:  []string{"regrouping"},
+		Patterns:    []string{"rushes on timed questions"},
+		GeneratedAt: "2026-07-21T10:00:00Z",
+	}
+	if err := alice.AppendLearnerProfileEvent(ctx, v1); err != nil {
+		t.Fatalf("alice append v1: %v", err)
+	}
+	v2 := v1
+	v2.Summary = "Alice now regroups reliably"
+	v2.Weaknesses = nil
+	v2.GeneratedAt = "2026-07-21T11:00:00Z"
+	if err := alice.AppendLearnerProfileEvent(ctx, v2); err != nil {
+		t.Fatalf("alice append v2: %v", err)
+	}
+	if err := bob.AppendLearnerProfileEvent(ctx, LearnerProfileEventData{
+		Summary: "Bob's profile", Strengths: []string{"subtraction"},
+	}); err != nil {
+		t.Fatalf("bob append: %v", err)
+	}
+
+	// Round-trip: alice sees her two versions, newest first, arrays intact.
+	got, err := alice.QueryLearnerProfileEvents(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("alice query: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("alice sees %d profile versions, want 2", len(got))
+	}
+	if got[0].Summary != v2.Summary || got[1].Summary != v1.Summary {
+		t.Errorf("order = [%q, %q], want newest first", got[0].Summary, got[1].Summary)
+	}
+	if got[0].Sequence <= got[1].Sequence {
+		t.Errorf("sequences = (%d, %d), want descending", got[0].Sequence, got[1].Sequence)
+	}
+	oldest := got[1]
+	if len(oldest.Strengths) != 2 || oldest.Strengths[0] != "addition" || oldest.Strengths[1] != "counting" {
+		t.Errorf("strengths = %v, want [addition counting]", oldest.Strengths)
+	}
+	if len(oldest.Weaknesses) != 1 || oldest.Weaknesses[0] != "regrouping" {
+		t.Errorf("weaknesses = %v, want [regrouping]", oldest.Weaknesses)
+	}
+	if len(oldest.Patterns) != 1 || oldest.Patterns[0] != "rushes on timed questions" {
+		t.Errorf("patterns = %v, want [rushes on timed questions]", oldest.Patterns)
+	}
+	if oldest.GeneratedAt != "2026-07-21T10:00:00Z" {
+		t.Errorf("generated_at = %q", oldest.GeneratedAt)
+	}
+
+	// Limit is honored.
+	got, err = alice.QueryLearnerProfileEvents(ctx, QueryOpts{Limit: 1})
+	if err != nil {
+		t.Fatalf("alice limited query: %v", err)
+	}
+	if len(got) != 1 || got[0].Summary != v2.Summary {
+		t.Errorf("limited query = %+v, want just the newest version", got)
+	}
+
+	// Isolation: bob sees only his own version; carol sees nothing.
+	got, err = bob.QueryLearnerProfileEvents(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("bob query: %v", err)
+	}
+	if len(got) != 1 || got[0].Summary != "Bob's profile" {
+		t.Errorf("bob sees %+v, want only his own version", got)
+	}
+	got, err = s.EventRepoFor(testOwner(t, "carol")).QueryLearnerProfileEvents(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("carol query: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("carol sees %d profile versions, want 0", len(got))
+	}
+}
+
 // TestOwnerIsolationActivityQueries covers the activity-timeline read
 // methods: mastery transitions, per-session answers, and hint counts must
 // never cross owners.

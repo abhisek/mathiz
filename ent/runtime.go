@@ -17,6 +17,7 @@ import (
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
 	"github.com/abhisek/mathiz/ent/invite"
+	"github.com/abhisek/mathiz/ent/learnerprofileevent"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
@@ -320,6 +321,27 @@ func init() {
 	llmrequesteventDescResponseBody := llmrequesteventFields[9].Descriptor()
 	// llmrequestevent.DefaultResponseBody holds the default value on creation for the response_body field.
 	llmrequestevent.DefaultResponseBody = llmrequesteventDescResponseBody.Default.(string)
+	learnerprofileeventMixin := schema.LearnerProfileEvent{}.Mixin()
+	learnerprofileeventMixinFields0 := learnerprofileeventMixin[0].Fields()
+	_ = learnerprofileeventMixinFields0
+	learnerprofileeventFields := schema.LearnerProfileEvent{}.Fields()
+	_ = learnerprofileeventFields
+	// learnerprofileeventDescTimestamp is the schema descriptor for timestamp field.
+	learnerprofileeventDescTimestamp := learnerprofileeventMixinFields0[1].Descriptor()
+	// learnerprofileevent.DefaultTimestamp holds the default value on creation for the timestamp field.
+	learnerprofileevent.DefaultTimestamp = learnerprofileeventDescTimestamp.Default.(func() time.Time)
+	// learnerprofileeventDescOwnerID is the schema descriptor for owner_id field.
+	learnerprofileeventDescOwnerID := learnerprofileeventMixinFields0[2].Descriptor()
+	// learnerprofileevent.DefaultOwnerID holds the default value on creation for the owner_id field.
+	learnerprofileevent.DefaultOwnerID = learnerprofileeventDescOwnerID.Default.(string)
+	// learnerprofileeventDescSummary is the schema descriptor for summary field.
+	learnerprofileeventDescSummary := learnerprofileeventFields[0].Descriptor()
+	// learnerprofileevent.DefaultSummary holds the default value on creation for the summary field.
+	learnerprofileevent.DefaultSummary = learnerprofileeventDescSummary.Default.(string)
+	// learnerprofileeventDescGeneratedAt is the schema descriptor for generated_at field.
+	learnerprofileeventDescGeneratedAt := learnerprofileeventFields[4].Descriptor()
+	// learnerprofileevent.DefaultGeneratedAt holds the default value on creation for the generated_at field.
+	learnerprofileevent.DefaultGeneratedAt = learnerprofileeventDescGeneratedAt.Default.(string)
 	lessoneventMixin := schema.LessonEvent{}.Mixin()
 	lessoneventMixinFields0 := lessoneventMixin[0].Fields()
 	_ = lessoneventMixinFields0

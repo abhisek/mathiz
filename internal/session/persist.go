@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"log"
+	"slices"
 	"time"
 
 	"github.com/abhisek/mathiz/internal/lessons"
@@ -72,27 +73,65 @@ func SaveSnapshotWithProfile(ctx context.Context, snapRepo store.SnapshotRepo, c
 		}
 	}
 
+	eventRepo := state.EventRepo
 	go func() {
 		bg, cancel := context.WithTimeout(context.Background(), profileTimeout)
 		defer cancel()
-		profile, err := compressor.GenerateProfile(bg, input)
-		if err != nil || profile == nil {
-			return
-		}
-		latest, err := snapRepo.Latest(bg)
-		if err != nil || latest == nil {
-			return
-		}
-		latest.Data.LearnerProfile = &store.LearnerProfileData{
-			Summary:     profile.Summary,
-			Strengths:   profile.Strengths,
-			Weaknesses:  profile.Weaknesses,
-			Patterns:    profile.Patterns,
-			GeneratedAt: profile.GeneratedAt.UTC().Format(time.RFC3339),
-		}
-		if err := snapRepo.Save(bg, &store.Snapshot{Timestamp: time.Now(), Data: latest.Data}); err != nil {
-			log.Printf("session: save learner profile: %v", err)
-		}
+		refreshProfile(bg, snapRepo, eventRepo, compressor, input, prevProfile)
 	}()
 	return nil
+}
+
+// refreshProfile is the body of the async learner-profile refresh: generate a
+// fresh profile, fold it into the latest snapshot, and — when the profile
+// actually changed — append a learner-profile version event so history
+// survives snapshot pruning. Both appends are best-effort: a failure logs and
+// never breaks the session save that spawned the refresh.
+func refreshProfile(ctx context.Context, snapRepo store.SnapshotRepo, eventRepo store.EventRepo, compressor *lessons.Compressor, input lessons.ProfileInput, prevProfile *store.LearnerProfileData) {
+	profile, err := compressor.GenerateProfile(ctx, input)
+	if err != nil || profile == nil {
+		return
+	}
+	latest, err := snapRepo.Latest(ctx)
+	if err != nil || latest == nil {
+		return
+	}
+	newProfile := &store.LearnerProfileData{
+		Summary:     profile.Summary,
+		Strengths:   profile.Strengths,
+		Weaknesses:  profile.Weaknesses,
+		Patterns:    profile.Patterns,
+		GeneratedAt: profile.GeneratedAt.UTC().Format(time.RFC3339),
+	}
+	latest.Data.LearnerProfile = newProfile
+	if err := snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now(), Data: latest.Data}); err != nil {
+		log.Printf("session: save learner profile: %v", err)
+	}
+	// Version the profile as an owner-scoped event, but only when its
+	// content changed — an identical regeneration is not a new version.
+	if eventRepo == nil || !profileChanged(prevProfile, newProfile) {
+		return
+	}
+	if err := eventRepo.AppendLearnerProfileEvent(ctx, store.LearnerProfileEventData{
+		Summary:     newProfile.Summary,
+		Strengths:   newProfile.Strengths,
+		Weaknesses:  newProfile.Weaknesses,
+		Patterns:    newProfile.Patterns,
+		GeneratedAt: newProfile.GeneratedAt,
+	}); err != nil {
+		log.Printf("session: append learner profile event: %v", err)
+	}
+}
+
+// profileChanged reports whether the freshly generated profile differs in
+// content (summary + the three lists) from the previous one. GeneratedAt is
+// deliberately ignored: regeneration alone is not a change.
+func profileChanged(prev, next *store.LearnerProfileData) bool {
+	if prev == nil {
+		return true
+	}
+	return prev.Summary != next.Summary ||
+		!slices.Equal(prev.Strengths, next.Strengths) ||
+		!slices.Equal(prev.Weaknesses, next.Weaknesses) ||
+		!slices.Equal(prev.Patterns, next.Patterns)
 }

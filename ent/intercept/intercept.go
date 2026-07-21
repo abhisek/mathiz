@@ -20,6 +20,7 @@ import (
 	"github.com/abhisek/mathiz/ent/gemevent"
 	"github.com/abhisek/mathiz/ent/hintevent"
 	"github.com/abhisek/mathiz/ent/invite"
+	"github.com/abhisek/mathiz/ent/learnerprofileevent"
 	"github.com/abhisek/mathiz/ent/lessonevent"
 	"github.com/abhisek/mathiz/ent/llmrequestevent"
 	"github.com/abhisek/mathiz/ent/masteryevent"
@@ -439,6 +440,33 @@ func (f TraverseLLMRequestEvent) Traverse(ctx context.Context, q ent.Query) erro
 	return fmt.Errorf("unexpected query type %T. expect *ent.LLMRequestEventQuery", q)
 }
 
+// The LearnerProfileEventFunc type is an adapter to allow the use of ordinary function as a Querier.
+type LearnerProfileEventFunc func(context.Context, *ent.LearnerProfileEventQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f LearnerProfileEventFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.LearnerProfileEventQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.LearnerProfileEventQuery", q)
+}
+
+// The TraverseLearnerProfileEvent type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseLearnerProfileEvent func(context.Context, *ent.LearnerProfileEventQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseLearnerProfileEvent) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseLearnerProfileEvent) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.LearnerProfileEventQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.LearnerProfileEventQuery", q)
+}
+
 // The LessonEventFunc type is an adapter to allow the use of ordinary function as a Querier.
 type LessonEventFunc func(context.Context, *ent.LessonEventQuery) (ent.Value, error)
 
@@ -684,6 +712,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.InviteQuery, predicate.Invite, invite.OrderOption]{typ: ent.TypeInvite, tq: q}, nil
 	case *ent.LLMRequestEventQuery:
 		return &query[*ent.LLMRequestEventQuery, predicate.LLMRequestEvent, llmrequestevent.OrderOption]{typ: ent.TypeLLMRequestEvent, tq: q}, nil
+	case *ent.LearnerProfileEventQuery:
+		return &query[*ent.LearnerProfileEventQuery, predicate.LearnerProfileEvent, learnerprofileevent.OrderOption]{typ: ent.TypeLearnerProfileEvent, tq: q}, nil
 	case *ent.LessonEventQuery:
 		return &query[*ent.LessonEventQuery, predicate.LessonEvent, lessonevent.OrderOption]{typ: ent.TypeLessonEvent, tq: q}, nil
 	case *ent.MasteryEventQuery:

@@ -45,6 +45,9 @@ type Invite func(*sql.Selector)
 // LLMRequestEvent is the predicate function for llmrequestevent builders.
 type LLMRequestEvent func(*sql.Selector)
 
+// LearnerProfileEvent is the predicate function for learnerprofileevent builders.
+type LearnerProfileEvent func(*sql.Selector)
+
 // LessonEvent is the predicate function for lessonevent builders.
 type LessonEvent func(*sql.Selector)
 
