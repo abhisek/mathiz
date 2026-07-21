@@ -14,10 +14,11 @@ import (
 // singleton seeded at init), so it is built once and cached.
 
 type curriculumSkillJSON struct {
-	ID      string   `json:"id"`
-	Name    string   `json:"name"`
-	Grade   int      `json:"grade"`
-	Prereqs []string `json:"prereqs"` // always present, may be empty
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Grade    int      `json:"grade"`
+	Prereqs  []string `json:"prereqs"`  // always present, may be empty
+	Keywords []string `json:"keywords"` // search aliases (e.g. "GCF" for HCF & LCM); always present, may be empty
 }
 
 type curriculumIslandJSON struct {
@@ -55,10 +56,11 @@ func curriculumPayload() curriculumJSON {
 			}
 			for i, sk := range skills {
 				island.Skills[i] = curriculumSkillJSON{
-					ID:      sk.ID,
-					Name:    sk.Name,
-					Grade:   sk.GradeLevel,
-					Prereqs: append([]string{}, sk.Prerequisites...),
+					ID:       sk.ID,
+					Name:     sk.Name,
+					Grade:    sk.GradeLevel,
+					Prereqs:  append([]string{}, sk.Prerequisites...),
+					Keywords: append([]string{}, sk.Keywords...),
 				}
 			}
 			out.Islands = append(out.Islands, island)

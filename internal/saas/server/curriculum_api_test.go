@@ -10,10 +10,11 @@ type curriculumPageJSON struct {
 		ID     string `json:"id"`
 		Name   string `json:"name"`
 		Skills []struct {
-			ID      string   `json:"id"`
-			Name    string   `json:"name"`
-			Grade   int      `json:"grade"`
-			Prereqs []string `json:"prereqs"`
+			ID       string   `json:"id"`
+			Name     string   `json:"name"`
+			Grade    int      `json:"grade"`
+			Prereqs  []string `json:"prereqs"`
+			Keywords []string `json:"keywords"`
 		} `json:"skills"`
 	} `json:"islands"`
 }
@@ -42,6 +43,13 @@ func TestCurriculumIsPublic(t *testing.T) {
 		for _, sk := range island.Skills {
 			if sk.Prereqs == nil {
 				t.Errorf("skill %s: prereqs is null, want an array (possibly empty)", sk.ID)
+			}
+			if sk.Keywords == nil {
+				t.Errorf("skill %s: keywords is null, want an array (possibly empty)", sk.ID)
+			}
+			// Keywords carry the search aliases the picker filters on.
+			if sk.ID == "hcf-lcm" && !slices.Contains(sk.Keywords, "GCF") {
+				t.Errorf("hcf-lcm keywords = %v, want to contain GCF", sk.Keywords)
 			}
 			if sk.ID != "round-nearest-10-100" {
 				continue
