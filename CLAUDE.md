@@ -161,6 +161,16 @@ user-facing flows — **update it when you add or change one**.
   generated (`make generate`). A PreToolUse hook blocks this; if you hit it,
   edit the schema instead.
 
+## Logging
+
+Go code logs via stdlib `log/slog` with structured fields —
+`slog.Error("game: save snapshot", "child_uid", uid, "err", err)` — never
+`log.Printf` (serve mode bridges it into the canonical stream, but at INFO
+level and unstructured). HTTP-request context belongs on the canonical
+per-request line (`logctx` fields in `internal/saas/server`); standalone
+slog records are for background goroutines and non-request paths. `slog`
+is fine in domain packages — it's stdlib and needs no SaaS wiring.
+
 ## Charm Libraries v2 API
 
 These use v2 APIs that differ significantly from v1:

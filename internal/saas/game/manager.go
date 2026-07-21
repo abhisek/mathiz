@@ -12,7 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -840,6 +840,6 @@ func (e *expedition) saveSnapshot(ctx context.Context) {
 		compressor = e.tools.Compressor
 	}
 	if err := sess.SaveSnapshotWithProfile(ctx, e.snapRepo, compressor, e.state, snapData); err != nil {
-		log.Printf("game: save snapshot for %s: %v", e.childUID, err)
+		slog.Error("game: save snapshot", "child_uid", e.childUID, "err", err)
 	}
 }
