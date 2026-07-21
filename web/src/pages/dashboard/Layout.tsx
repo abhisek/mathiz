@@ -10,6 +10,7 @@ import {
 import { useAction } from '../../hooks'
 import { identifyFamilyGroup, identifyParent, resetAnalytics, track } from '../../analytics'
 import { getSupabase } from '../../supa'
+import ShareMathiz from '../../components/ShareMathiz'
 import { type DashboardContext } from './context'
 import Kids from './Kids'
 import Activity from './Activity'
@@ -133,6 +134,7 @@ function DashboardLayout({ session }: Props) {
             How Mathiz teaches
           </NavLink>
           <span className="muted dash-email">{session.user.email}</span>
+          <ShareMathiz variant="nav" />
           <button className="btn btn-ghost" onClick={signOut}>
             Sign out
           </button>

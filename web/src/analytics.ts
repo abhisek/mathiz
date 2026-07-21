@@ -139,6 +139,11 @@ export const track = {
   // Public funnel
   landingCtaClicked: (persona: 'parent' | 'kid') => capture('landing_cta_clicked', { persona }),
   pricingViewed: () => capture('pricing_viewed'),
+  // "Tell a friend" button pressed (dashboard sidebar / landing footer);
+  // sheet says which experience opened: the OS share sheet or our panel.
+  shareOpened: (sheet: 'native' | 'panel') => capture('share_opened', { sheet }),
+  // Share message copied to the clipboard from the share panel.
+  shareLinkCopied: () => capture('share_link_copied'),
   // Fires when the public /how-it-works page mounts.
   howItWorksViewed: () => capture('how_it_works_viewed'),
   signinCompleted: () => capture('signin_completed'),

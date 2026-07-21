@@ -3019,3 +3019,57 @@ table.sessions th {
   color: var(--ink-soft);
   font-size: 0.9rem;
 }
+
+/* "Tell a friend" share button + panel (ShareMathiz) */
+
+/* Footer variant: a button dressed as a landing-footer link. */
+.share-footer-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.share-footer-link:hover {
+  color: var(--accent-deep);
+  text-decoration: underline;
+}
+
+.share-message {
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+.share-qr {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.share-qr img {
+  width: 10.5rem;
+  max-width: 100%;
+  image-rendering: pixelated;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+}
+
+.share-qr .muted {
+  font-size: 0.85rem;
+}
+
+@media (max-width: 45rem) {
+  /* The mobile dash header row is tight: "💜 Share" is enough. */
+  .dash-nav-foot .share-btn-full {
+    display: none;
+  }
+}
