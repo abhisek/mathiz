@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -45,8 +46,14 @@ var purposeTimeouts = map[string]time.Duration{
 const defaultTimeout = 30 * time.Second
 
 // TimeoutProvider bounds every call with a deadline. It sits inside the retry
-// decorator so each attempt is bounded independently, and outside logging so a
-// timed-out attempt is still recorded with the latency it burned.
+// decorator so each attempt is bounded independently — which only works
+// because an expired attempt is reported as ErrTimeout rather than a bare
+// context error, so the retry decorator can tell it apart from the caller
+// giving up (see Generate).
+//
+// It sits outside logging so a timed-out attempt is still recorded; note the
+// logging decorator must not persist on the context it is handed here, since
+// by then that context is dead.
 //
 // Note this can only ever tighten the caller's deadline, never extend it: a
 // request context that is already closer to expiry still wins.
@@ -65,9 +72,19 @@ func WithTimeout(p Provider, fallback time.Duration) Provider {
 }
 
 func (t *TimeoutProvider) Generate(ctx context.Context, req Request) (*Response, error) {
-	ctx, cancel := context.WithTimeout(ctx, t.timeoutFor(PurposeFrom(ctx)))
+	purpose := PurposeFrom(ctx)
+	attemptCtx, cancel := context.WithTimeout(ctx, t.timeoutFor(purpose))
 	defer cancel()
-	return t.inner.Generate(ctx, req)
+
+	resp, err := t.inner.Generate(attemptCtx, req)
+	// Distinguish "this attempt hung" from "the caller went away". Both surface
+	// as context.DeadlineExceeded, but only the first is transient and worth
+	// retrying — reporting them identically would make every timeout consume
+	// the whole retry budget in a single attempt.
+	if err != nil && ctx.Err() == nil && errors.Is(err, context.DeadlineExceeded) {
+		return nil, &ErrTimeout{Purpose: purpose, Err: err}
+	}
+	return resp, err
 }
 
 func (t *TimeoutProvider) ModelID() string { return t.inner.ModelID() }

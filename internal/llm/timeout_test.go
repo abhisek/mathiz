@@ -3,8 +3,11 @@ package llm
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/abhisek/mathiz/internal/store"
 )
 
 // blockingProvider blocks until the context is done, then reports the error.
@@ -116,5 +119,92 @@ func TestWithTimeoutZeroFallback(t *testing.T) {
 	}
 	if got := time.Until(inner.deadline); got < defaultTimeout-time.Second {
 		t.Errorf("zero fallback gave %v, want ~%v", got, defaultTimeout)
+	}
+}
+
+// countingProvider blocks until its context is done and counts attempts.
+type countingProvider struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func (c *countingProvider) Generate(ctx context.Context, _ Request) (*Response, error) {
+	c.mu.Lock()
+	c.calls++
+	c.mu.Unlock()
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func (c *countingProvider) ModelID() string { return "counting" }
+
+func (c *countingProvider) count() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.calls
+}
+
+// TestTimeoutAttemptsAreRetried: a per-attempt deadline that expires is a
+// transient hang, not the caller giving up — it must not consume the whole
+// retry budget in one shot.
+func TestTimeoutAttemptsAreRetried(t *testing.T) {
+	inner := &countingProvider{}
+	p := WithRetry(WithTimeout(inner, 20*time.Millisecond), RetryConfig{
+		MaxAttempts: 3, InitialWait: time.Millisecond, MaxWait: 2 * time.Millisecond, Multiplier: 2,
+	})
+
+	if _, err := p.Generate(context.Background(), Request{}); err == nil {
+		t.Fatal("want an error from a provider that never responds")
+	}
+	if got := inner.count(); got != 3 {
+		t.Errorf("attempts = %d, want 3 — an internal timeout is ending the retry chain", got)
+	}
+}
+
+// TestCallerCancellationIsNotRetried: the other half of the distinction. When
+// the caller goes away (child closes the tab), retrying is wasted work.
+func TestCallerCancellationIsNotRetried(t *testing.T) {
+	inner := &countingProvider{}
+	p := WithRetry(WithTimeout(inner, time.Minute), RetryConfig{
+		MaxAttempts: 3, InitialWait: time.Millisecond, MaxWait: 2 * time.Millisecond, Multiplier: 2,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := p.Generate(ctx, Request{}); err == nil {
+		t.Fatal("want an error")
+	}
+	if got := inner.count(); got != 1 {
+		t.Errorf("attempts = %d, want 1 — caller cancellation must not be retried", got)
+	}
+}
+
+// TestTimedOutAttemptIsStillLogged: the audit trail exists so slow and failed
+// calls can be investigated, which makes a timeout the single most important
+// thing to record. LoggingProvider sits inside the timeout, so it must not
+// persist the event on the very context that just expired.
+func TestTimedOutAttemptIsStillLogged(t *testing.T) {
+	st, err := store.Open("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+	repo := st.EventRepo()
+
+	// No purpose on the context, so the short fallback budget applies.
+	p := WithTimeout(WithLogging(&blockingProvider{}, repo, "test"), 20*time.Millisecond)
+	if _, err := p.Generate(context.Background(), Request{}); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v, want context.DeadlineExceeded", err)
+	}
+
+	events, err := repo.QueryLLMEvents(context.Background(), store.QueryOpts{})
+	if err != nil {
+		t.Fatalf("query llm events: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("llm events = %d, want 1 — the timed-out attempt was not recorded", len(events))
+	}
+	if events[0].Success {
+		t.Error("timed-out attempt recorded as successful")
 	}
 }

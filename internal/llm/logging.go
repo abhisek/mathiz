@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/abhisek/mathiz/internal/store"
 )
+
+// logWriteTimeout bounds the audit write itself. It is independent of the
+// request's own deadline — see the note in Generate.
+const logWriteTimeout = 5 * time.Second
 
 // LoggingProvider is a decorator that records every LLM request as an event.
 type LoggingProvider struct {
@@ -52,8 +56,17 @@ func (l *LoggingProvider) Generate(ctx context.Context, req Request) (*Response,
 	}
 
 	// Log the event but don't fail the request if logging fails.
-	if logErr := l.eventRepo.AppendLLMRequest(ctx, data); logErr != nil {
-		fmt.Fprintf(os.Stderr, "warning: failed to log LLM request event: %v\n", logErr)
+	//
+	// Deliberately NOT on ctx: this decorator sits inside the per-attempt
+	// deadline, so a timed-out or cancelled call hands us a context that is
+	// already dead — and the write would fail precisely for the calls the
+	// audit trail exists to explain. WithoutCancel keeps the values the
+	// store's owner guard reads while dropping the cancellation, and the
+	// write gets a short deadline of its own so it can't hang either.
+	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), logWriteTimeout)
+	defer cancel()
+	if logErr := l.eventRepo.AppendLLMRequest(writeCtx, data); logErr != nil {
+		slog.Error("llm: log request event", "purpose", purpose, "err", logErr)
 	}
 
 	return resp, err
