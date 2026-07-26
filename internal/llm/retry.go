@@ -57,6 +57,14 @@ func (r *RetryProvider) ModelID() string {
 
 // shouldRetry determines if an error is retryable.
 func (r *RetryProvider) shouldRetry(err error, invalidRetried *bool) bool {
+	// An attempt that blew its own per-purpose deadline is a hung provider, not
+	// the caller giving up: retry it. This must precede the context check
+	// below, which ErrTimeout deliberately unwraps to.
+	var timeout *ErrTimeout
+	if errors.As(err, &timeout) {
+		return true
+	}
+
 	// Context errors are never retried.
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false

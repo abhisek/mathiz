@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/abhisek/mathiz/ent"
 	"github.com/abhisek/mathiz/ent/questquestion"
@@ -21,6 +22,11 @@ import (
 // client key (a retried click returns the already-saved batch, no LLM call),
 // and the credit debit's source is "questgen:<questUID>:<clientKey>" so a
 // replay can never double-debit.
+
+// questGenBudget caps the total wait for one generation request, retries
+// included (mirrors game.questionGenBudget). Generous, because a full batch is
+// legitimately slow — but bounded, because a parent is waiting on the request.
+const questGenBudget = 180 * time.Second
 
 // genSystemPrompt mirrors problemgen's rules for a parent-briefed batch.
 const genSystemPrompt = `You are a math tutor writing a one-off practice quest for a child, based on a parent's brief.
@@ -131,7 +137,13 @@ func (s *Service) Generate(ctx context.Context, questUID, brief string, count in
 		return nil, fmt.Errorf("%w: %v", ErrNoProvider, err)
 	}
 
-	resp, err := provider.Generate(llm.WithPurpose(ctx, llm.PurposeQuestGen), llm.Request{
+	// Overall budget for the batch, on top of the per-attempt deadline the
+	// provider applies. Timed-out attempts are retried, so without this a
+	// hung provider could hold the parent's request for the full retry chain.
+	genCtx, cancel := context.WithTimeout(ctx, questGenBudget)
+	defer cancel()
+
+	resp, err := provider.Generate(llm.WithPurpose(genCtx, llm.PurposeQuestGen), llm.Request{
 		System: genSystemPrompt,
 		Messages: []llm.Message{
 			{Role: llm.RoleUser, Content: buildGenerateMessage(q, brief, count)},

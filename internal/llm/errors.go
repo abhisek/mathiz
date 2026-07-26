@@ -45,6 +45,21 @@ func (e *ErrProviderUnavailable) Error() string {
 
 func (e *ErrProviderUnavailable) Unwrap() error { return e.Err }
 
+// ErrTimeout means an attempt exceeded its own per-purpose deadline while the
+// caller was still waiting — a hung provider, not the caller giving up. It
+// unwraps to context.DeadlineExceeded so callers can test for that, which is
+// why RetryProvider must check for this type before its context-error branch.
+type ErrTimeout struct {
+	Purpose string
+	Err     error
+}
+
+func (e *ErrTimeout) Error() string {
+	return fmt.Sprintf("llm: %s attempt exceeded its deadline", e.Purpose)
+}
+
+func (e *ErrTimeout) Unwrap() error { return e.Err }
+
 // ErrMaxTokensExceeded indicates the response was truncated because it
 // hit the MaxTokens limit.
 type ErrMaxTokensExceeded struct {
