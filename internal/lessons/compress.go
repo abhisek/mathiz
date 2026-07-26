@@ -102,11 +102,13 @@ func (c *Compressor) GenerateProfile(ctx context.Context, input ProfileInput) (*
 		return nil, fmt.Errorf("parse profile response: %w", err)
 	}
 
-	return &LearnerProfile{
-		Summary:     out.Summary,
-		Strengths:   out.Strengths,
-		Weaknesses:  out.Weaknesses,
-		Patterns:    out.Patterns,
-		GeneratedAt: time.Now(),
-	}, nil
+	// Structural validation before this reaches a snapshot: the profile is
+	// fed back into every later question-generation prompt, so a malformed
+	// one is worse than a stale one. The caller keeps the previous profile.
+	profile := normalizeProfile(out)
+	if err := validateProfile(profile); err != nil {
+		return nil, err
+	}
+	profile.GeneratedAt = time.Now()
+	return profile, nil
 }
