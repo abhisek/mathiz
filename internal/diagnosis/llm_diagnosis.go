@@ -55,7 +55,7 @@ type diagnosisOutput struct {
 
 // Diagnose sends a wrong answer to the LLM for misconception identification.
 func (d *Diagnoser) Diagnose(ctx context.Context, req *DiagnosisRequest) (*DiagnosisResult, error) {
-	ctx = llm.WithPurpose(ctx, "error-diagnosis")
+	ctx = llm.WithPurpose(ctx, llm.PurposeDiagnosis)
 
 	userMsg, err := buildDiagnosisMessage(req)
 	if err != nil {

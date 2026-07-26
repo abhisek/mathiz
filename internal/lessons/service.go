@@ -69,7 +69,7 @@ type practiceQuestionOutput struct {
 }
 
 func (s *Service) generate(ctx context.Context, input LessonInput) (*Lesson, error) {
-	ctx = llm.WithPurpose(ctx, "lesson")
+	ctx = llm.WithPurpose(ctx, llm.PurposeLesson)
 
 	userMsg := buildLessonUserMessage(input)
 

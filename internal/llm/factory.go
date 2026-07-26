@@ -31,13 +31,17 @@ func NewProvider(ctx context.Context, cfg Config, eventRepo store.EventRepo) (Pr
 		return nil, fmt.Errorf("initializing %s provider: %w", cfg.Provider, err)
 	}
 
-	// Wrap with middleware: caller → retry → logging → base
+	// Wrap with middleware: caller → retry → timeout → logging → base
 	// Skip logging when no EventRepo is provided (e.g. stateless preview mode).
+	//
+	// Timeout sits inside retry so every attempt is bounded on its own (three
+	// retries cannot stack into an unbounded wait), and outside logging so a
+	// timed-out attempt is still recorded with the latency it burned.
 	var wrapped Provider = base
 	if eventRepo != nil {
 		wrapped = WithLogging(base, eventRepo, cfg.Provider)
 	}
-	retried := WithRetry(wrapped, cfg.Retry)
+	retried := WithRetry(WithTimeout(wrapped, cfg.Timeout), cfg.Retry)
 
 	return retried, nil
 }

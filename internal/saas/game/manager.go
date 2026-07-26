@@ -56,6 +56,11 @@ const QuestionsPerExpedition = 5
 // generation failures (mirrors the TUI's circuit breaker).
 const maxGenFailures = 3
 
+// questionGenBudget caps the total wait for one question, retries included
+// (mirrors the TUI's generateTimeout). The provider bounds each attempt on its
+// own; this bounds the chain.
+const questionGenBudget = 30 * time.Second
+
 // Toolset is the per-child AI tooling for an expedition. It is the shared
 // tutor.Toolset — the same bundle the terminal app wires in app.BuildOptions.
 type Toolset = tutor.Toolset
@@ -446,7 +451,14 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 	recentErrors := append([]string(nil), exp.state.RecentErrors[exp.skill.ID]...)
 	exp.state.ErrorMu.Unlock()
 
-	q, err := exp.tools.Generator.Generate(ctx, problemgen.GenerateInput{
+	// Overall budget for one question, on top of the per-attempt deadline the
+	// provider applies: the retry decorator can make up to three attempts, and
+	// a child watching a spinner must not wait for all of them to play out.
+	// It also bounds how long exp.mu stays held on a degraded provider.
+	genCtx, cancel := context.WithTimeout(ctx, questionGenBudget)
+	defer cancel()
+
+	q, err := exp.tools.Generator.Generate(genCtx, problemgen.GenerateInput{
 		Skill:          exp.skill,
 		Tier:           tier,
 		PriorQuestions: exp.state.PriorQuestions[exp.skill.ID],

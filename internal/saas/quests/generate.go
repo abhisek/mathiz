@@ -131,7 +131,7 @@ func (s *Service) Generate(ctx context.Context, questUID, brief string, count in
 		return nil, fmt.Errorf("%w: %v", ErrNoProvider, err)
 	}
 
-	resp, err := provider.Generate(llm.WithPurpose(ctx, "quest-gen"), llm.Request{
+	resp, err := provider.Generate(llm.WithPurpose(ctx, llm.PurposeQuestGen), llm.Request{
 		System: genSystemPrompt,
 		Messages: []llm.Message{
 			{Role: llm.RoleUser, Content: buildGenerateMessage(q, brief, count)},
