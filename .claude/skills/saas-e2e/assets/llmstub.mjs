@@ -25,8 +25,50 @@ const lesson = {
   },
 }
 
+// A learner profile must pass structural validation (non-empty summary, at
+// least one non-blank list entry) or the server rejects it and keeps the
+// previous one — so the canned value is a well-formed profile, not the
+// question shape.
+const profile = {
+  summary:
+    'Comfortable adding within 20 and counting on from the larger number. Still slow when regrouping is involved.',
+  strengths: ['counts on from the larger number', 'solid addition within 20'],
+  weaknesses: ['regrouping in subtraction'],
+  patterns: ['rushes on timed questions'],
+}
+
+// Parent-authored quest generation asks for a batch under this schema name.
+// Both questions must pass the problemgen validator chain (structural, answer
+// format, math recompute) or the server drops them.
+const questBatch = {
+  questions: [
+    {
+      question_text: 'What is 12 + 7?',
+      format: 'numeric',
+      answer: '19',
+      answer_type: 'integer',
+      choices: [],
+      hint: 'Start at 12 and count up 7 more!',
+      difficulty: 2,
+      explanation: '12 plus 7 makes 19.',
+    },
+    {
+      question_text: 'What is 9 * 3?',
+      format: 'numeric',
+      answer: '27',
+      answer_type: 'integer',
+      choices: [],
+      hint: 'Nine, three times.',
+      difficulty: 2,
+      explanation: '9 * 3 = 27.',
+    },
+  ],
+}
+
 function contentFor(body) {
   if (body.includes('micro-lesson')) return lesson
+  if (body.includes('learner-profile')) return profile
+  if (body.includes('quest-questions')) return questBatch
   return question
 }
 
