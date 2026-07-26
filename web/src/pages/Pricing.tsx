@@ -84,9 +84,6 @@ export default function Pricing() {
         Start free →
       </Link>
 
-      <p className="legal-back muted">
-        <Link to="/">← Back to Mathiz</Link>
-      </p>
     </div>
   )
 }

@@ -1344,7 +1344,7 @@ table.sessions th {
 
 .landing {
   position: relative;
-  min-height: 100vh;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1616,34 +1616,10 @@ table.sessions th {
 
 /* ---- Landing footer ---- */
 
-.landing-footer {
-  width: 100%;
-  margin-top: auto;
-  padding: 1.5rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem 1.75rem;
-  border-top: 1px solid var(--line);
-  color: var(--ink-soft);
-  font-size: 0.85rem;
-}
-
-.landing-footer a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.landing-footer a:hover {
-  color: var(--accent-deep);
-  text-decoration: underline;
-}
-
 /* ---- Legal pages (/terms, /privacy, /contact) ---- */
 
 .legal-page {
-  min-height: 100vh;
+  flex: 1;
   padding: 3rem 1.5rem 3.5rem;
   display: flex;
   flex-direction: column;
@@ -1705,14 +1681,6 @@ table.sessions th {
   color: var(--accent-deep);
 }
 
-.legal-back {
-  margin-top: 1.5rem;
-}
-
-.legal-back a {
-  color: inherit;
-}
-
 @media (max-width: 34rem) {
   .legal-card {
     padding: 1.5rem 1.25rem;
@@ -1722,7 +1690,7 @@ table.sessions th {
 /* ---- Pricing page (/pricing) ---- */
 
 .pricing-page {
-  min-height: 100vh;
+  flex: 1;
   padding: 3rem 1.5rem 3.5rem;
   display: flex;
   flex-direction: column;
@@ -2624,7 +2592,7 @@ table.sessions th {
 /* ---- "How Mathiz teaches" page (/how-it-works) ---- */
 
 .hiw-page {
-  min-height: 100vh;
+  flex: 1;
   padding: 3rem 1.5rem 3.5rem;
   display: flex;
   flex-direction: column;
@@ -3022,7 +2990,7 @@ table.sessions th {
 
 /* "Tell a friend" share button + panel (ShareMathiz) */
 
-/* Footer variant: a button dressed as a landing-footer link. */
+/* Footer variant: a button dressed as a site-footer link. */
 .share-footer-link {
   border: 0;
   background: none;
@@ -3091,7 +3059,7 @@ table.sessions th {
 }
 
 .demo-page {
-  min-height: 100vh;
+  flex: 1;
   padding: 2.5rem 1.5rem 3.5rem;
   display: flex;
   flex-direction: column;
@@ -3136,4 +3104,38 @@ table.sessions th {
 
 .demo-home-link {
   font-size: 0.9rem;
+}
+
+/* ---- Public shell + site footer (signed-out pages only) ---- */
+
+/* The shell fills the viewport so short pages still push the footer to the
+   bottom of the fold; the page inside it grows via flex:1. Rendered only by
+   PublicLayout, so kid and parent surfaces never get either. */
+.public-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-footer {
+  width: 100%;
+  padding: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem 1.75rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.site-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: var(--accent-deep);
+  text-decoration: underline;
 }

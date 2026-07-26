@@ -54,6 +54,18 @@ explicit decision** — no react-query/SWR/Redux. Don't introduce one.
 - Public marketing/legal pages (`Landing`, `Pricing`, `Legal`) are
   Supabase-free — routed OUTSIDE `ParentArea` in `App.tsx`. Never make
   the front door pay the auth boot cost.
+- Public pages sit under the `PublicLayout` route in `App.tsx`, which
+  renders `components/SiteFooter.tsx` beneath the page. **Routing is what
+  keeps pricing links off the kid surfaces** — `/join` and `/play` are
+  routed outside that layout, so no page-level discipline is required and
+  none should be added. A new public page = a new route inside the layout;
+  it gets the footer for free. Never render `SiteFooter` directly.
+  `PublicLayout` owns `min-height: 100vh` (`.public-shell`); page
+  containers use `flex: 1`, so the footer lands at the bottom of the fold
+  rather than a screen below it.
+- `/demo` uses `PublicLayout variant="minimal"` (legal links only): it is
+  the shareable link and is deliberately single-exit. Adding product nav
+  there re-opens a decision made in `Demo.tsx`.
 
 ## Roles & authz
 

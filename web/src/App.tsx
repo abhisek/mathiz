@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabase } from './supa'
 import { ensureAnalyticsBooted, track } from './analytics'
@@ -13,6 +13,7 @@ import Pricing from './pages/Pricing'
 import HowItWorks from './pages/HowItWorks'
 import Demo from './pages/Demo'
 import BusyBar from './components/BusyBar'
+import SiteFooter from './components/SiteFooter'
 
 export default function App() {
   return (
@@ -24,22 +25,45 @@ export default function App() {
         <Route path="/join" element={<Join />} />
         <Route path="/play" element={<Play />} />
 
-        {/* The front door: static, Supabase-free, routes each persona. */}
-        <Route path="/" element={<Landing />} />
+        {/* Public pages: static, Supabase-free, and the only routes that get
+            the site footer. Adding a public page here gives it the same
+            footer for free; nothing outside this layout can grow one, which
+            is what keeps pricing links off the kid surfaces above. */}
+        <Route element={<PublicLayout />}>
+          {/* The front door: routes each persona. */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/contact" element={<Contact />} />
+        </Route>
 
-        {/* Pricing + how-it-works + legal pages: static, Supabase-free. */}
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/how-it-works" element={<HowItWorks />} />
-        <Route path="/demo" element={<Demo />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/contact" element={<Contact />} />
+        {/* /demo is deliberately single-exit (see Demo.tsx): it gets the
+            legal links so a shared demo link is still compliant, but no
+            second pitch competing with its one CTA. */}
+        <Route element={<PublicLayout variant="minimal" />}>
+          <Route path="/demo" element={<Demo />} />
+        </Route>
 
         <Route path="/login" element={<ParentArea page="login" />} />
         <Route path="/dashboard/*" element={<ParentArea page="dashboard" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
+  )
+}
+
+// PublicLayout is the shell for signed-out pages: the page fills the
+// viewport, the footer sits under it. It owns the "fill the screen"
+// responsibility that each public page used to carry itself, so the footer
+// lands at the bottom of the fold instead of a scroll below it.
+function PublicLayout({ variant }: { variant?: 'full' | 'minimal' }) {
+  return (
+    <div className="public-shell">
+      <Outlet />
+      <SiteFooter variant={variant} />
+    </div>
   )
 }
 
