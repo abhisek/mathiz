@@ -80,7 +80,7 @@ func newTestEnvWith(t *testing.T, mutate func(*Config)) *testEnv {
 	// Quests + game are wired with deterministic fakes: a mock LLM for
 	// question generation and a fake per-expedition generator, so quest and
 	// game routes are exercisable without a network.
-	questsSvc := quests.New(st.Client(), creditsSvc, func(ctx context.Context) (llm.Provider, error) {
+	questsSvc := quests.New(st.Client(), creditsSvc, func(ctx context.Context, familySpaceID string) (llm.Provider, error) {
 		return llm.NewMockProvider(llm.MockResponse{Content: []byte(testGenBatchJSON)}), nil
 	})
 	gameMgr := game.NewManager(game.Config{

@@ -835,7 +835,8 @@ func (s *SessionScreen) saveSnapshotWithProfile(ctx context.Context) {
 		snapData.MasteredSet = masteredSet
 	}
 
-	_ = sess.SaveSnapshotWithProfile(ctx, s.snapRepo, s.compressor, s.state, snapData)
+	// The CLI is single-learner: its rows carry the local owner ID.
+	_ = sess.SaveSnapshotWithProfile(ctx, store.LocalOwner, s.snapRepo, s.compressor, s.state, snapData)
 }
 
 // tickCmd returns a 1-second tick command.

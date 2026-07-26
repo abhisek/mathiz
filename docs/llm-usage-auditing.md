@@ -17,10 +17,25 @@ Output columns: ID, timestamp, purpose, model, input/output tokens, latency (ms)
 | Purpose | Description |
 |---------|-------------|
 | `question-gen` | Math question generation |
+| `quest-gen` | Parent-authored quest generation (`mathiz serve` only) |
 | `lesson` | Micro-lesson generation |
 | `diagnosis` | Error diagnosis (misconception detection) |
 | `session-compress` | Context compression |
 | `profile` | Learner profile generation |
+
+### Event ownership (`mathiz serve`)
+
+Every event row is owner-scoped. Child-driven calls (`question-gen`, `lesson`,
+`diagnosis`, `session-compress`, `profile`) are recorded under the **child
+profile UID**. Quest generation is parent-initiated and belongs to no single
+child, so `quest-gen` events are recorded under a **family-space owner**,
+`space:<familySpaceUID>` (`quests.LLMOwnerID`). Query it like any other owner:
+
+```sql
+SELECT purpose, model, latency_ms, input_tokens, output_tokens
+FROM llm_request_events
+WHERE owner_id = 'space:<familySpaceUID>' ORDER BY timestamp DESC;
+```
 
 ## View full request and response
 

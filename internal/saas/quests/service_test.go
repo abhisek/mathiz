@@ -18,6 +18,7 @@ import (
 // questEnv is a full in-memory control plane: two families, one child each.
 type questEnv struct {
 	client  *ent.Client
+	st      *store.Store
 	family  *family.Service
 	credits *credits.Service
 
@@ -33,7 +34,7 @@ func newQuestEnv(t *testing.T) *questEnv {
 	}
 	t.Cleanup(func() { st.Close() })
 
-	e := &questEnv{client: st.Client(), family: family.New(st.Client()), credits: credits.New(st.Client())}
+	e := &questEnv{client: st.Client(), st: st, family: family.New(st.Client()), credits: credits.New(st.Client())}
 	ctx := context.Background()
 	bootstrap := func(sb, name string) (string, string, string) {
 		acct, err := e.family.EnsureAccount(ctx, sb, sb+"@example.com", name)
@@ -58,7 +59,7 @@ func newQuestEnv(t *testing.T) *questEnv {
 // mockProviderFactory returns a factory serving the given canned responses.
 func mockProviderFactory(responses ...llm.MockResponse) ProviderFactory {
 	provider := llm.NewMockProvider(responses...)
-	return func(ctx context.Context) (llm.Provider, error) { return provider, nil }
+	return func(ctx context.Context, familySpaceID string) (llm.Provider, error) { return provider, nil }
 }
 
 // goodBatchJSON is a valid 2-question generation payload plus one invalid
@@ -568,5 +569,64 @@ func TestAuthzQuestChecks(t *testing.T) {
 	}
 	if err := bare.CanPlayQuest(ctx, childA, q.UID); !errors.Is(err, authz.ErrDenied) {
 		t.Errorf("no directory play: %v", err)
+	}
+}
+
+// TestGenerateLogsLLMUsageToFamilyStream pins the audit trail for AI quest
+// generation. This path used to run with a nil event repo, which left the one
+// LLM call a parent can trigger — and pay credits for — completely unlogged:
+// a hallucinated question could not be traced back to the prompt or response
+// that produced it. The events must land on the family-space stream and must
+// NOT leak into any child's stream.
+func TestGenerateLogsLLMUsageToFamilyStream(t *testing.T) {
+	e := newQuestEnv(t)
+	ctx := context.Background()
+	if err := e.credits.Grant(ctx, e.spaceA, credits.KindTopup, 10, nil, "test:grant-a"); err != nil {
+		t.Fatalf("grant: %v", err)
+	}
+
+	// Mirrors the serve.go wiring: provider wrapped with usage logging on a
+	// repo scoped to the quest's family space.
+	svc := New(e.client, e.credits, func(ctx context.Context, familySpaceID string) (llm.Provider, error) {
+		repo := e.st.EventRepoFor(LLMOwnerID(familySpaceID))
+		mock := llm.NewMockProvider(llm.MockResponse{Content: []byte(goodBatchJSON)})
+		return llm.WithLogging(mock, repo, "mock"), nil
+	})
+
+	q, err := svc.Create(ctx, e.spaceA, "", QuestInput{Name: "Gen quest"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, err := svc.Generate(ctx, q.UID, "HCF word problems", 2, "key-1"); err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+
+	events, err := e.st.EventRepoFor(LLMOwnerID(e.spaceA)).QueryLLMEvents(ctx, store.QueryOpts{})
+	if err != nil {
+		t.Fatalf("query llm events: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("llm events on family stream = %d, want 1", len(events))
+	}
+	if events[0].Purpose != "quest-gen" {
+		t.Errorf("purpose = %q, want %q", events[0].Purpose, "quest-gen")
+	}
+	if events[0].RequestBody == "" || events[0].ResponseBody == "" {
+		t.Error("request/response bodies not captured; the call is not auditable")
+	}
+
+	// Owner isolation: the child's stream must be untouched, and so must
+	// another family's.
+	for name, owner := range map[string]string{
+		"child":       e.childA,
+		"other space": LLMOwnerID(e.spaceB),
+	} {
+		other, err := e.st.EventRepoFor(owner).QueryLLMEvents(ctx, store.QueryOpts{})
+		if err != nil {
+			t.Fatalf("query %s stream: %v", name, err)
+		}
+		if len(other) != 0 {
+			t.Errorf("%s stream has %d quest-gen event(s), want 0", name, len(other))
+		}
 	}
 }

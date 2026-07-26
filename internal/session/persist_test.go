@@ -1,7 +1,10 @@
 package session
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,7 +52,7 @@ func TestRefreshProfileVersionsOnlyChanges(t *testing.T) {
 	)
 
 	// First generation: no previous profile, one event.
-	refreshProfile(ctx, snapRepo, eventRepo, comp, lessons.ProfileInput{}, nil)
+	refreshProfile(ctx, store.LocalOwner, snapRepo, eventRepo, comp, lessons.ProfileInput{}, nil)
 	events, err := eventRepo.QueryLearnerProfileEvents(ctx, store.QueryOpts{})
 	if err != nil {
 		t.Fatalf("query after first refresh: %v", err)
@@ -78,7 +81,7 @@ func TestRefreshProfileVersionsOnlyChanges(t *testing.T) {
 
 	// Identical regeneration (same summary + lists, fresh GeneratedAt): the
 	// snapshot re-saves but no new version event is appended.
-	refreshProfile(ctx, snapRepo, eventRepo, comp, lessons.ProfileInput{}, prev)
+	refreshProfile(ctx, store.LocalOwner, snapRepo, eventRepo, comp, lessons.ProfileInput{}, prev)
 	events, err = eventRepo.QueryLearnerProfileEvents(ctx, store.QueryOpts{})
 	if err != nil {
 		t.Fatalf("query after identical refresh: %v", err)
@@ -88,7 +91,7 @@ func TestRefreshProfileVersionsOnlyChanges(t *testing.T) {
 	}
 
 	// Changed summary: a second version, newest first.
-	refreshProfile(ctx, snapRepo, eventRepo, comp, lessons.ProfileInput{}, prev)
+	refreshProfile(ctx, store.LocalOwner, snapRepo, eventRepo, comp, lessons.ProfileInput{}, prev)
 	events, err = eventRepo.QueryLearnerProfileEvents(ctx, store.QueryOpts{})
 	if err != nil {
 		t.Fatalf("query after changed refresh: %v", err)
@@ -106,7 +109,7 @@ func TestRefreshProfileVersionsOnlyChanges(t *testing.T) {
 	// A nil event repo (profile versioning unwired) must not panic and must
 	// still save the snapshot.
 	comp = compressorWith(llm.MockResponse{Content: []byte(profileJSONv1)})
-	refreshProfile(ctx, snapRepo, nil, comp, lessons.ProfileInput{}, nil)
+	refreshProfile(ctx, store.LocalOwner, snapRepo, nil, comp, lessons.ProfileInput{}, nil)
 	latest, err = snapRepo.Latest(ctx)
 	if err != nil || latest == nil || latest.Data.LearnerProfile == nil || latest.Data.LearnerProfile.Summary != "Solid on addition" {
 		t.Errorf("snapshot after nil-repo refresh = %+v, err %v", latest, err)
@@ -126,7 +129,7 @@ func TestSaveSnapshotWithProfileAppendsVersionEvent(t *testing.T) {
 	state.EventRepo = eventRepo
 
 	comp := compressorWith(llm.MockResponse{Content: []byte(profileJSONv1)})
-	if err := SaveSnapshotWithProfile(ctx, snapRepo, comp, state, store.SnapshotData{Version: 4}); err != nil {
+	if err := SaveSnapshotWithProfile(ctx, store.LocalOwner, snapRepo, comp, state, store.SnapshotData{Version: 4}); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 
@@ -180,5 +183,47 @@ func TestProfileChanged(t *testing.T) {
 		if !profileChanged(base, next) {
 			t.Errorf("%s change not detected", name)
 		}
+	}
+}
+
+// TestRefreshProfileLogsFailures pins the production-visibility contract added
+// for the "placeholder profile" report: a profile refresh that fails must
+// leave a structured, owner-attributable error behind. It used to return
+// silently, which is why the original report could not be confirmed from
+// production data.
+func TestRefreshProfileLogsFailures(t *testing.T) {
+	st := newPersistTestStore(t)
+	ctx := context.Background()
+	owner := "child-abc"
+	snapRepo := st.SnapshotRepoFor(owner)
+	eventRepo := st.EventRepoFor(owner)
+
+	if err := snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now(), Data: store.SnapshotData{Version: 4}}); err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+
+	var logs bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	// An exhausted mock provider fails the generation call.
+	refreshProfile(ctx, owner, snapRepo, eventRepo, compressorWith(), lessons.ProfileInput{}, nil)
+
+	out := logs.String()
+	if !strings.Contains(out, `"level":"ERROR"`) {
+		t.Errorf("failed profile refresh logged no ERROR record; got %q", out)
+	}
+	if !strings.Contains(out, `"owner_id":"`+owner+`"`) {
+		t.Errorf("profile failure log is not owner-attributable; got %q", out)
+	}
+
+	// The previous profile must survive a failed refresh — no version event.
+	events, err := eventRepo.QueryLearnerProfileEvents(ctx, store.QueryOpts{})
+	if err != nil {
+		t.Fatalf("query events: %v", err)
+	}
+	if len(events) != 0 {
+		t.Errorf("failed refresh appended %d profile version(s), want 0", len(events))
 	}
 }
