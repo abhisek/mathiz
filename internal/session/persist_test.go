@@ -10,6 +10,7 @@ import (
 
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/llm"
+	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/store"
 )
 
@@ -127,6 +128,9 @@ func TestSaveSnapshotWithProfileAppendsVersionEvent(t *testing.T) {
 
 	state := NewSessionState(&Plan{}, "sess-1", nil, nil)
 	state.EventRepo = eventRepo
+	// The refresh needs evidence to summarise: a session that answered
+	// nothing is skipped (see TestNoProfileRefreshWithoutQuestions).
+	state.TotalQuestions = 3
 
 	comp := compressorWith(llm.MockResponse{Content: []byte(profileJSONv1)})
 	if err := SaveSnapshotWithProfile(ctx, store.LocalOwner, snapRepo, comp, state, store.SnapshotData{Version: 4}); err != nil {
@@ -225,5 +229,107 @@ func TestRefreshProfileLogsFailures(t *testing.T) {
 	}
 	if len(events) != 0 {
 		t.Errorf("failed refresh appended %d profile version(s), want 0", len(events))
+	}
+}
+
+// TestProfileInputFidelity pins what the profiler is actually told. Each
+// assertion here corresponds to something the prompt previously asserted
+// falsely or unintelligibly.
+func TestProfileInputFidelity(t *testing.T) {
+	st := newPersistTestStore(t)
+	ctx := context.Background()
+	owner := "child-fidelity"
+	snapRepo := st.SnapshotRepoFor(owner)
+
+	// Two real skills from the graph: one practised, one only planned.
+	all := skillgraph.AllSkills()
+	if len(all) < 2 {
+		t.Fatal("need at least two skills in the graph")
+	}
+	practised, untouched := all[0], all[1]
+
+	state := &SessionState{
+		TotalQuestions: 3,
+		PerSkillResults: map[string]*SkillResult{
+			practised.ID: {SkillID: practised.ID, SkillName: practised.Name, Attempted: 3, Correct: 2},
+			untouched.ID: {SkillID: untouched.ID, SkillName: untouched.Name},
+			// A synthetic untagged-quest skill must never reach the profiler.
+			"quest:abc-123": {SkillID: "quest:abc-123", SkillName: "Captain's quest", Attempted: 4, Correct: 1},
+		},
+		RecentErrors: map[string][]string{
+			practised.ID:    {"Answered 5 for '2+2', correct answer was 4"},
+			"quest:abc-123": {"Answered 7 for 'HCF of 12 and 18', correct answer was 6"},
+		},
+		EventRepo: st.EventRepoFor(owner),
+	}
+
+	snapData := store.SnapshotData{Version: 4, Mastery: &store.MasterySnapshotData{
+		Skills: map[string]*store.SkillMasteryData{
+			practised.ID: {
+				SkillID: practised.ID, State: "learning", TotalAttempts: 10, CorrectCount: 8,
+				SpeedScores: []float64{0.9, 0.8}, SpeedWindow: 10, Streak: 4, StreakCap: 8,
+			},
+			"quest:abc-123": {SkillID: "quest:abc-123", State: "learning", TotalAttempts: 4, CorrectCount: 1},
+		},
+	}}
+
+	// A compressor with no canned response fails generation; we only care
+	// about the input that was built, which the mock records.
+	provider := llm.NewMockProvider()
+	comp := lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
+	if err := SaveSnapshotWithProfile(ctx, owner, snapRepo, comp, state, snapData); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	// The refresh is async; wait for the provider to be called.
+	var prompt string
+	for i := 0; i < 100; i++ {
+		if calls := provider.Requests(); len(calls) > 0 {
+			prompt = calls[0].Messages[0].Content
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if prompt == "" {
+		t.Fatal("profile generation was never attempted")
+	}
+
+	if strings.Contains(prompt, "fluency=0.00") {
+		t.Error("prompt still claims zero fluency; it should carry the recomputed score")
+	}
+	if !strings.Contains(prompt, practised.Name) {
+		t.Errorf("prompt does not name the practised skill %q", practised.Name)
+	}
+	if strings.Contains(prompt, untouched.ID) {
+		t.Errorf("prompt reports skill %q the child never attempted", untouched.ID)
+	}
+	if strings.Contains(prompt, "quest:abc-123") || strings.Contains(prompt, "Captain's quest") {
+		t.Error("synthetic untagged-quest skill leaked into the profile prompt")
+	}
+}
+
+// TestNoProfileRefreshWithoutQuestions: a session that asked nothing has no
+// evidence to summarise, and asking anyway is how filler profiles get written.
+func TestNoProfileRefreshWithoutQuestions(t *testing.T) {
+	st := newPersistTestStore(t)
+	ctx := context.Background()
+	owner := "child-empty"
+	snapRepo := st.SnapshotRepoFor(owner)
+
+	provider := llm.NewMockProvider(llm.MockResponse{Content: []byte(profileJSONv1)})
+	comp := lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
+	state := &SessionState{
+		TotalQuestions:  0,
+		PerSkillResults: map[string]*SkillResult{},
+		RecentErrors:    map[string][]string{},
+		EventRepo:       st.EventRepoFor(owner),
+	}
+	if err := SaveSnapshotWithProfile(ctx, owner, snapRepo, comp, state, store.SnapshotData{Version: 4}); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	if n := len(provider.Requests()); n != 0 {
+		t.Errorf("question-less session made %d profile call(s), want 0", n)
 	}
 }

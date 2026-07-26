@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/abhisek/mathiz/internal/lessons"
+	"github.com/abhisek/mathiz/internal/mastery"
+	"github.com/abhisek/mathiz/internal/skillgraph"
 	"github.com/abhisek/mathiz/internal/store"
 )
 
@@ -56,7 +58,11 @@ func SaveSnapshotWithProfile(ctx context.Context, ownerID string, snapRepo store
 	}
 	_ = snapRepo.Prune(ctx, snapshotKeep)
 
-	if compressor == nil {
+	// No profile refresh without evidence. A session that asked nothing has
+	// only untouched plan slots to summarise, and a model asked for strengths
+	// and weaknesses anyway will invent them. The guard lives here rather than
+	// at the call sites so no future caller can miss it.
+	if compressor == nil || state.TotalQuestions == 0 {
 		return nil
 	}
 
@@ -67,15 +73,34 @@ func SaveSnapshotWithProfile(ctx context.Context, ownerID string, snapRepo store
 		ErrorHistory:    make(map[string][]string),
 	}
 	for id, r := range state.PerSkillResults {
-		input.PerSkillResults[id] = lessons.SkillResultSummary{Attempted: r.Attempted, Correct: r.Correct}
+		// Plan slots are pre-seeded for the whole session, so a skill the
+		// child never reached is present with zero attempts. That is absence
+		// of evidence, not a failure — leave it out rather than reporting it
+		// as 0% correct.
+		if r.Attempted == 0 || !curriculumSkill(id) {
+			continue
+		}
+		input.PerSkillResults[id] = lessons.SkillResultSummary{
+			Name: r.SkillName, Attempted: r.Attempted, Correct: r.Correct,
+		}
 	}
 	if snapData.Mastery != nil {
 		for id, skm := range snapData.Mastery.Skills {
-			input.MasteryData[id] = lessons.MasteryDataSummary{State: skm.State}
+			if !curriculumSkill(id) {
+				continue
+			}
+			sum := lessons.MasteryDataSummary{State: skm.State, FluencyScore: snapshotFluency(skm)}
+			if s, err := skillgraph.GetSkill(id); err == nil {
+				sum.Name = s.Name
+			}
+			input.MasteryData[id] = sum
 		}
 	}
 	state.ErrorMu.Lock()
 	for id, errs := range state.RecentErrors {
+		if !curriculumSkill(id) {
+			continue
+		}
 		input.ErrorHistory[id] = append([]string(nil), errs...)
 	}
 	state.ErrorMu.Unlock()
@@ -147,6 +172,36 @@ func refreshProfile(ctx context.Context, ownerID string, snapRepo store.Snapshot
 	}); err != nil {
 		slog.Error("session: append learner profile event", "owner_id", ownerID, "err", err)
 	}
+}
+
+// curriculumSkill reports whether an ID names a real skill in the graph.
+//
+// Not everything the session engine tracks is curriculum: an untagged quest
+// plays under a synthetic "quest:<uid>" skill (specs/15-quests.md), and stale
+// IDs can survive in old snapshots. Feeding those to the profiler asks the
+// model to reason about an opaque token. Testing graph membership — rather
+// than matching a prefix — covers both cases and needs no shared magic string.
+func curriculumSkill(id string) bool {
+	_, err := skillgraph.GetSkill(id)
+	return err == nil
+}
+
+// snapshotFluency recomputes a skill's fluency score from the raw metrics the
+// snapshot already carries. The score is derived, never stored, so this is the
+// same computation mastery.SkillMastery.FluencyScore performs — done here
+// against snapshot data so it cannot touch live service state.
+func snapshotFluency(skm *store.SkillMasteryData) float64 {
+	metrics := mastery.FluencyMetrics{
+		SpeedScores: skm.SpeedScores,
+		SpeedWindow: skm.SpeedWindow,
+		Streak:      skm.Streak,
+		StreakCap:   skm.StreakCap,
+	}
+	var accuracy float64
+	if skm.TotalAttempts > 0 {
+		accuracy = float64(skm.CorrectCount) / float64(skm.TotalAttempts)
+	}
+	return mastery.FluencyScore(&metrics, accuracy)
 }
 
 // profileChanged reports whether the freshly generated profile differs in

@@ -9,10 +9,10 @@ import (
 
 // Lesson is an LLM-generated micro-lesson for a specific skill and error pattern.
 type Lesson struct {
-	SkillID       string
-	Title         string
-	Explanation   string
-	WorkedExample string
+	SkillID          string
+	Title            string
+	Explanation      string
+	WorkedExample    string
 	PracticeQuestion PracticeQuestion
 }
 
@@ -52,13 +52,17 @@ type ProfileInput struct {
 }
 
 // SkillResultSummary is a simplified skill result for profile generation.
+// Name is the human-readable skill name; the map key is the skill ID, which
+// means nothing to the model on its own.
 type SkillResultSummary struct {
+	Name      string
 	Attempted int
 	Correct   int
 }
 
 // MasteryDataSummary is a simplified mastery state for profile generation.
 type MasteryDataSummary struct {
+	Name         string
 	State        string
 	FluencyScore float64
 }

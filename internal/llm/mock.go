@@ -71,3 +71,12 @@ func (m *MockProvider) CallCount() int {
 	defer m.mu.Unlock()
 	return len(m.Calls)
 }
+
+// Requests returns a copy of the recorded requests. Use this rather than
+// reading Calls directly when the provider may be driven from another
+// goroutine — several callers generate asynchronously.
+func (m *MockProvider) Requests() []Request {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]Request(nil), m.Calls...)
+}
