@@ -146,10 +146,6 @@ export default function HowItWorks() {
         Start free →
       </Link>
 
-      <p className="legal-back muted">
-        <Link to="/">← Back to Mathiz</Link> · <Link to="/demo">Watch the demo</Link> ·{' '}
-        <Link to="/pricing">Pricing</Link>
-      </p>
     </div>
   )
 }

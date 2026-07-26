@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ensureAnalyticsBooted, track } from '../analytics'
-import ShareMathiz from '../components/ShareMathiz'
 
 // The front door: Supabase-free (kids never pay the auth boot cost), just
 // two clearly-signed paths — parents to sign-in, kids to the join code.
@@ -110,16 +109,6 @@ export default function Landing() {
         </ol>
       </section>
 
-      <footer className="landing-footer">
-        <Link to="/demo">Demo</Link>
-        <Link to="/how-it-works">How it works</Link>
-        <Link to="/pricing">Pricing</Link>
-        <Link to="/terms">Terms</Link>
-        <Link to="/privacy">Privacy</Link>
-        <Link to="/contact">Contact</Link>
-        <ShareMathiz variant="link" />
-        <span>© Mathiz</span>
-      </footer>
     </div>
   )
 }
