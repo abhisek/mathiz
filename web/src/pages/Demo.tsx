@@ -14,8 +14,10 @@ const DEMO_VIDEO_URL = 'https://cdn.mathiz.app/demo/mathiz-launch-demo-20260726.
 
 export default function Demo() {
   useEffect(() => {
-    void ensureAnalyticsBooted('public')
-    track.demoViewed()
+    // Chained, not fired alongside: booting is async and track calls no-op
+    // before the client exists, so on a cold /demo visit — the shared-link
+    // case this page is built for — the view would go uncounted.
+    void ensureAnalyticsBooted('public').then(() => track.demoViewed())
   }, [])
 
   // First play only — pause/resume must not double count.
