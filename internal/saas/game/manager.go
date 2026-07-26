@@ -839,7 +839,7 @@ func (e *expedition) saveSnapshot(ctx context.Context) {
 	if e.tools != nil && e.state.TotalQuestions > 0 {
 		compressor = e.tools.Compressor
 	}
-	if err := sess.SaveSnapshotWithProfile(ctx, e.snapRepo, compressor, e.state, snapData); err != nil {
+	if err := sess.SaveSnapshotWithProfile(ctx, e.childUID, e.snapRepo, compressor, e.state, snapData); err != nil {
 		slog.Error("game: save snapshot", "child_uid", e.childUID, "err", err)
 	}
 }

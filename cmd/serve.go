@@ -148,10 +148,14 @@ func runServe(ctx context.Context) error {
 
 	// Parent quests: authoring + AI generation (specs/15-quests.md). The
 	// generation debit goes through the same credit ledger; with billing
-	// off (creditsSvc nil) generation is free. LLM provider from env, no
-	// child event stream (generation is parent-initiated).
-	questsSvc := quests.New(st.Client(), creditsSvc, func(ctx context.Context) (llm.Provider, error) {
-		return llm.NewProviderFromEnv(ctx, nil)
+	// off (creditsSvc nil) generation is free.
+	//
+	// Usage is logged to a family-space-scoped event stream: generation is
+	// parent-initiated so there is no child to attribute it to, but leaving
+	// it unlogged made bad AI output impossible to investigate after the
+	// fact and hid a billed action from cost accounting.
+	questsSvc := quests.New(st.Client(), creditsSvc, func(ctx context.Context, familySpaceID string) (llm.Provider, error) {
+		return llm.NewProviderFromEnv(ctx, st.EventRepoFor(quests.LLMOwnerID(familySpaceID)))
 	})
 
 	// Activity timeline read model: merges the child's event streams for the

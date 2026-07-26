@@ -126,7 +126,7 @@ func (s *Service) Generate(ctx context.Context, questUID, brief string, count in
 	if s.provider == nil {
 		return nil, ErrNoProvider
 	}
-	provider, err := s.provider(ctx)
+	provider, err := s.provider(ctx, q.FamilySpaceID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrNoProvider, err)
 	}

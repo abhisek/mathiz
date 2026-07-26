@@ -58,7 +58,18 @@ const GenerateCostDivisor = 5
 
 // ProviderFactory builds an LLM provider for quest generation. Nil (or an
 // error) means AI generation is unavailable; manual authoring still works.
-type ProviderFactory func(ctx context.Context) (llm.Provider, error)
+//
+// familySpaceID identifies the family the generation is billed to, so the
+// caller can attach a usage-logging event stream scoped to it — see
+// LLMOwnerID. Quest generation is parent-initiated and belongs to no single
+// child, which is why it is not scoped by child UID like every other LLM path.
+type ProviderFactory func(ctx context.Context, familySpaceID string) (llm.Provider, error)
+
+// LLMOwnerID is the event-stream owner under which a family's quest-generation
+// LLM calls are recorded. The prefix keeps this stream disjoint from every
+// child's stream (child UIDs are bare IDs), so the store's owner guard isolates
+// it exactly like any other owner without a schema change.
+func LLMOwnerID(familySpaceID string) string { return "space:" + familySpaceID }
 
 // Service implements quest operations on top of the ent client.
 // credits may be nil (billing off → generation is free).
