@@ -32,10 +32,13 @@ MATHIZ_OPENAI_BASE_URL="http://127.0.0.1:9993/v1" \
 ./bin/mathiz serve &
 ```
 
-The stub answers every question with "What is 12 + 7?" (answer **19**) and
-serves a canned micro-lesson (practice answer **19**) when the request's
-JSON-schema name is `micro-lesson`. Diagnosis/profile calls fail to parse
-harmlessly (they're async best-effort).
+The stub dispatches on the request's JSON-schema name: `micro-lesson` → a
+canned lesson (practice answer **19**), `learner-profile` → a well-formed
+profile (it must pass the server's structural validation or the refresh is
+rejected and the previous profile kept), `quest-questions` → a 2-question
+batch for parent quest generation. Anything else gets the default question,
+"What is 12 + 7?" (answer **19**). Diagnosis calls fall through to that and
+fail to parse harmlessly (async best-effort).
 
 ## 3. Parent onboarding via API (mint a JWT, no Supabase)
 
