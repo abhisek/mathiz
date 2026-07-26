@@ -846,9 +846,16 @@ func (e *expedition) saveSnapshot(ctx context.Context) {
 		}
 	}
 
-	// No profile refresh for an expedition that never asked a question.
+	// Untagged quest expeditions leave the learner profile alone for the same
+	// reason the block above leaves mastery and spaced-rep alone: their
+	// content is off-curriculum and plays under a synthetic skill, so it is
+	// not evidence about the child's progress through the graph. Tagged
+	// quests are real skills and do feed the profile.
+	//
+	// A question-less expedition is skipped inside SaveSnapshotWithProfile,
+	// which guards every caller rather than just this one.
 	var compressor *lessons.Compressor
-	if e.tools != nil && e.state.TotalQuestions > 0 {
+	if e.tools != nil && (e.quest == nil || e.quest.tagged) {
 		compressor = e.tools.Compressor
 	}
 	if err := sess.SaveSnapshotWithProfile(ctx, e.childUID, e.snapRepo, compressor, e.state, snapData); err != nil {

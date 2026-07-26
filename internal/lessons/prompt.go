@@ -76,22 +76,32 @@ func buildProfileUserMessage(input ProfileInput) string {
 
 	b.WriteString("Session Results:\n")
 	for skillID, result := range input.PerSkillResults {
-		var pct float64
-		if result.Attempted > 0 {
-			pct = float64(result.Correct) / float64(result.Attempted) * 100
+		// A skill with no attempts carries no signal; rendering it as "0%"
+		// reads to the model as failure rather than absence.
+		if result.Attempted == 0 {
+			continue
 		}
-		b.WriteString(fmt.Sprintf("- %s: %d attempted, %d correct (%.0f%%)\n", skillID, result.Attempted, result.Correct, pct))
+		pct := float64(result.Correct) / float64(result.Attempted) * 100
+		b.WriteString(fmt.Sprintf("- %s: %d attempted, %d correct (%.0f%%)\n",
+			skillLabel(skillID, result.Name), result.Attempted, result.Correct, pct))
 	}
 
 	b.WriteString("\nMastery State:\n")
 	for skillID, data := range input.MasteryData {
-		b.WriteString(fmt.Sprintf("- %s: state=%s, fluency=%.2f\n", skillID, data.State, data.FluencyScore))
+		b.WriteString(fmt.Sprintf("- %s: state=%s, fluency=%.2f\n",
+			skillLabel(skillID, data.Name), data.State, data.FluencyScore))
 	}
 
 	if len(input.ErrorHistory) > 0 {
 		b.WriteString("\nError History:\n")
 		for skillID, errors := range input.ErrorHistory {
-			b.WriteString(fmt.Sprintf("### %s\n", skillID))
+			name := ""
+			if r, ok := input.PerSkillResults[skillID]; ok {
+				name = r.Name
+			} else if m, ok := input.MasteryData[skillID]; ok {
+				name = m.Name
+			}
+			b.WriteString(fmt.Sprintf("### %s\n", skillLabel(skillID, name)))
 			for _, e := range errors {
 				b.WriteString(fmt.Sprintf("- %s\n", e))
 			}
@@ -102,6 +112,9 @@ func buildProfileUserMessage(input ProfileInput) string {
 		b.WriteString(fmt.Sprintf("\nPrevious Profile:\n%s\n", input.PreviousProfile.Summary))
 		b.WriteString(fmt.Sprintf("Strengths: %s\n", strings.Join(input.PreviousProfile.Strengths, ", ")))
 		b.WriteString(fmt.Sprintf("Weaknesses: %s\n", strings.Join(input.PreviousProfile.Weaknesses, ", ")))
+		// Patterns are demanded back out by the schema, so withholding the
+		// previous ones made them churn from scratch every session.
+		b.WriteString(fmt.Sprintf("Patterns: %s\n", strings.Join(input.PreviousProfile.Patterns, ", ")))
 	}
 
 	b.WriteString(`
@@ -115,4 +128,14 @@ Create a concise learner profile:
 If a previous profile exists, update it with new evidence rather than starting fresh. Keep all entries concise (5-10 words each for strengths/weaknesses/patterns).`)
 
 	return b.String()
+}
+
+// skillLabel renders a skill for the model: its name when known, with the ID
+// alongside for traceability. A bare ID like "mult-2digit" is not something
+// the model can reason about.
+func skillLabel(id, name string) string {
+	if name == "" {
+		return id
+	}
+	return fmt.Sprintf("%s (%s)", name, id)
 }
