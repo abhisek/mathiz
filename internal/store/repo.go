@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -88,9 +89,17 @@ type SnapshotRepo interface {
 	// Latest returns the most recent snapshot, or nil if none exist.
 	Latest(ctx context.Context) (*Snapshot, error)
 
+	// UpdateLearnerProfile replaces the learner profile on the most recent
+	// snapshot in place, without appending a row or touching any other
+	// field. Returns ErrNoSnapshot when the owner has no snapshot yet.
+	UpdateLearnerProfile(ctx context.Context, profile *LearnerProfileData) error
+
 	// Prune deletes all but the N most recent snapshots.
 	Prune(ctx context.Context, keep int) error
 }
+
+// ErrNoSnapshot means an update targeted an owner with no snapshot yet.
+var ErrNoSnapshot = errors.New("store: no snapshot exists")
 
 // LLMRequestEventData captures the data for a single LLM request event.
 type LLMRequestEventData struct {

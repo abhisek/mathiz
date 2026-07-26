@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -168,6 +169,32 @@ func TestOwnerIsolationSnapshots(t *testing.T) {
 	}
 	if snap == nil {
 		t.Fatal("bob's prune deleted alice's snapshot")
+	}
+
+	// A profile update for bob must not find, or write to, alice's snapshot.
+	if err := bob.UpdateLearnerProfile(ctx, &LearnerProfileData{Summary: "bob's profile"}); !errors.Is(err, ErrNoSnapshot) {
+		t.Fatalf("bob update learner profile = %v, want ErrNoSnapshot", err)
+	}
+	snap, err = alice.Latest(ctx)
+	if err != nil {
+		t.Fatalf("alice latest after bob update: %v", err)
+	}
+	if snap.Data.LearnerProfile != nil {
+		t.Fatal("bob's profile update wrote into alice's snapshot")
+	}
+
+	if err := alice.UpdateLearnerProfile(ctx, &LearnerProfileData{Summary: "alice's profile"}); err != nil {
+		t.Fatalf("alice update learner profile: %v", err)
+	}
+	snap, err = alice.Latest(ctx)
+	if err != nil {
+		t.Fatalf("alice latest after own update: %v", err)
+	}
+	if snap.Data.LearnerProfile == nil || snap.Data.LearnerProfile.Summary != "alice's profile" {
+		t.Errorf("alice profile = %+v, want her own update", snap.Data.LearnerProfile)
+	}
+	if snap.Data.Version != 7 {
+		t.Errorf("version = %d, want 7 — the update clobbered other snapshot fields", snap.Data.Version)
 	}
 }
 

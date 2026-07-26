@@ -42,12 +42,13 @@ func SaveSnapshotWithProfile(ctx context.Context, ownerID string, snapRepo store
 	prev, err := snapRepo.Latest(ctx)
 	switch {
 	case err != nil:
-		// The profile is NOT carried into the snapshot we're about to write,
-		// so this read failure silently drops it until the next successful
-		// refresh. Recovering it from the learner-profile event stream is
-		// tracked separately; log loudly so the loss is at least visible.
+		// Without a fallback the profile would simply not be carried into the
+		// snapshot we're about to write — silently dropped until something
+		// regenerates it. The versioned event stream holds every profile the
+		// child has had, so recover the newest from there.
 		slog.Error("session: load previous snapshot for profile carry-over",
 			"owner_id", ownerID, "err", err)
+		prevProfile = recoverProfile(ctx, ownerID, state.EventRepo)
 	case prev != nil:
 		prevProfile = prev.Data.LearnerProfile
 	}
@@ -137,16 +138,6 @@ func refreshProfile(ctx context.Context, ownerID string, snapRepo store.Snapshot
 		slog.Error("session: generate learner profile returned no profile", "owner_id", ownerID)
 		return
 	}
-	latest, err := snapRepo.Latest(ctx)
-	if err != nil {
-		slog.Error("session: load snapshot for learner profile", "owner_id", ownerID, "err", err)
-		return
-	}
-	if latest == nil {
-		// The caller just saved one, so this should be unreachable.
-		slog.Error("session: no snapshot to attach learner profile to", "owner_id", ownerID)
-		return
-	}
 	newProfile := &store.LearnerProfileData{
 		Summary:     profile.Summary,
 		Strengths:   profile.Strengths,
@@ -154,9 +145,13 @@ func refreshProfile(ctx context.Context, ownerID string, snapRepo store.Snapshot
 		Patterns:    profile.Patterns,
 		GeneratedAt: profile.GeneratedAt.UTC().Format(time.RFC3339),
 	}
-	latest.Data.LearnerProfile = newProfile
-	if err := snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now(), Data: latest.Data}); err != nil {
+	// In place, rather than loading the snapshot and saving a modified copy:
+	// this goroutine outlives the play slot, so a copy written back after a
+	// later session's save would revert that session's progress.
+	if err := snapRepo.UpdateLearnerProfile(ctx, newProfile); err != nil {
 		slog.Error("session: save learner profile", "owner_id", ownerID, "err", err)
+		// Nothing was stored, so don't claim a new version below.
+		return
 	}
 	// Version the profile as an owner-scoped event, but only when its
 	// content changed — an identical regeneration is not a new version.
@@ -171,6 +166,34 @@ func refreshProfile(ctx context.Context, ownerID string, snapRepo store.Snapshot
 		GeneratedAt: newProfile.GeneratedAt,
 	}); err != nil {
 		slog.Error("session: append learner profile event", "owner_id", ownerID, "err", err)
+	}
+}
+
+// recoverProfile reads the newest learner-profile version from the event
+// stream. It is the fallback for a failed snapshot read: losing the child's
+// profile costs question personalisation until the next refresh, and the
+// event stream exists precisely so profile history survives independently of
+// snapshots. Best-effort — a failure here just means no carry-over.
+func recoverProfile(ctx context.Context, ownerID string, eventRepo store.EventRepo) *store.LearnerProfileData {
+	if eventRepo == nil {
+		return nil
+	}
+	recs, err := eventRepo.QueryLearnerProfileEvents(ctx, store.QueryOpts{Limit: 1})
+	if err != nil {
+		slog.Error("session: recover learner profile from events", "owner_id", ownerID, "err", err)
+		return nil
+	}
+	if len(recs) == 0 {
+		return nil
+	}
+	r := recs[0]
+	slog.Warn("session: recovered learner profile from event stream", "owner_id", ownerID)
+	return &store.LearnerProfileData{
+		Summary:     r.Summary,
+		Strengths:   r.Strengths,
+		Weaknesses:  r.Weaknesses,
+		Patterns:    r.Patterns,
+		GeneratedAt: r.GeneratedAt,
 	}
 }
 

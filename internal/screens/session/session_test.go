@@ -131,6 +131,14 @@ func (m *mockSnapshotRepo) Latest(_ context.Context) (*store.Snapshot, error) {
 	}
 	return m.snapshots[len(m.snapshots)-1], nil
 }
+func (m *mockSnapshotRepo) UpdateLearnerProfile(_ context.Context, profile *store.LearnerProfileData) error {
+	if len(m.snapshots) == 0 {
+		return store.ErrNoSnapshot
+	}
+	// In place, like the real repo: no new snapshot row.
+	m.snapshots[len(m.snapshots)-1].Data.LearnerProfile = profile
+	return nil
+}
 func (m *mockSnapshotRepo) Prune(_ context.Context, _ int) error {
 	return nil
 }
