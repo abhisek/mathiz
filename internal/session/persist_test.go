@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,6 +30,51 @@ func newPersistTestStore(t *testing.T) *store.Store {
 
 func compressorWith(responses ...llm.MockResponse) *lessons.Compressor {
 	return lessons.NewCompressor(llm.NewMockProvider(responses...), lessons.DefaultCompressorConfig())
+}
+
+// signalProvider is a canned-response llm.Provider that announces every call.
+// The profile refresh runs in a goroutine the caller gets no handle on, so
+// tests wait on this signal instead of polling a mock: it returns the instant
+// the goroutine lands, which means the timeout can be generous without
+// slowing a healthy run or flaking on a loaded one.
+type signalProvider struct {
+	mu       sync.Mutex
+	requests []llm.Request
+	called   chan struct{}
+	content  []byte
+}
+
+func newSignalProvider(content []byte) *signalProvider {
+	return &signalProvider{called: make(chan struct{}, 4), content: content}
+}
+
+func (p *signalProvider) Generate(_ context.Context, req llm.Request) (*llm.Response, error) {
+	p.mu.Lock()
+	p.requests = append(p.requests, req)
+	p.mu.Unlock()
+	select {
+	case p.called <- struct{}{}:
+	default: // never block the goroutine under test
+	}
+	if p.content == nil {
+		return nil, &llm.ErrProviderUnavailable{}
+	}
+	return &llm.Response{Content: p.content, Model: "signal"}, nil
+}
+
+func (p *signalProvider) ModelID() string { return "signal" }
+
+// firstPrompt waits for the refresh goroutine's call and returns its prompt.
+func (p *signalProvider) firstPrompt(t *testing.T) string {
+	t.Helper()
+	select {
+	case <-p.called:
+	case <-time.After(10 * time.Second):
+		t.Fatal("profile generation was never attempted")
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.requests[0].Messages[0].Content
 }
 
 // TestRefreshProfileVersionsOnlyChanges drives the profile-refresh body
@@ -273,26 +319,15 @@ func TestProfileInputFidelity(t *testing.T) {
 		},
 	}}
 
-	// A compressor with no canned response fails generation; we only care
-	// about the input that was built, which the mock records.
-	provider := llm.NewMockProvider()
+	// Generation itself fails (no canned content); we only care about the
+	// input that was built, which the provider records.
+	provider := newSignalProvider(nil)
 	comp := lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
 	if err := SaveSnapshotWithProfile(ctx, owner, snapRepo, comp, state, snapData); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 
-	// The refresh is async; wait for the provider to be called.
-	var prompt string
-	for i := 0; i < 100; i++ {
-		if calls := provider.Requests(); len(calls) > 0 {
-			prompt = calls[0].Messages[0].Content
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if prompt == "" {
-		t.Fatal("profile generation was never attempted")
-	}
+	prompt := provider.firstPrompt(t)
 
 	if strings.Contains(prompt, "fluency=0.00") {
 		t.Error("prompt still claims zero fluency; it should carry the recomputed score")
@@ -316,7 +351,7 @@ func TestNoProfileRefreshWithoutQuestions(t *testing.T) {
 	owner := "child-empty"
 	snapRepo := st.SnapshotRepoFor(owner)
 
-	provider := llm.NewMockProvider(llm.MockResponse{Content: []byte(profileJSONv1)})
+	provider := newSignalProvider([]byte(profileJSONv1))
 	comp := lessons.NewCompressor(provider, lessons.DefaultCompressorConfig())
 	state := &SessionState{
 		TotalQuestions:  0,
@@ -328,9 +363,13 @@ func TestNoProfileRefreshWithoutQuestions(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
-	if n := len(provider.Requests()); n != 0 {
-		t.Errorf("question-less session made %d profile call(s), want 0", n)
+	// Proving a call never happens needs a bounded wait, but this way the
+	// bound only decides how long we look — a regression trips the first
+	// case immediately rather than slipping past a fixed sleep.
+	select {
+	case <-provider.called:
+		t.Error("question-less session generated a profile")
+	case <-time.After(250 * time.Millisecond):
 	}
 }
 
