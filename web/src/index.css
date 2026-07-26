@@ -3073,3 +3073,67 @@ table.sessions th {
     display: none;
   }
 }
+
+/* ---- /demo page + landing demo link ---- */
+
+/* Quiet third option under the hero doors: watching is lower commitment
+   than either door, so it reads as a link, not a third door. */
+.landing-demo-link {
+  display: inline-block;
+  margin-top: 1.5rem;
+  color: var(--accent-deep);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.landing-demo-link:hover {
+  text-decoration: underline;
+}
+
+.demo-page {
+  min-height: 100vh;
+  padding: 2.5rem 1.5rem 3.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.demo-brand {
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 2rem;
+}
+
+.demo-page h1 {
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.demo-tag {
+  color: var(--ink-soft);
+  margin: 0.5rem 0 1.75rem;
+}
+
+.demo-video {
+  display: block;
+  width: 100%;
+  max-width: 52rem;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  box-shadow: var(--shadow);
+  background: var(--ink);
+}
+
+.demo-cta {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.demo-home-link {
+  font-size: 0.9rem;
+}

@@ -59,6 +59,10 @@ export default function Landing() {
             <span className="btn btn-kid btn-block">Enter my code</span>
           </Link>
         </div>
+
+        <Link to="/demo" className="landing-demo-link">
+          ▶ Watch the demo <span className="muted">(1 min)</span>
+        </Link>
       </section>
 
       <section className="landing-why">
@@ -107,6 +111,7 @@ export default function Landing() {
       </section>
 
       <footer className="landing-footer">
+        <Link to="/demo">Demo</Link>
         <Link to="/how-it-works">How it works</Link>
         <Link to="/pricing">Pricing</Link>
         <Link to="/terms">Terms</Link>

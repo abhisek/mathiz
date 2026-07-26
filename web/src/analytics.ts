@@ -139,6 +139,10 @@ export const track = {
   // Public funnel
   landingCtaClicked: (persona: 'parent' | 'kid') => capture('landing_cta_clicked', { persona }),
   pricingViewed: () => capture('pricing_viewed'),
+  // Fires when the public /demo page mounts.
+  demoViewed: () => capture('demo_viewed'),
+  // First play press on the /demo video (once per page view).
+  demoPlayClicked: () => capture('demo_play_clicked'),
   // "Tell a friend" button pressed (dashboard sidebar / landing footer);
   // sheet says which experience opened: the OS share sheet or our panel.
   shareOpened: (sheet: 'native' | 'panel') => capture('share_opened', { sheet }),
