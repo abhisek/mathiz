@@ -1,0 +1,158 @@
+<!doctype html>
+<!--
+  Demo video poster — renders to web/public/demo-poster.png (1280×720,
+  the video's own aspect so the poster fills the player edge-to-edge).
+
+  Regenerate after editing:
+    NODE_PATH=$(npm root -g) node web/og/render.cjs
+
+  Same design language as card.html (poster, not webpage), plus a play
+  cue: the one thing a video poster must communicate is "this plays".
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --bg: #faf8f4;
+    --ink: #241f33;
+    --ink-soft: #6f6885;
+    --accent: #6c4ef5;
+    --accent-deep: #5638e0;
+    --accent-soft: #efeafe;
+    --kid: #f59e0b;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  html { overflow: hidden; background: #faf8f4; }
+  body {
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    position: relative;
+  }
+
+  /* ---- map motifs (same language as card.html) ---- */
+  .motif { position: absolute; }
+  svg.route path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 4;
+    stroke-dasharray: 2 18;
+    stroke-linecap: round;
+    opacity: 0.35;
+  }
+  .island { opacity: 0.5; }
+  .island path { fill: var(--kid); opacity: 0.35; }
+  .island .palm { fill: none; stroke: var(--ink-soft); stroke-width: 3; opacity: 0.6; }
+  .compass { opacity: 0.28; }
+  .compass circle { fill: none; stroke: var(--accent-deep); stroke-width: 3; }
+  .compass path { fill: var(--accent-deep); }
+  .xmark {
+    font-family: Georgia, serif;
+    font-weight: 700;
+    color: var(--kid);
+    opacity: 0.55;
+    transform: rotate(-8deg);
+  }
+
+  /* ---- content ---- */
+  .card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 34px;
+    padding: 0 120px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .brand-mark {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: var(--accent);
+    color: #fff;
+    font-family: Georgia, serif;
+    font-size: 46px;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 10px 30px rgb(108 78 245 / 0.35);
+  }
+  .brand-name {
+    font-size: 64px;
+    font-weight: 800;
+    letter-spacing: -1px;
+  }
+  .play {
+    width: 148px;
+    height: 148px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 16px 44px rgb(108 78 245 / 0.45);
+  }
+  .play svg { display: block; margin-left: 10px; }
+  .play path { fill: #fff; }
+  h1 {
+    font-size: 52px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--accent-deep);
+  }
+  .sub {
+    font-size: 28px;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  .sub b { color: var(--kid); font-weight: 800; }
+</style>
+</head>
+<body>
+  <svg class="motif route" style="left:0; top:0; width:1280px; height:720px" viewBox="0 0 1280 720">
+    <path d="M-40 640 C 240 540, 260 340, 500 380 S 960 600, 1320 400" />
+  </svg>
+
+  <svg class="motif island" style="left:36px; bottom:34px; width:240px" viewBox="0 0 300 120">
+    <path d="M0 110 Q 80 40 150 90 Q 230 30 300 100 L300 120 L0 120 Z" />
+    <path class="palm" d="M150 88 C 148 60 152 48 150 40 M150 44 C 138 32 124 30 112 36 M150 44 C 162 30 178 30 190 38" />
+  </svg>
+  <svg class="motif island" style="right:30px; top:44px; width:190px" viewBox="0 0 300 120">
+    <path d="M0 110 Q 90 50 170 95 Q 240 45 300 105 L300 120 L0 120 Z" />
+  </svg>
+
+  <svg class="motif compass" style="left:56px; top:48px; width:120px" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="88" />
+    <circle cx="100" cy="100" r="12" />
+    <path d="M100 10 L110 100 L100 190 L90 100 Z" />
+    <path d="M10 100 L100 90 L190 100 L100 110 Z" />
+  </svg>
+
+  <div class="motif xmark" style="right:64px; bottom:200px; font-size:64px">✕</div>
+
+  <div class="card">
+    <div class="brand">
+      <div class="brand-mark">∑</div>
+      <div class="brand-name">Mathiz</div>
+    </div>
+    <div class="play" aria-hidden="true">
+      <svg width="56" height="64" viewBox="0 0 56 64"><path d="M0 0 L56 32 L0 64 Z" /></svg>
+    </div>
+    <h1>See Mathiz in action —<br /><em>in one minute</em></h1>
+    <p class="sub">A real treasure-map expedition, every question AI-made ⛵</p>
+  </div>
+</body>
+</html>

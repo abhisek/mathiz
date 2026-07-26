@@ -11,6 +11,7 @@ import Play from './pages/Play'
 import { Contact, Privacy, Terms } from './pages/Legal'
 import Pricing from './pages/Pricing'
 import HowItWorks from './pages/HowItWorks'
+import Demo from './pages/Demo'
 import BusyBar from './components/BusyBar'
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
         {/* Pricing + how-it-works + legal pages: static, Supabase-free. */}
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/demo" element={<Demo />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/contact" element={<Contact />} />

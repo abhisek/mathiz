@@ -103,6 +103,8 @@ non-identifying.
 | `share_opened` | `sheet: 'native'\|'panel'` | "Tell a friend" button (`ShareMathiz.tsx`: dashboard sidebar + landing footer) |
 | `share_link_copied` | — | Copy button in the share panel (`ShareMathiz.tsx`) |
 | `how_it_works_viewed` | — | How-it-works mount (`HowItWorks.tsx`) |
+| `demo_viewed` | — | Demo page mount (`Demo.tsx`) |
+| `demo_play_clicked` | — | First play press on the demo video (`Demo.tsx`) |
 | `signin_completed` | — | OTP verify / password sign-in success (`Login.tsx`) |
 | `family_created` | — | Create-family success (`dashboard/Layout.tsx`) |
 | `child_added` | `grade` | Add-child modal success (`dashboard/Kids.tsx`) |

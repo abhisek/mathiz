@@ -147,7 +147,8 @@ export default function HowItWorks() {
       </Link>
 
       <p className="legal-back muted">
-        <Link to="/">← Back to Mathiz</Link> · <Link to="/pricing">Pricing</Link>
+        <Link to="/">← Back to Mathiz</Link> · <Link to="/demo">Watch the demo</Link> ·{' '}
+        <Link to="/pricing">Pricing</Link>
       </p>
     </div>
   )
