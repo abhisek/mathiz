@@ -24,6 +24,11 @@ scripts/db-backup.sh --env-file .env <output-path>
   format. Default to custom unless the user wants to read/diff the SQL.
 - `MATHIZ_PG_BIN=<dir>` overrides tool discovery if needed.
 
+Over the Supabase **session pooler** a dump takes ~30-60s even for tiny
+databases (pg_dump's catalog phase is hundreds of sequential round-trips);
+the script prints per-table progress so this doesn't look like a hang. Never
+point backups at the **transaction pooler** (port 6543) — it breaks pg_dump.
+
 Unless the user names a destination, ask where they want the backup stored
 (or use an obvious one they've used before). Never write backups into the
 repo working tree — the dump contains real tenant data and must not be

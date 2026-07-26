@@ -84,6 +84,13 @@ postgres://* | postgresql://*) ;;
 *) die "MATHIZ_DATABASE_URL is not a PostgreSQL DSN (SQLite files can be copied directly)" ;;
 esac
 
+# Fail fast instead of queueing forever when a connection pooler (e.g. the
+# Supabase session pooler) has no free backend slot.
+case "$MATHIZ_DATABASE_URL" in
+*\?*) DSN="$MATHIZ_DATABASE_URL&connect_timeout=15" ;;
+*) DSN="$MATHIZ_DATABASE_URL?connect_timeout=15" ;;
+esac
+
 # --- 2. Working psql / pg_dump ------------------------------------------------
 # A binary can exist but still be broken (e.g. an asdf shim with no version
 # pinned), so candidates must actually run --version successfully.
@@ -110,8 +117,8 @@ fi
 echo "using $($PG_DUMP --version) [$PG_BIN]"
 
 # --- 3. Connectivity ----------------------------------------------------------
-"$PSQL" "$MATHIZ_DATABASE_URL" -Atc 'select 1' >/dev/null ||
-	die "cannot connect to the database (check MATHIZ_DATABASE_URL / network)"
+"$PSQL" "$DSN" -Atc 'select 1' >/dev/null ||
+	die "cannot connect to the database (check MATHIZ_DATABASE_URL / network; a pooler with no free slots also lands here)"
 
 # --- 4. Dump ------------------------------------------------------------------
 if [ "$FORMAT" = custom ]; then EXT=dump PG_FORMAT=custom; else EXT=sql PG_FORMAT=plain; fi
@@ -123,9 +130,13 @@ fi
 [ -e "$OUTPUT" ] && die "refusing to overwrite existing file: $OUTPUT"
 
 # --no-owner/--no-privileges: hosted providers (Supabase) use roles that won't
-# exist on a restore target.
-"$PG_DUMP" --format="$PG_FORMAT" --no-owner --no-privileges \
-	--file="$OUTPUT" "$MATHIZ_DATABASE_URL"
+# exist on a restore target. --verbose: the catalog phase over a WAN pooler
+# is 30s+ of silence otherwise, which looks like a hang.
+echo "dumping (catalog phase over a remote pooler can take ~30-60s)..."
+"$PG_DUMP" --format="$PG_FORMAT" --no-owner --no-privileges --verbose \
+	--file="$OUTPUT" "$DSN" \
+	2> >(grep --line-buffered -E 'dumping contents of table' >&2 || true)
+[ -s "$OUTPUT" ] || die "pg_dump produced no output"
 
 # --- 5. Verify ----------------------------------------------------------------
 if [ "$VERIFY" = 1 ]; then
