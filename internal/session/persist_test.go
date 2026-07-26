@@ -333,3 +333,106 @@ func TestNoProfileRefreshWithoutQuestions(t *testing.T) {
 		t.Errorf("question-less session made %d profile call(s), want 0", n)
 	}
 }
+
+// TestProfileRefreshDoesNotRevertProgress is the regression test for the
+// lost-update hazard: the refresh goroutine outlives the play slot, so if it
+// wrote a whole modified copy of the snapshot it read, a session that finished
+// in between would have its mastery, spaced-rep and gems silently rolled back.
+// The refresh must touch the profile and nothing else.
+func TestProfileRefreshDoesNotRevertProgress(t *testing.T) {
+	st := newPersistTestStore(t)
+	ctx := context.Background()
+	owner := "child-progress"
+	snapRepo := st.SnapshotRepoFor(owner)
+
+	skill := skillgraph.AllSkills()[0]
+	masteryAt := func(attempts int) *store.MasterySnapshotData {
+		return &store.MasterySnapshotData{Skills: map[string]*store.SkillMasteryData{
+			skill.ID: {SkillID: skill.ID, State: "learning", TotalAttempts: attempts, CorrectCount: attempts},
+		}}
+	}
+
+	// Session A saves, then a later session B saves more progress.
+	if err := snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now(), Data: store.SnapshotData{Version: 4, Mastery: masteryAt(5)}}); err != nil {
+		t.Fatalf("save A: %v", err)
+	}
+	if err := snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now().Add(time.Second), Data: store.SnapshotData{Version: 4, Mastery: masteryAt(20)}}); err != nil {
+		t.Fatalf("save B: %v", err)
+	}
+
+	// Session A's profile refresh lands late.
+	if err := snapRepo.UpdateLearnerProfile(ctx, &store.LearnerProfileData{
+		Summary: "late arrival", Strengths: []string{"addition"},
+	}); err != nil {
+		t.Fatalf("update profile: %v", err)
+	}
+
+	latest, err := snapRepo.Latest(ctx)
+	if err != nil || latest == nil {
+		t.Fatalf("latest: %v", err)
+	}
+	if got := latest.Data.Mastery.Skills[skill.ID].TotalAttempts; got != 20 {
+		t.Errorf("mastery attempts = %d, want 20 — the late profile write reverted progress", got)
+	}
+	if latest.Data.LearnerProfile == nil || latest.Data.LearnerProfile.Summary != "late arrival" {
+		t.Error("profile was not stored on the latest snapshot")
+	}
+}
+
+// TestProfileRefreshDoesNotAddSnapshots: appending a second row per session
+// halved how much history Prune(keep) actually retained.
+func TestProfileRefreshDoesNotAddSnapshots(t *testing.T) {
+	st := newPersistTestStore(t)
+	ctx := context.Background()
+	owner := "child-rows"
+	snapRepo := st.SnapshotRepoFor(owner)
+
+	if err := snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now(), Data: store.SnapshotData{Version: 4}}); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	for i := 0; i < 3; i++ {
+		if err := snapRepo.UpdateLearnerProfile(ctx, &store.LearnerProfileData{
+			Summary: "v", Strengths: []string{"addition"},
+		}); err != nil {
+			t.Fatalf("update %d: %v", i, err)
+		}
+	}
+
+	// Pruning to 1 must leave the single row intact, profile included.
+	if err := snapRepo.Prune(ctx, 1); err != nil {
+		t.Fatalf("prune: %v", err)
+	}
+	latest, err := snapRepo.Latest(ctx)
+	if err != nil || latest == nil {
+		t.Fatalf("latest: %v", err)
+	}
+	if latest.Data.LearnerProfile == nil {
+		t.Error("profile lost; refreshes are still appending rows")
+	}
+}
+
+// TestProfileSurvivesSnapshotReadFailure: when the snapshot read fails, the
+// profile must be recovered from the versioned event stream rather than
+// silently dropped from the snapshot being written.
+func TestProfileSurvivesSnapshotReadFailure(t *testing.T) {
+	st := newPersistTestStore(t)
+	ctx := context.Background()
+	owner := "child-recover"
+	eventRepo := st.EventRepoFor(owner)
+
+	if err := eventRepo.AppendLearnerProfileEvent(ctx, store.LearnerProfileEventData{
+		Summary:    "from the event stream",
+		Strengths:  []string{"addition"},
+		Weaknesses: []string{"regrouping"},
+	}); err != nil {
+		t.Fatalf("seed event: %v", err)
+	}
+
+	got := recoverProfile(ctx, owner, eventRepo)
+	if got == nil {
+		t.Fatal("no profile recovered from the event stream")
+	}
+	if got.Summary != "from the event stream" {
+		t.Errorf("summary = %q, want the newest versioned profile", got.Summary)
+	}
+}
