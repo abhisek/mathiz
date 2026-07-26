@@ -33,7 +33,7 @@ type questionOutput struct {
 
 // Generate produces a single question for the given input context.
 func (g *LLMGenerator) Generate(ctx context.Context, input GenerateInput) (*Question, error) {
-	ctx = llm.WithPurpose(ctx, "question-gen")
+	ctx = llm.WithPurpose(ctx, llm.PurposeQuestionGen)
 
 	userMsg := buildUserMessage(input, g.config)
 

@@ -42,7 +42,7 @@ type compressionOutput struct {
 }
 
 func (c *Compressor) compressSession(ctx context.Context, errors []string) (string, error) {
-	ctx = llm.WithPurpose(ctx, "session-compress")
+	ctx = llm.WithPurpose(ctx, llm.PurposeSessionCompress)
 
 	userMsg := buildCompressionUserMessage(errors)
 
@@ -78,7 +78,7 @@ type profileOutput struct {
 
 // GenerateProfile creates a learner profile from session and mastery data.
 func (c *Compressor) GenerateProfile(ctx context.Context, input ProfileInput) (*LearnerProfile, error) {
-	ctx = llm.WithPurpose(ctx, "profile")
+	ctx = llm.WithPurpose(ctx, llm.PurposeProfile)
 
 	userMsg := buildProfileUserMessage(input)
 
