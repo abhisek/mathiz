@@ -36,6 +36,7 @@ var ErrPrefetcherClosed = errors.New("prefetcher closed")
 // PrefetchConfig configures a Prefetcher.
 type PrefetchConfig struct {
 	// Budget bounds every generation, warm or fresh, from its start.
+	// Zero means no deadline beyond the Generator's own.
 	Budget time.Duration
 	// DisableWarm turns Warm into a no-op (the MATHIZ_QUESTION_PREFETCH=0
 	// off switch). Get still de-duplicates concurrent identical requests.
@@ -60,7 +61,8 @@ func PrefetchDisabledByEnv() bool {
 // not cancel a generation that another caller, or the next tap, waits on.
 // The mutex is never held while waiting on a generator, and replacing or
 // closing only cancels, never joins, so Warm and Close are safe to call
-// under a caller's own lock.
+// under a caller's own lock. The Generator must honour ctx cancellation
+// (LLMGenerator does, through the provider), or a cancelled call runs on.
 type Prefetcher struct {
 	gen  Generator
 	cfg  PrefetchConfig
@@ -84,7 +86,8 @@ type prefetchEntry struct {
 	err      error
 	attempts int
 
-	used bool // handed out by Get at least once (guarded by Prefetcher.mu)
+	used       bool // claimed by a Get (guarded by Prefetcher.mu)
+	usedLogged bool // the "used" outcome was logged (guarded by Prefetcher.mu)
 }
 
 // NewPrefetcher wraps gen. Close it when the session ends.
@@ -113,8 +116,9 @@ func (p *Prefetcher) Warm(input GenerateInput) {
 // Get returns the question for input: the held one when the fingerprint
 // matches (waiting for it if still in flight), otherwise a fresh one. ctx
 // bounds only this caller's wait; on ctx's end the generation carries on,
-// and a later Get with the same input can still use it. A warm that failed
-// is retried fresh once.
+// and a later Get with the same input can still use it. A warm that failed,
+// or any entry cancelled under the caller (replaced or closed), is retried
+// once; after Close that retry reports ErrPrefetcherClosed.
 func (p *Prefetcher) Get(ctx context.Context, input GenerateInput) (Result, error) {
 	fp := fingerprint(input)
 	for retried := false; ; retried = true {
@@ -132,7 +136,7 @@ func (p *Prefetcher) Get(ctx context.Context, input GenerateInput) (Result, erro
 			return Result{Question: e.q, Source: source, Attempts: e.attempts}, nil
 		}
 		p.forget(e)
-		if !e.warm || retried {
+		if retried || (!e.warm && !errors.Is(e.err, context.Canceled)) {
 			return Result{Source: source, Attempts: e.attempts}, e.err
 		}
 	}
@@ -150,14 +154,19 @@ func (p *Prefetcher) claim(fp [sha256.Size]byte, input GenerateInput) (*prefetch
 		select {
 		case <-e.done:
 			if e.err == nil {
+				e.used = true
 				return e, sourceFor(e, SourcePrefetchHit), nil
 			}
 		default:
+			// Claimed now, so a replacement before it lands isn't logged
+			// as an unused warm.
+			e.used = true
 			return e, sourceFor(e, SourcePrefetchJoin), nil
 		}
 	}
 	p.dropLocked("input_changed")
 	p.entry = p.startLocked(fp, input, false)
+	p.entry.used = true
 	return p.entry, SourceFresh, nil
 }
 
@@ -173,10 +182,10 @@ func sourceFor(e *prefetchEntry, warmSource Source) Source {
 func (p *Prefetcher) markUsed(e *prefetchEntry) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if !e.used && e.warm {
+	if e.warm && !e.usedLogged {
 		p.logOutcome(e, "used", "")
 	}
-	e.used = true
+	e.usedLogged = true
 }
 
 // forget drops a failed entry so the next Get starts over.
@@ -202,7 +211,15 @@ func (p *Prefetcher) Close() {
 
 // startLocked launches one generation. Caller holds p.mu.
 func (p *Prefetcher) startLocked(fp [sha256.Size]byte, input GenerateInput, warm bool) *prefetchEntry {
-	ctx, cancel := context.WithTimeout(p.base, p.cfg.Budget)
+	var (
+		ctx    context.Context
+		cancel context.CancelFunc
+	)
+	if p.cfg.Budget > 0 {
+		ctx, cancel = context.WithTimeout(p.base, p.cfg.Budget)
+	} else {
+		ctx, cancel = context.WithCancel(p.base)
+	}
 	ctx, attempts := llm.WithAttemptCounter(ctx)
 	e := &prefetchEntry{fp: fp, warm: warm, started: time.Now(), cancel: cancel, done: make(chan struct{})}
 	input = input.clone()
@@ -213,7 +230,7 @@ func (p *Prefetcher) startLocked(fp [sha256.Size]byte, input GenerateInput, warm
 		close(e.done)
 		// A cancel (replaced or closed) was already logged by dropLocked;
 		// running out of budget is a failure like any other.
-		if err != nil && warm && !errors.Is(ctx.Err(), context.Canceled) {
+		if err != nil && warm && !errors.Is(err, context.Canceled) {
 			p.logOutcome(e, "failed", err.Error())
 		}
 	}()
@@ -248,7 +265,8 @@ func (p *Prefetcher) logOutcome(e *prefetchEntry, outcome, reason string) {
 }
 
 // clone copies the slices, so a generation running in the background never
-// shares memory with the caller's session state.
+// shares memory with the caller's session state. Skill is not deep-copied:
+// skills come from the immutable skill graph.
 func (in GenerateInput) clone() GenerateInput {
 	in.PriorQuestions = slices.Clone(in.PriorQuestions)
 	in.RecentErrors = slices.Clone(in.RecentErrors)
@@ -256,7 +274,9 @@ func (in GenerateInput) clone() GenerateInput {
 }
 
 // fingerprint hashes every GenerateInput field the question depends on.
-// Each field is length-prefixed, so ["ab","c"] and ["a","bc"] differ.
+// Each field is length-prefixed, so ["ab","c"] and ["a","bc"] differ. The
+// skill is identified by ID alone: skills come from the skill graph, where
+// the ID determines every other field.
 func fingerprint(in GenerateInput) [sha256.Size]byte {
 	var buf []byte
 	writeStr := func(s string) {
