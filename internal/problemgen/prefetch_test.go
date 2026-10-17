@@ -126,22 +126,65 @@ func TestPrefetchHit(t *testing.T) {
 func TestPrefetchJoin(t *testing.T) {
 	g := newGateGen()
 	p := newTestPrefetcher(t, g)
-	p.Warm(input("a"))
+	in := input("a")
+	p.Warm(in)
 	g.waitStarted(t)
 
-	got := make(chan Result, 1)
-	go func() {
-		res, _ := p.Get(context.Background(), input("a"))
-		got <- res
-	}()
-	time.Sleep(10 * time.Millisecond) // let Get claim the in-flight warm
-	g.release <- struct{}{}
-	res := <-got
-	if res.Source != SourcePrefetchJoin || res.Question == nil || res.Question.Text != "q1" {
-		t.Fatalf("Get = %+v, want q1 from %s", res, SourcePrefetchJoin)
+	// Claim deterministically while the warm is still in flight.
+	e, source, err := p.claim(fingerprint(in), in)
+	if err != nil || source != SourcePrefetchJoin {
+		t.Fatalf("claim = %s, %v; want %s", source, err, SourcePrefetchJoin)
 	}
-	if g.callCount() != 1 {
-		t.Errorf("calls = %d, want 1", g.callCount())
+	g.release <- struct{}{}
+	<-e.done
+	if e.q == nil || e.q.Text != "q1" || g.callCount() != 1 {
+		t.Fatalf("joined entry = %+v after %d calls; want q1 after 1", e.q, g.callCount())
+	}
+}
+
+func TestPrefetchCancelledFreshEntryRetries(t *testing.T) {
+	g := newGateGen()
+	p := newTestPrefetcher(t, g)
+
+	// A fresh generation for "a" is replaced by a Warm for another input:
+	// its waiter retries instead of surfacing context.Canceled.
+	got := make(chan error, 1)
+	go func() {
+		_, err := p.Get(context.Background(), input("a"))
+		got <- err
+	}()
+	g.waitStarted(t)
+	p.Warm(input("b"))
+	g.waitStarted(t) // the warm for b
+	g.waitStarted(t) // the retry for a, which replaces the warm
+	g.release <- struct{}{}
+	if err := <-got; err != nil {
+		t.Fatalf("Get after its entry was replaced = %v, want a retried question", err)
+	}
+
+	// Close under a waiting Get reports ErrPrefetcherClosed.
+	go func() {
+		_, err := p.Get(context.Background(), input("c"))
+		got <- err
+	}()
+	g.waitStarted(t)
+	p.Close()
+	if err := <-got; !errors.Is(err, ErrPrefetcherClosed) {
+		t.Fatalf("Get across Close = %v, want ErrPrefetcherClosed", err)
+	}
+}
+
+func TestPrefetchZeroBudgetMeansNoDeadline(t *testing.T) {
+	g := newGateGen()
+	p := NewPrefetcher(g, PrefetchConfig{})
+	t.Cleanup(p.Close)
+	go func() {
+		<-g.started
+		time.Sleep(10 * time.Millisecond)
+		g.release <- struct{}{}
+	}()
+	if res, err := p.Get(context.Background(), input("a")); err != nil || res.Question == nil {
+		t.Fatalf("Get with zero budget = %+v, %v", res, err)
 	}
 }
 
