@@ -276,6 +276,7 @@ func TestEnvPositiveInt(t *testing.T) {
 }
 
 func TestDSNSSLMode(t *testing.T) {
+	t.Setenv("PGSSLMODE", "")
 	tests := map[string]string{
 		"postgres://u:p@db:5432/mathiz?sslmode=verify-full": "verify-full",
 		"postgres://u:p@db:5432/mathiz?sslmode=disable":     "disable",
@@ -285,6 +286,10 @@ func TestDSNSSLMode(t *testing.T) {
 		if got := dsnSSLMode(dsn); got != want {
 			t.Errorf("dsnSSLMode(%q) = %q, want %q", dsn, got, want)
 		}
+	}
+	t.Setenv("PGSSLMODE", "require")
+	if got := dsnSSLMode("postgres://u:p@db:5432/mathiz"); got != "require" {
+		t.Errorf("with PGSSLMODE: got %q, want require", got)
 	}
 }
 
