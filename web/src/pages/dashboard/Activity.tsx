@@ -3,7 +3,9 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
   api,
   type ActivityItem,
-  type ActivitySessionDetail, type TokenGetter } from '../../api'
+  type ActivitySessionDetail,
+  type TokenGetter,
+} from '../../api'
 import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'

@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
+import { sessionEndedByServer } from '../auth'
 
 // The /login page shell. The sign-in form itself comes from the
 // deployment's auth adapter (src/auth/), so this page names no provider.
@@ -16,6 +17,9 @@ export default function Login({ SignIn }: { SignIn: ComponentType }) {
           for <em>your</em> child — never from a worksheet.
         </p>
 
+        {sessionEndedByServer() && (
+          <p className="form-notice">Your session ended. Please sign in again.</p>
+        )}
         <SignIn />
 
         <div className="kid-door">
