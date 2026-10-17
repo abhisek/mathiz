@@ -34,11 +34,27 @@ type Store struct {
 // Open creates a new Store from a DSN. DSNs starting with postgres:// or
 // postgresql:// open a PostgreSQL connection (SaaS mode); anything else is
 // treated as a SQLite file path (local mode). Auto-migration runs either way.
-func Open(dsn string) (*Store, error) {
+func Open(dsn string, opts ...Option) (*Store, error) {
 	if IsPostgresDSN(dsn) {
-		return open(dsn, dialect.Postgres, "pgx")
+		return open(dsn, dialect.Postgres, "pgx", opts)
 	}
-	return open(dsn, dialect.SQLite, "sqlite")
+	return open(dsn, dialect.SQLite, "sqlite", opts)
+}
+
+// Option configures Open.
+type Option func(*openOptions)
+
+type openOptions struct {
+	beforeMigrate []func(context.Context, *Store) error
+}
+
+// BeforeMigrate runs check on the raw database before auto-migrate. A
+// check that must see the schema as an older release left it (a column
+// this release removed) has to run here: auto-migrate may fail on that
+// schema first, with an error that doesn't name the fix. Only DB(),
+// ColumnExists and the dialect are usable at that point.
+func BeforeMigrate(check func(context.Context, *Store) error) Option {
+	return func(o *openOptions) { o.beforeMigrate = append(o.beforeMigrate, check) }
 }
 
 // IsPostgresDSN reports whether the DSN targets PostgreSQL.
@@ -46,7 +62,12 @@ func IsPostgresDSN(dsn string) bool {
 	return strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://")
 }
 
-func open(dsn, entDialect, driver string) (*Store, error) {
+func open(dsn, entDialect, driver string, opts []Option) (*Store, error) {
+	var o openOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	db, err := sql.Open(driver, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
@@ -63,6 +84,13 @@ func open(dsn, entDialect, driver string) (*Store, error) {
 		}
 	} else {
 		if err := configurePostgres(db, dsn); err != nil {
+			db.Close()
+			return nil, err
+		}
+	}
+
+	for _, check := range o.beforeMigrate {
+		if err := check(context.Background(), &Store{db: db, dialect: entDialect}); err != nil {
 			db.Close()
 			return nil, err
 		}
@@ -92,8 +120,10 @@ func open(dsn, entDialect, driver string) (*Store, error) {
 func (s *Store) ColumnExists(ctx context.Context, table, column string) (bool, error) {
 	var q string
 	if s.dialect == dialect.Postgres {
-		q = `SELECT COUNT(*) FROM information_schema.columns
-			WHERE table_schema = current_schema() AND table_name = $1 AND column_name = $2`
+		// to_regclass resolves the table through search_path, as queries
+		// do, and is NULL (count 0) when the table doesn't exist.
+		q = `SELECT COUNT(*) FROM pg_attribute
+			WHERE attrelid = to_regclass($1) AND attname = $2 AND NOT attisdropped`
 	} else {
 		q = `SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`
 	}
