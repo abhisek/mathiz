@@ -22,7 +22,7 @@ func (LLMRequestEvent) Fields() []ent.Field {
 		field.String("model").
 			Comment("Actual model ID used"),
 		field.String("purpose").
-			Comment("Consumer-provided label: question-gen, hint, lesson, diagnosis"),
+			Comment("Consumer-provided label (llm.Purpose*): question-gen, quest-gen, lesson, error-diagnosis, session-compress, profile"),
 		field.Int("input_tokens").
 			Default(0).
 			Comment("Tokens in the request"),

@@ -152,6 +152,10 @@ func Validate() error
 
 ## Diagnostic Placement
 
+> **Not implemented.** Only the `skillgraph.DiagnosticResult` stub exists
+> (`internal/skillgraph/diagnostic.go`). New learners start from the root
+> skill. The design below is kept for reference.
+
 On first launch (no learner data exists), Mathiz runs a **top-down probing** diagnostic quiz to skip the learner past already-known skills.
 
 ### Algorithm

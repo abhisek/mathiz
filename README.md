@@ -104,7 +104,7 @@ But the system is designed to support multiple standards and curriculum.
 
 ## Build from source
 
-Requires Go 1.25+ (and Node 20+ for the hosted-mode web app).
+Requires Go 1.27+ (and Node 20+ for the hosted-mode web app).
 
 ```sh
 git clone https://github.com/abhisek/mathiz.git

@@ -31,8 +31,9 @@ const ownerIDColumn = "owner_id"
 
 // ownerScopedTypes lists every ent type whose rows belong to a single
 // learner: all event schemas embedding EventMixin, plus Snapshot.
-// Family-scoped control-plane types (Account, FamilySpace, ChildProfile,
-// Invite, DeviceToken, CreditEntry, BillingState) are intentionally NOT
+// Family-scoped control-plane types (Account, FamilySpace, FamilyMember,
+// ChildProfile, Invite, ParentInvite, DeviceToken, CreditEntry,
+// BillingState, Quest, QuestQuestion, QuestProgress) are intentionally NOT
 // here — they have no owner_id column and are scoped by the authz layer.
 var ownerScopedTypes = map[string]bool{
 	ent.TypeAnswerEvent:         true,

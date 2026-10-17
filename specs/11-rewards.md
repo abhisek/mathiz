@@ -37,7 +37,7 @@ Five gem types, each tied to a distinct learning achievement:
 | **Mastery** | `mastery` | Skill transitions Learning → Mastered (trigger: `prove-complete`) | Awarded when a skill is mastered for the first time |
 | **Recovery** | `recovery` | Skill transitions Rusty → Mastered (trigger: `recovery-complete`) | Awarded when a rusty skill is recovered |
 | **Retention** | `retention` | Spaced-rep graduation (`ConsecutiveHits >= 6`) | Awarded when a skill graduates from the review schedule |
-| **Streak** | `streak` | 5 consecutive correct answers within a session | Awarded each time a 5-answer streak is achieved |
+| **Streak** | `streak` | 5 consecutive correct answers within a session | Awarded at streak lengths 5, 10, 15, 20, then every further 5 (25, 30, …) |
 | **Session** | `session` | Session timer expires naturally (no early quit) | Awarded for completing a full session |
 
 ```go
@@ -247,7 +247,7 @@ Streak gems are awarded each time the learner achieves a consecutive correct-ans
 | 15 | Epic |
 | 20+ | Legendary |
 
-Gems are awarded **at each threshold**, not retroactively. Reaching 10 earns two gems: a Common at 5 and a Rare at 10.
+Gems are awarded **at each threshold**, not retroactively. Reaching 10 earns two gems: a Common at 5 and a Rare at 10. Past 20, a Legendary is awarded at every further multiple of 5 (`gems.NextStreakThreshold`).
 
 ```go
 // StreakThresholds defines the streak lengths that award gems.
