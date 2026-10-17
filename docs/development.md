@@ -90,7 +90,7 @@ throwaway state separate.
 Either Docker:
 
 ```bash
-make dev-db        # postgres:16 on localhost:5432 (user/pass/db: mathiz)
+make dev-db        # postgres:18 on localhost:5432 (user/pass/db: mathiz)
 ```
 
 …or, in environments without a Docker daemon, a direct local cluster:

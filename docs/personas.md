@@ -99,7 +99,7 @@ Whoever runs `mathiz serve` for their family or a community.
 | Flow | Mechanism |
 |---|---|
 | Deploy: one self-contained binary (SPA embedded) | `make web && make mathiz`, run behind TLS |
-| Database: any PostgreSQL (Supabase's included); schema auto-migrates | `MATHIZ_DATABASE_URL` |
+| Database: PostgreSQL 16+ (production: 18 in the compose `prod` profile on one VM); schema auto-migrates; pool caps | `MATHIZ_DATABASE_URL`, `MATHIZ_DB_PASSWORD`, `MATHIZ_DB_MAX_OPEN_CONNS`/`_IDLE_CONNS` |
 | Auth config: Supabase project URL + anon key (+ legacy JWT secret) | `MATHIZ_SUPABASE_*` |
 | LLM provider selection & keys (server-side only) | `MATHIZ_LLM_PROVIDER`, `MATHIZ_*_API_KEY`, `MATHIZ_OPENAI_BASE_URL` for compatible gateways |
 | Resource limits: session idle timeout | `MATHIZ_SESSION_IDLE_MINUTES` |
