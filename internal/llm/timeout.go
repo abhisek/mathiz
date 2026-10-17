@@ -72,6 +72,9 @@ func WithTimeout(p Provider, fallback time.Duration) Provider {
 }
 
 func (t *TimeoutProvider) Generate(ctx context.Context, req Request) (*Response, error) {
+	// Every attempt passes here (it sits inside retry), with or without
+	// event logging, so this is where attempts are counted.
+	countAttempt(ctx)
 	purpose := PurposeFrom(ctx)
 	attemptCtx, cancel := context.WithTimeout(ctx, t.timeoutFor(purpose))
 	defer cancel()

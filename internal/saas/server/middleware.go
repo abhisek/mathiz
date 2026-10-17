@@ -102,6 +102,9 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 type errorBody struct {
 	Error string `json:"error"`
+	// Code is a stable machine-readable reason, set where a client
+	// branches on the error (the game API). Error stays human copy.
+	Code string `json:"code,omitempty"`
 }
 
 // writeError sends the JSON error body AND records the message into the
@@ -112,6 +115,14 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 		lw.setErr(msg)
 	}
 	writeJSON(w, status, errorBody{Error: msg})
+}
+
+// writeErrorCode is writeError plus a stable code for client branching.
+func writeErrorCode(w http.ResponseWriter, status int, code, msg string) {
+	if lw, ok := w.(*logWriter); ok {
+		lw.setErr(msg)
+	}
+	writeJSON(w, status, errorBody{Error: msg, Code: code})
 }
 
 // decodeJSON reads a bounded JSON body.

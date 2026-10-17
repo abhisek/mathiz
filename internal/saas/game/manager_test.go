@@ -695,3 +695,26 @@ func TestExpeditionProfileRefreshVersionsProfile(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 }
+
+func TestQuestionSourceTelemetry(t *testing.T) {
+	m := newTestManager(t, &fakeGenerator{})
+	ctx := context.Background()
+	exp, err := m.Start(ctx, "child-1", rootSkillID(t))
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	q, err := m.Question(ctx, "child-1", exp.ID)
+	if err != nil {
+		t.Fatalf("question: %v", err)
+	}
+	if q.Source == "" {
+		t.Error("a generated question must report its source")
+	}
+	again, err := m.Question(ctx, "child-1", exp.ID)
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if again.Source != SourceCurrent || again.Text != q.Text {
+		t.Errorf("reload = %q (%s), want the same question from %s", again.Text, again.Source, SourceCurrent)
+	}
+}
