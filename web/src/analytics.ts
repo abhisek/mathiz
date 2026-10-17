@@ -174,6 +174,11 @@ export const track = {
     capture('expedition_completed', { questions, correct, kind }),
   questCompletedByChild: () => capture('quest_completed_by_child'),
   outOfCreditsShown: () => capture('out_of_credits_shown'),
+  // A question rendered; waitMs is tap-to-render (network included), the
+  // kid-felt latency of specs/19. Anonymous: index and timing only.
+  questionShown: (index: number, waitMs: number) => capture('question_shown', { index, waitMs }),
+  // A question couldn't be generated and the kid saw the fog retry screen.
+  questionGenerationFailed: (index: number) => capture('question_generation_failed', { index }),
 
   // Manual SPA pageview (parent/public surfaces only — never on child ones).
   pageview: (path: string) => capture('$pageview', { $current_url: window.location.origin + path }),

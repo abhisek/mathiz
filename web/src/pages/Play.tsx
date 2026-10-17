@@ -20,7 +20,7 @@ import {
 // The treasure map: the skill graph as islands. Solving AI-generated math
 // digs treasure, collects gems, and lifts the fog on new territory.
 
-type Phase = 'idle' | 'starting' | 'loading' | 'question' | 'feedback' | 'lesson' | 'summary'
+type Phase = 'idle' | 'starting' | 'loading' | 'fog' | 'question' | 'feedback' | 'lesson' | 'summary'
 
 const GEM_META: Record<string, { icon: string; label: string }> = {
   mastery: { icon: '🏆', label: 'Mastery gems' },
@@ -56,6 +56,17 @@ export default function Play() {
 
   // Expedition state machine.
   const [phase, setPhase] = useState<Phase>('idle')
+  // After 6 s of waiting for a question the loader says so, so a long
+  // wait reads as progress rather than a hang (specs/19 §3.3).
+  const [slowDig, setSlowDig] = useState(false)
+  useEffect(() => {
+    if (phase !== 'loading') return
+    const t = setTimeout(() => setSlowDig(true), 6000)
+    return () => {
+      clearTimeout(t)
+      setSlowDig(false)
+    }
+  }, [phase])
   const [expedition, setExpedition] = useState<Expedition | null>(null)
   const [question, setQuestion] = useState<Question | null>(null)
   const [result, setResult] = useState<AnswerResult | null>(null)
@@ -138,16 +149,52 @@ export default function Play() {
     setHint(null)
     setLesson(null)
     setLessonGrade(null)
+    const askedAt = performance.now()
     try {
       const q = await gameApi.question(expId)
+      track.questionShown(q.index, Math.round(performance.now() - askedAt))
       setQuestion(q)
       setPhase('question')
     } catch (err) {
+      if (err instanceof GameApiError && err.code === 'generation_failed') {
+        // Keep the expedition: "Try again" asks for the same question,
+        // free. Starting over would end this one and cost a new credit.
+        track.questionGenerationFailed((question?.index ?? 0) + 1)
+        setPhase('fog')
+        return
+      }
+      if (err instanceof GameApiError && err.code === 'expedition_over') {
+        // The server gave up after repeated failures; sail home with the
+        // normal summary of what the kid did dig up.
+        await showFinalSummary(expId)
+        return
+      }
       setExpError(err instanceof Error ? err.message : String(err))
       setPhase('idle')
       setExpedition(null)
       await refreshMap()
     }
+  }
+
+  async function showFinalSummary(expId: string) {
+    try {
+      const summary = await gameApi.end(expId)
+      track.expeditionCompleted(summary.questions, summary.correct, summary.questId ? 'quest' : 'skill')
+      setResult({
+        correct: false,
+        hintAvailable: false,
+        streak: 0,
+        questionsAnswered: summary.questions,
+        totalQuestions: question?.total ?? summary.questions,
+        done: true,
+        summary,
+      })
+      setPhase('summary')
+    } catch {
+      setPhase('idle')
+      setExpedition(null)
+    }
+    await refreshMap()
   }
 
   async function submit(answer: string) {
@@ -383,6 +430,7 @@ export default function Play() {
       {phase !== 'idle' && (
         <ExpeditionOverlay
           phase={phase}
+          slowDig={slowDig}
           expedition={expedition}
           question={question}
           result={result}
@@ -532,6 +580,7 @@ function ProgressRing({ progress, icon }: { progress: number; icon: string }) {
 
 function ExpeditionOverlay({
   phase,
+  slowDig,
   expedition,
   question,
   result,
@@ -546,6 +595,7 @@ function ExpeditionOverlay({
   onClose,
 }: {
   phase: Phase
+  slowDig: boolean
   expedition: Expedition | null
   question: Question | null
   result: AnswerResult | null
@@ -616,7 +666,23 @@ function ExpeditionOverlay({
         {(phase === 'starting' || phase === 'loading') && (
           <div className="quest-loading">
             <span className="compass">🧭</span>
-            <p>{phase === 'starting' ? 'Setting sail…' : 'Consulting the map…'}</p>
+            <p>
+              {phase === 'starting'
+                ? 'Setting sail…'
+                : slowDig
+                  ? 'Still digging… the treasure is deep today ⛏️'
+                  : 'Consulting the map…'}
+            </p>
+          </div>
+        )}
+
+        {phase === 'fog' && (
+          <div className="quest-loading quest-fog">
+            <span className="fog-cloud">🌫️</span>
+            <p>The map is foggy… 🌫️</p>
+            <button className="btn btn-kid" onClick={onNext}>
+              Try again
+            </button>
           </div>
         )}
 

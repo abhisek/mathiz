@@ -65,6 +65,16 @@ const questBatch = {
   ],
 }
 
+// Latency and failure knobs for the question path (specs/19 E2E):
+//   LLMSTUB_DELAY_MS=<ms>         delay every question response
+//   LLMSTUB_FAIL_QUESTIONS=<n>    answer the next n question calls with 500
+// Change them at runtime without a restart:
+//   curl -X POST -d '{"delayMs":7000,"failQuestions":0}' http://127.0.0.1:9993/__stub
+const knobs = {
+  delayMs: Number(process.env.LLMSTUB_DELAY_MS ?? 0),
+  failQuestions: Number(process.env.LLMSTUB_FAIL_QUESTIONS ?? 0),
+}
+
 function contentFor(body) {
   if (body.includes('micro-lesson')) return lesson
   if (body.includes('learner-profile')) return profile
@@ -76,8 +86,23 @@ http
   .createServer((req, res) => {
     let body = ''
     req.on('data', (c) => (body += c))
-    req.on('end', () => {
+    req.on('end', async () => {
       res.setHeader('Content-Type', 'application/json')
+      if (req.url === '/__stub') {
+        Object.assign(knobs, JSON.parse(body || '{}'))
+        res.end(JSON.stringify(knobs))
+        return
+      }
+      const content = contentFor(body)
+      if (content === question) {
+        if (knobs.failQuestions > 0) {
+          knobs.failQuestions--
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: { message: 'stub failure', type: 'server_error' } }))
+          return
+        }
+        if (knobs.delayMs > 0) await new Promise((r) => setTimeout(r, knobs.delayMs))
+      }
       res.end(
         JSON.stringify({
           id: 'stub',
@@ -85,7 +110,7 @@ http
           choices: [
             {
               index: 0,
-              message: { role: 'assistant', content: JSON.stringify(contentFor(body)) },
+              message: { role: 'assistant', content: JSON.stringify(content) },
               finish_reason: 'stop',
             },
           ],
