@@ -99,17 +99,23 @@ The `sequence` field is a global counter across all event types, providing a tot
 
 Each event type is a **separate ent schema** with its own table. This gives each type its own typed fields and indexes while keeping the base fields consistent via the mixin.
 
-Initial event types (fields beyond the base are illustrative — domain specs finalize them):
+Event types as shipped (`ent/schema/*_event.go`; the schema files are
+authoritative for fields). The names in the original design
+(`AnswerAttemptEvent`, `HintRequestEvent`, `LessonViewEvent`,
+`SkillStateChangeEvent`, `SessionStart/EndEvent`, `GemAwardEvent`) were
+superseded by these:
 
 | Event Type | Key Fields | Defined By |
 |------------|-----------|------------|
-| `AnswerAttemptEvent` | skill_id, question_hash, given_answer, correct, latency_ms | Session spec |
-| `HintRequestEvent` | skill_id, question_hash, hint_level | AI Lessons spec |
-| `LessonViewEvent` | skill_id, lesson_id | AI Lessons spec |
-| `SkillStateChangeEvent` | skill_id, from_state, to_state | Mastery spec |
-| `SessionStartEvent` | session_id, target_skill_id | Session spec |
-| `SessionEndEvent` | session_id, questions_answered, accuracy | Session spec |
-| `GemAwardEvent` | gem_type, rarity, reason_skill_id | Rewards spec |
+| `AnswerEvent` | session_id, skill_id, tier, category, question_text, correct_answer, learner_answer, correct, time_ms, answer_format | Session spec |
+| `SessionEvent` | session_id, action (start/end), questions_served, correct_answers, duration_secs, plan_summary, quest_uid, quest_name | Session spec |
+| `MasteryEvent` | skill_id, from_state, to_state, trigger, fluency_score, session_id | Mastery spec |
+| `DiagnosisEvent` | session_id, skill_id, category, misconception_id, confidence, classifier_name, reasoning | Diagnosis spec |
+| `HintEvent` | session_id, skill_id, question_text, hint_text | AI Lessons spec |
+| `LessonEvent` | session_id, skill_id, lesson_title, practice_* | AI Lessons spec |
+| `LearnerProfileEvent` | summary, strengths, weaknesses, patterns, generated_at | AI Lessons spec |
+| `GemEvent` | gem_type, rarity, skill_id, skill_name, session_id, reason | Rewards spec |
+| `LLMRequestEvent` | provider, model, purpose, input/output_tokens, success, error_message, request/response body | LLM spec |
 
 ### Extensibility
 
@@ -129,7 +135,7 @@ Every event table has:
 - Index on `sequence` (for ordered replay)
 - Index on `timestamp` (for time-range queries)
 
-Type-specific indexes (e.g., `skill_id` on `AnswerAttemptEvent`) are defined by the owning spec.
+Type-specific indexes (e.g., `skill_id` on `AnswerEvent`) are defined by the owning spec.
 
 ## 5. Snapshots
 

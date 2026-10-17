@@ -520,7 +520,7 @@ type LLMRequestEvent struct {
 
     Provider     string          // "anthropic", "openai", "gemini"
     Model        string          // Actual model ID used
-    Purpose      string          // Consumer-provided label: "question-gen", "hint", "lesson", "diagnosis"
+    Purpose      string          // Consumer-provided label, e.g. "question-gen", "lesson", "error-diagnosis" (see Purpose Labels)
     InputTokens  int             // Tokens in the request
     OutputTokens int             // Tokens in the response
     LatencyMs    int64           // Wall-clock time for the request
@@ -556,14 +556,18 @@ func PurposeFrom(ctx context.Context) string {
 
 Standard purpose labels:
 
-| Label | Consumer |
-|-------|----------|
-| `"question-gen"` | Problem Generation |
-| `"hint"` | AI Lessons |
-| `"lesson"` | AI Lessons |
-| `"diagnosis"` | Error Diagnosis |
-| `"compression"` | Context Compression |
-| `"diagnostic-placement"` | Diagnostic Placement |
+| Label | Constant | Consumer |
+|-------|----------|----------|
+| `"question-gen"` | `llm.PurposeQuestionGen` | Problem Generation (hints are part of the question, so there is no separate hint purpose) |
+| `"quest-gen"` | `llm.PurposeQuestGen` | Quest AI authoring (specs/15) |
+| `"lesson"` | `llm.PurposeLesson` | AI Lessons |
+| `"error-diagnosis"` | `llm.PurposeDiagnosis` | Error Diagnosis (LLM fallback) |
+| `"session-compress"` | `llm.PurposeSessionCompress` | Context Compression |
+| `"profile"` | `llm.PurposeProfile` | Learner profile generation |
+
+The constants live in `internal/llm/timeout.go`, which also sets a
+per-attempt timeout for each purpose. Diagnostic placement was never built,
+so it has no label.
 
 ---
 

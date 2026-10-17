@@ -45,7 +45,8 @@ Event-sourced entries on the **FamilySpace** (`credit_entries`):
 - Debits (`debit`): negative `amount`, consumed FIFO from unexpired grants
   ordered by soonest expiry (use-it-or-lose-it credits burn first).
 - Every entry has a unique `source` (e.g. `starter:<spaceID>`,
-  `sub:<providerEventID>`, `expedition:<sessionID>`) — **idempotency is
+  `sub:<providerEventID>`, `topup:<providerEventID>`, `session:<sessionID>`
+  for an expedition debit) — **idempotency is
   structural**: replayed webhooks and retried requests cannot double-grant
   or double-charge.
 

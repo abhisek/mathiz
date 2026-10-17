@@ -37,7 +37,7 @@ func (CreditEntry) Fields() []ent.Field {
 		field.String("source").
 			Unique().
 			Immutable().
-			Comment("Idempotency key, e.g. starter:<space>, sub:<eventID>, expedition:<sessionID>"),
+			Comment("Idempotency key, e.g. starter:<space>, sub:<eventID>, topup:<eventID>, session:<sessionID>"),
 		field.Time("expires_at").
 			Optional().
 			Nillable().

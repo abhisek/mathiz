@@ -25,7 +25,8 @@ needed), `frontend` (web/ patterns — read it BEFORE touching web/),
 tracking/telemetry change), `add-event-type`, `add-math-skill`,
 `add-billing-provider`, `verify`,
 `db-backup` (pg_dump backups via `scripts/db-backup.sh`),
-`user-feedback` (intake protocol when the owner pastes user reports).
+`user-feedback` (intake protocol when the owner pastes user reports),
+`glossary` (dos and don'ts for editing `specs/glossary.md`).
 If a PR changes a frontend pattern, update `.claude/skills/frontend/SKILL.md`
 in the same PR (same rule as `docs/personas.md` for user-facing flows).
 
@@ -82,6 +83,18 @@ plans, billing providers). Write/update a spec for any
 significant feature. `docs/personas.md` is the source of truth for
 user-facing flows — **update it when you add or change one**.
 `docs/development.md` is the human dev-setup guide.
+
+### Glossary — check before you name anything
+
+`specs/glossary.md` lists every first-class concept (skill, tier,
+expedition, family space, credit grant…) with its code location and spec.
+**Before introducing a new type, table, event, API resource, or UI
+term, look it up there.** If the concept already exists, reuse its name
+and code, even when another word feels more natural. A second name for the
+same idea is a bug. If it is genuinely new, add an entry in the same PR,
+following the `glossary` skill. Kid-facing copy ("clue", "dig spot") is
+mapped to internal names there too, so don't rename internals to match UI
+copy.
 
 ## Invariants (do not break)
 

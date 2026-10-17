@@ -27,7 +27,7 @@ type CreditEntry struct {
 	Amount int `json:"amount,omitempty"`
 	// Unconsumed credits on grant entries; 0 for debits
 	Remaining int `json:"remaining,omitempty"`
-	// Idempotency key, e.g. starter:<space>, sub:<eventID>, expedition:<sessionID>
+	// Idempotency key, e.g. starter:<space>, sub:<eventID>, topup:<eventID>, session:<sessionID>
 	Source string `json:"source,omitempty"`
 	// Grant expiry; nil = never expires
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`

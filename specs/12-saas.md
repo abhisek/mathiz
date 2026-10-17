@@ -156,14 +156,19 @@ type Principal struct {
 }
 ```
 
-Policy (v1):
-- A parent may manage (read/write) a family space iff they are its `owner_account_id`.
-- A parent may manage children, invites, devices, and read stats of spaces they own.
+Policy (current: the membership model; see "Co-parents" below):
+- A parent may manage (read/write) a family space iff they are a member of it
+  (`family_member` role `owner` or `parent`). The v1 rule "iff
+  `owner_account_id`" was replaced when co-parents shipped.
+- Members may manage children, invites, devices, quests, and read stats of
+  their space. Billing and parent management are owner-only
+  (`CanManageBilling`, `CanManageParents`).
 - A child may access exactly one thing: **their own** learning session and profile info.
 - Children can never read other profiles, stats, or control-plane objects.
 
-Every check returns `authz.ErrDenied` which the API maps to 403 (404 for existence
-probes on objects the caller can't see).
+Every check returns `authz.ErrDenied`, which the API **always** maps to 404
+(`writeServiceError` in `internal/saas/server/middleware.go`). It never
+returns 403, so a denial can't confirm that an object exists.
 
 ## 6. Terminal Bridge — `internal/saas/termbridge`
 

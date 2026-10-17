@@ -2,7 +2,7 @@ package skillgraph
 
 import "fmt"
 
-// skills contains all 54 skill definitions for the MVP.
+// skills contains all 56 skill definitions for the MVP.
 var skills = []Skill{
 
 	// ── Number & Place Value (8 nodes) ────────────────────────

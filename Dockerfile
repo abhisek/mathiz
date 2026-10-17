@@ -12,7 +12,7 @@ COPY web/ ./
 RUN mkdir -p /src/internal/saas/webui && npm run build
 
 # --- Stage 2: build the Go binary with the SPA embedded ---
-FROM golang:1.25-alpine AS build
+FROM golang:1.27-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

@@ -1,6 +1,6 @@
 module github.com/abhisek/mathiz
 
-go 1.25.6
+go 1.27.1
 
 require (
 	charm.land/bubbles/v2 v2.0.0-rc.1

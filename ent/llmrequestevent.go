@@ -27,7 +27,7 @@ type LLMRequestEvent struct {
 	Provider string `json:"provider,omitempty"`
 	// Actual model ID used
 	Model string `json:"model,omitempty"`
-	// Consumer-provided label: question-gen, hint, lesson, diagnosis
+	// Consumer-provided label (llm.Purpose*): question-gen, quest-gen, lesson, error-diagnosis, session-compress, profile
 	Purpose string `json:"purpose,omitempty"`
 	// Tokens in the request
 	InputTokens int `json:"input_tokens,omitempty"`
