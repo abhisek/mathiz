@@ -59,9 +59,14 @@ func UID(v string) predicate.Account {
 	return predicate.Account(sql.FieldEQ(FieldUID, v))
 }
 
-// SupabaseUserID applies equality check predicate on the "supabase_user_id" field. It's identical to SupabaseUserIDEQ.
-func SupabaseUserID(v string) predicate.Account {
-	return predicate.Account(sql.FieldEQ(FieldSupabaseUserID, v))
+// AuthProvider applies equality check predicate on the "auth_provider" field. It's identical to AuthProviderEQ.
+func AuthProvider(v string) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldAuthProvider, v))
+}
+
+// AuthSubject applies equality check predicate on the "auth_subject" field. It's identical to AuthSubjectEQ.
+func AuthSubject(v string) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldAuthSubject, v))
 }
 
 // Email applies equality check predicate on the "email" field. It's identical to EmailEQ.
@@ -144,69 +149,134 @@ func UIDContainsFold(v string) predicate.Account {
 	return predicate.Account(sql.FieldContainsFold(FieldUID, v))
 }
 
-// SupabaseUserIDEQ applies the EQ predicate on the "supabase_user_id" field.
-func SupabaseUserIDEQ(v string) predicate.Account {
-	return predicate.Account(sql.FieldEQ(FieldSupabaseUserID, v))
+// AuthProviderEQ applies the EQ predicate on the "auth_provider" field.
+func AuthProviderEQ(v string) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDNEQ applies the NEQ predicate on the "supabase_user_id" field.
-func SupabaseUserIDNEQ(v string) predicate.Account {
-	return predicate.Account(sql.FieldNEQ(FieldSupabaseUserID, v))
+// AuthProviderNEQ applies the NEQ predicate on the "auth_provider" field.
+func AuthProviderNEQ(v string) predicate.Account {
+	return predicate.Account(sql.FieldNEQ(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDIn applies the In predicate on the "supabase_user_id" field.
-func SupabaseUserIDIn(vs ...string) predicate.Account {
-	return predicate.Account(sql.FieldIn(FieldSupabaseUserID, vs...))
+// AuthProviderIn applies the In predicate on the "auth_provider" field.
+func AuthProviderIn(vs ...string) predicate.Account {
+	return predicate.Account(sql.FieldIn(FieldAuthProvider, vs...))
 }
 
-// SupabaseUserIDNotIn applies the NotIn predicate on the "supabase_user_id" field.
-func SupabaseUserIDNotIn(vs ...string) predicate.Account {
-	return predicate.Account(sql.FieldNotIn(FieldSupabaseUserID, vs...))
+// AuthProviderNotIn applies the NotIn predicate on the "auth_provider" field.
+func AuthProviderNotIn(vs ...string) predicate.Account {
+	return predicate.Account(sql.FieldNotIn(FieldAuthProvider, vs...))
 }
 
-// SupabaseUserIDGT applies the GT predicate on the "supabase_user_id" field.
-func SupabaseUserIDGT(v string) predicate.Account {
-	return predicate.Account(sql.FieldGT(FieldSupabaseUserID, v))
+// AuthProviderGT applies the GT predicate on the "auth_provider" field.
+func AuthProviderGT(v string) predicate.Account {
+	return predicate.Account(sql.FieldGT(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDGTE applies the GTE predicate on the "supabase_user_id" field.
-func SupabaseUserIDGTE(v string) predicate.Account {
-	return predicate.Account(sql.FieldGTE(FieldSupabaseUserID, v))
+// AuthProviderGTE applies the GTE predicate on the "auth_provider" field.
+func AuthProviderGTE(v string) predicate.Account {
+	return predicate.Account(sql.FieldGTE(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDLT applies the LT predicate on the "supabase_user_id" field.
-func SupabaseUserIDLT(v string) predicate.Account {
-	return predicate.Account(sql.FieldLT(FieldSupabaseUserID, v))
+// AuthProviderLT applies the LT predicate on the "auth_provider" field.
+func AuthProviderLT(v string) predicate.Account {
+	return predicate.Account(sql.FieldLT(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDLTE applies the LTE predicate on the "supabase_user_id" field.
-func SupabaseUserIDLTE(v string) predicate.Account {
-	return predicate.Account(sql.FieldLTE(FieldSupabaseUserID, v))
+// AuthProviderLTE applies the LTE predicate on the "auth_provider" field.
+func AuthProviderLTE(v string) predicate.Account {
+	return predicate.Account(sql.FieldLTE(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDContains applies the Contains predicate on the "supabase_user_id" field.
-func SupabaseUserIDContains(v string) predicate.Account {
-	return predicate.Account(sql.FieldContains(FieldSupabaseUserID, v))
+// AuthProviderContains applies the Contains predicate on the "auth_provider" field.
+func AuthProviderContains(v string) predicate.Account {
+	return predicate.Account(sql.FieldContains(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDHasPrefix applies the HasPrefix predicate on the "supabase_user_id" field.
-func SupabaseUserIDHasPrefix(v string) predicate.Account {
-	return predicate.Account(sql.FieldHasPrefix(FieldSupabaseUserID, v))
+// AuthProviderHasPrefix applies the HasPrefix predicate on the "auth_provider" field.
+func AuthProviderHasPrefix(v string) predicate.Account {
+	return predicate.Account(sql.FieldHasPrefix(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDHasSuffix applies the HasSuffix predicate on the "supabase_user_id" field.
-func SupabaseUserIDHasSuffix(v string) predicate.Account {
-	return predicate.Account(sql.FieldHasSuffix(FieldSupabaseUserID, v))
+// AuthProviderHasSuffix applies the HasSuffix predicate on the "auth_provider" field.
+func AuthProviderHasSuffix(v string) predicate.Account {
+	return predicate.Account(sql.FieldHasSuffix(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDEqualFold applies the EqualFold predicate on the "supabase_user_id" field.
-func SupabaseUserIDEqualFold(v string) predicate.Account {
-	return predicate.Account(sql.FieldEqualFold(FieldSupabaseUserID, v))
+// AuthProviderEqualFold applies the EqualFold predicate on the "auth_provider" field.
+func AuthProviderEqualFold(v string) predicate.Account {
+	return predicate.Account(sql.FieldEqualFold(FieldAuthProvider, v))
 }
 
-// SupabaseUserIDContainsFold applies the ContainsFold predicate on the "supabase_user_id" field.
-func SupabaseUserIDContainsFold(v string) predicate.Account {
-	return predicate.Account(sql.FieldContainsFold(FieldSupabaseUserID, v))
+// AuthProviderContainsFold applies the ContainsFold predicate on the "auth_provider" field.
+func AuthProviderContainsFold(v string) predicate.Account {
+	return predicate.Account(sql.FieldContainsFold(FieldAuthProvider, v))
+}
+
+// AuthSubjectEQ applies the EQ predicate on the "auth_subject" field.
+func AuthSubjectEQ(v string) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldAuthSubject, v))
+}
+
+// AuthSubjectNEQ applies the NEQ predicate on the "auth_subject" field.
+func AuthSubjectNEQ(v string) predicate.Account {
+	return predicate.Account(sql.FieldNEQ(FieldAuthSubject, v))
+}
+
+// AuthSubjectIn applies the In predicate on the "auth_subject" field.
+func AuthSubjectIn(vs ...string) predicate.Account {
+	return predicate.Account(sql.FieldIn(FieldAuthSubject, vs...))
+}
+
+// AuthSubjectNotIn applies the NotIn predicate on the "auth_subject" field.
+func AuthSubjectNotIn(vs ...string) predicate.Account {
+	return predicate.Account(sql.FieldNotIn(FieldAuthSubject, vs...))
+}
+
+// AuthSubjectGT applies the GT predicate on the "auth_subject" field.
+func AuthSubjectGT(v string) predicate.Account {
+	return predicate.Account(sql.FieldGT(FieldAuthSubject, v))
+}
+
+// AuthSubjectGTE applies the GTE predicate on the "auth_subject" field.
+func AuthSubjectGTE(v string) predicate.Account {
+	return predicate.Account(sql.FieldGTE(FieldAuthSubject, v))
+}
+
+// AuthSubjectLT applies the LT predicate on the "auth_subject" field.
+func AuthSubjectLT(v string) predicate.Account {
+	return predicate.Account(sql.FieldLT(FieldAuthSubject, v))
+}
+
+// AuthSubjectLTE applies the LTE predicate on the "auth_subject" field.
+func AuthSubjectLTE(v string) predicate.Account {
+	return predicate.Account(sql.FieldLTE(FieldAuthSubject, v))
+}
+
+// AuthSubjectContains applies the Contains predicate on the "auth_subject" field.
+func AuthSubjectContains(v string) predicate.Account {
+	return predicate.Account(sql.FieldContains(FieldAuthSubject, v))
+}
+
+// AuthSubjectHasPrefix applies the HasPrefix predicate on the "auth_subject" field.
+func AuthSubjectHasPrefix(v string) predicate.Account {
+	return predicate.Account(sql.FieldHasPrefix(FieldAuthSubject, v))
+}
+
+// AuthSubjectHasSuffix applies the HasSuffix predicate on the "auth_subject" field.
+func AuthSubjectHasSuffix(v string) predicate.Account {
+	return predicate.Account(sql.FieldHasSuffix(FieldAuthSubject, v))
+}
+
+// AuthSubjectEqualFold applies the EqualFold predicate on the "auth_subject" field.
+func AuthSubjectEqualFold(v string) predicate.Account {
+	return predicate.Account(sql.FieldEqualFold(FieldAuthSubject, v))
+}
+
+// AuthSubjectContainsFold applies the ContainsFold predicate on the "auth_subject" field.
+func AuthSubjectContainsFold(v string) predicate.Account {
+	return predicate.Account(sql.FieldContainsFold(FieldAuthSubject, v))
 }
 
 // EmailEQ applies the EQ predicate on the "email" field.

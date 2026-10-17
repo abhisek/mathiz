@@ -3,8 +3,9 @@
 #   make dev-db      → just PostgreSQL (run `mathiz serve` on the host)
 #   make dev-up      → the WHOLE stack, self-contained:
 #                      PostgreSQL + stub LLM + mathiz serve on :8080.
-#                      No Supabase project or LLM API key required — parent
-#                      auth uses the dev HS256 secret (mint tokens with
+#                      No auth provider or LLM API key required — parent
+#                      auth uses the `test` preset with a dev HS256 secret
+#                      (mint tokens with
 #                      .claude/skills/saas-e2e/assets/mint-jwt.mjs) and the
 #                      kid flows only need a join code.
 #
@@ -60,11 +61,16 @@ services:
         condition: service_started
     environment:
       MATHIZ_DATABASE_URL: postgres://mathiz:mathiz@postgres:5432/mathiz?sslmode=disable
-      MATHIZ_SUPABASE_URL: ${MATHIZ_SUPABASE_URL:-https://dummy.supabase.co}
-      MATHIZ_SUPABASE_ANON_KEY: ${MATHIZ_SUPABASE_ANON_KEY:-dev-anon-key}
-      # Dev-only secret; matches mint-jwt.mjs's default so curl flows work
-      # out of the box. Override for anything beyond local development.
-      MATHIZ_SUPABASE_JWT_SECRET: ${MATHIZ_SUPABASE_JWT_SECRET:-e2e-test-secret-with-plenty-of-length!!}
+      # Parent auth: the `test` preset by default, so the stack needs no
+      # auth provider. Mint tokens with mint-jwt.mjs (same default secret)
+      # or paste one into /login. Set MATHIZ_AUTH_PROVIDER=supabase plus
+      # MATHIZ_AUTH_URL and MATHIZ_AUTH_PUBLIC_KEY to use a real project.
+      MATHIZ_AUTH_PROVIDER: ${MATHIZ_AUTH_PROVIDER:-test}
+      MATHIZ_AUTH_URL: ${MATHIZ_AUTH_URL:-}
+      MATHIZ_AUTH_PUBLIC_KEY: ${MATHIZ_AUTH_PUBLIC_KEY:-}
+      MATHIZ_AUTH_ALLOW_TEST: ${MATHIZ_AUTH_ALLOW_TEST:-1}
+      # Dev-only secret; never reuse it anywhere reachable from outside.
+      MATHIZ_AUTH_HS256_SECRET: ${MATHIZ_AUTH_HS256_SECRET:-e2e-test-secret-with-plenty-of-length!!}
       MATHIZ_LLM_PROVIDER: ${MATHIZ_LLM_PROVIDER:-openai}
       MATHIZ_OPENAI_API_KEY: ${MATHIZ_OPENAI_API_KEY:-stub-key}
       MATHIZ_OPENAI_BASE_URL: ${MATHIZ_OPENAI_BASE_URL:-http://llmstub:9993/v1}

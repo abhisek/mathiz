@@ -26,9 +26,15 @@ func (_c *AccountCreate) SetUID(v string) *AccountCreate {
 	return _c
 }
 
-// SetSupabaseUserID sets the "supabase_user_id" field.
-func (_c *AccountCreate) SetSupabaseUserID(v string) *AccountCreate {
-	_c.mutation.SetSupabaseUserID(v)
+// SetAuthProvider sets the "auth_provider" field.
+func (_c *AccountCreate) SetAuthProvider(v string) *AccountCreate {
+	_c.mutation.SetAuthProvider(v)
+	return _c
+}
+
+// SetAuthSubject sets the "auth_subject" field.
+func (_c *AccountCreate) SetAuthSubject(v string) *AccountCreate {
+	_c.mutation.SetAuthSubject(v)
 	return _c
 }
 
@@ -128,8 +134,21 @@ func (_c *AccountCreate) check() error {
 	if _, ok := _c.mutation.UID(); !ok {
 		return &ValidationError{Name: "uid", err: errors.New(`ent: missing required field "Account.uid"`)}
 	}
-	if _, ok := _c.mutation.SupabaseUserID(); !ok {
-		return &ValidationError{Name: "supabase_user_id", err: errors.New(`ent: missing required field "Account.supabase_user_id"`)}
+	if _, ok := _c.mutation.AuthProvider(); !ok {
+		return &ValidationError{Name: "auth_provider", err: errors.New(`ent: missing required field "Account.auth_provider"`)}
+	}
+	if v, ok := _c.mutation.AuthProvider(); ok {
+		if err := account.AuthProviderValidator(v); err != nil {
+			return &ValidationError{Name: "auth_provider", err: fmt.Errorf(`ent: validator failed for field "Account.auth_provider": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.AuthSubject(); !ok {
+		return &ValidationError{Name: "auth_subject", err: errors.New(`ent: missing required field "Account.auth_subject"`)}
+	}
+	if v, ok := _c.mutation.AuthSubject(); ok {
+		if err := account.AuthSubjectValidator(v); err != nil {
+			return &ValidationError{Name: "auth_subject", err: fmt.Errorf(`ent: validator failed for field "Account.auth_subject": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Email(); !ok {
 		return &ValidationError{Name: "email", err: errors.New(`ent: missing required field "Account.email"`)}
@@ -170,9 +189,13 @@ func (_c *AccountCreate) createSpec() (*Account, *sqlgraph.CreateSpec) {
 		_spec.SetField(account.FieldUID, field.TypeString, value)
 		_node.UID = value
 	}
-	if value, ok := _c.mutation.SupabaseUserID(); ok {
-		_spec.SetField(account.FieldSupabaseUserID, field.TypeString, value)
-		_node.SupabaseUserID = value
+	if value, ok := _c.mutation.AuthProvider(); ok {
+		_spec.SetField(account.FieldAuthProvider, field.TypeString, value)
+		_node.AuthProvider = value
+	}
+	if value, ok := _c.mutation.AuthSubject(); ok {
+		_spec.SetField(account.FieldAuthSubject, field.TypeString, value)
+		_node.AuthSubject = value
 	}
 	if value, ok := _c.mutation.Email(); ok {
 		_spec.SetField(account.FieldEmail, field.TypeString, value)

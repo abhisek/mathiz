@@ -36,16 +36,24 @@ import (
 func init() {
 	accountFields := schema.Account{}.Fields()
 	_ = accountFields
+	// accountDescAuthProvider is the schema descriptor for auth_provider field.
+	accountDescAuthProvider := accountFields[1].Descriptor()
+	// account.AuthProviderValidator is a validator for the "auth_provider" field. It is called by the builders before save.
+	account.AuthProviderValidator = accountDescAuthProvider.Validators[0].(func(string) error)
+	// accountDescAuthSubject is the schema descriptor for auth_subject field.
+	accountDescAuthSubject := accountFields[2].Descriptor()
+	// account.AuthSubjectValidator is a validator for the "auth_subject" field. It is called by the builders before save.
+	account.AuthSubjectValidator = accountDescAuthSubject.Validators[0].(func(string) error)
 	// accountDescEmail is the schema descriptor for email field.
-	accountDescEmail := accountFields[2].Descriptor()
+	accountDescEmail := accountFields[3].Descriptor()
 	// account.DefaultEmail holds the default value on creation for the email field.
 	account.DefaultEmail = accountDescEmail.Default.(string)
 	// accountDescDisplayName is the schema descriptor for display_name field.
-	accountDescDisplayName := accountFields[3].Descriptor()
+	accountDescDisplayName := accountFields[4].Descriptor()
 	// account.DefaultDisplayName holds the default value on creation for the display_name field.
 	account.DefaultDisplayName = accountDescDisplayName.Default.(string)
 	// accountDescCreatedAt is the schema descriptor for created_at field.
-	accountDescCreatedAt := accountFields[4].Descriptor()
+	accountDescCreatedAt := accountFields[5].Descriptor()
 	// account.DefaultCreatedAt holds the default value on creation for the created_at field.
 	account.DefaultCreatedAt = accountDescCreatedAt.Default.(func() time.Time)
 	answereventMixin := schema.AnswerEvent{}.Mixin()

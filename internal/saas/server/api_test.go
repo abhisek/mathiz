@@ -63,15 +63,13 @@ func newTestEnvWith(t *testing.T, mutate func(*Config)) *testEnv {
 	}
 	t.Cleanup(func() { st.Close() })
 
-	verifier, err := auth.NewSupabaseVerifier(auth.SupabaseConfig{JWTSecret: testJWTSecret})
-	if err != nil {
-		t.Fatalf("verifier: %v", err)
-	}
+	verifier := testVerifier(t)
 	cfg := &Config{
 		Addr:            ":0",
 		DatabaseURL:     "test",
-		SupabaseURL:     "https://example.supabase.co",
-		SupabaseAnonKey: "anon-key",
+		AuthProvider:    auth.ProviderTest,
+		AuthHS256Secret: testJWTSecret,
+		AuthAllowTest:   true,
 	}
 	if mutate != nil {
 		mutate(cfg)
@@ -117,16 +115,31 @@ func newTestEnvWith(t *testing.T, mutate func(*Config)) *testEnv {
 	return &testEnv{ts: ts, st: st}
 }
 
-// parentToken mints a valid Supabase-style HS256 token for a test user.
+// testVerifier is the test-preset verifier that parentToken's tokens pass.
+func testVerifier(t *testing.T) auth.Verifier {
+	t.Helper()
+	v, err := auth.NewVerifier(auth.Config{Provider: auth.ProviderTest, HS256Secret: testJWTSecret, AllowTest: true})
+	if err != nil {
+		t.Fatalf("verifier: %v", err)
+	}
+	return v
+}
+
+// parentToken mints a valid test-preset HS256 token for a test user.
 func parentToken(t *testing.T, sub, email string) string {
 	t.Helper()
-	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	return signParentToken(t, jwt.MapClaims{
 		"sub":   sub,
+		"iss":   auth.TestIssuer,
 		"aud":   "authenticated",
 		"email": email,
 		"exp":   time.Now().Add(time.Hour).Unix(),
 	})
-	s, err := tok.SignedString([]byte(testJWTSecret))
+}
+
+func signParentToken(t *testing.T, claims jwt.MapClaims) string {
+	t.Helper()
+	s, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(testJWTSecret))
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}
@@ -173,12 +186,23 @@ func expectStatus(t *testing.T, resp *http.Response, want int, label string) {
 }
 
 func TestBootConfigIsPublic(t *testing.T) {
-	e := newTestEnv(t)
-	var cfg map[string]string
+	e := newTestEnvWith(t, func(cfg *Config) {
+		cfg.AuthProvider = auth.ProviderSupabase
+		cfg.AuthURL = "https://example.supabase.co"
+		cfg.AuthPublicKey = "anon-key"
+	})
+	var cfg map[string]any
 	resp := e.call(t, "GET", "/api/v1/config", "", nil, &cfg)
 	expectStatus(t, resp, 200, "config")
-	if cfg["supabaseUrl"] != "https://example.supabase.co" || cfg["supabaseAnonKey"] != "anon-key" {
+	authCfg, _ := cfg["auth"].(map[string]any)
+	if authCfg["provider"] != "supabase" || authCfg["url"] != "https://example.supabase.co" || authCfg["publicKey"] != "anon-key" {
 		t.Errorf("config = %v", cfg)
+	}
+	// The pre-adapter field names are gone: one shape for every provider.
+	for _, k := range []string{"supabaseUrl", "supabaseAnonKey"} {
+		if _, ok := cfg[k]; ok {
+			t.Errorf("config still serves %q: %v", k, cfg)
+		}
 	}
 	// No PostHog key configured → the posthog fields are OMITTED entirely,
 	// so a key-less deployment (self-hosters, tests) ships zero analytics.
@@ -194,7 +218,7 @@ func TestBootConfigServesPostHogWhenConfigured(t *testing.T) {
 		cfg.PostHogAPIKey = "phc_test"
 		cfg.PostHogHost = "https://eu.i.posthog.com"
 	})
-	var cfg map[string]string
+	var cfg map[string]any
 	resp := e.call(t, "GET", "/api/v1/config", "", nil, &cfg)
 	expectStatus(t, resp, 200, "config")
 	// posthogHost is the same-origin relay path — the upstream host
@@ -202,6 +226,32 @@ func TestBootConfigServesPostHogWhenConfigured(t *testing.T) {
 	if cfg["posthogKey"] != "phc_test" || cfg["posthogHost"] != "/relay" {
 		t.Errorf("config = %v", cfg)
 	}
+}
+
+func TestParentTokenRejections(t *testing.T) {
+	e := newTestEnv(t)
+	valid := func() jwt.MapClaims {
+		return jwt.MapClaims{
+			"sub": "u-1", "iss": auth.TestIssuer, "aud": "authenticated",
+			"email": "p@example.com", "exp": time.Now().Add(time.Hour).Unix(),
+		}
+	}
+	cases := map[string]func(jwt.MapClaims){
+		// Same secret, another provider's issuer: a deployment serves one
+		// provider and refuses every other's tokens.
+		"wrong provider": func(c jwt.MapClaims) { c["iss"] = "https://example.supabase.co/auth/v1" },
+		// Invite acceptance matches on email, so an unverified address
+		// must never provision or reach an account.
+		"unverified email": func(c jwt.MapClaims) { c["email_verified"] = false },
+	}
+	for name, mutate := range cases {
+		c := valid()
+		mutate(c)
+		resp := e.call(t, "GET", "/api/v1/me", signParentToken(t, c), nil, nil)
+		expectStatus(t, resp, http.StatusUnauthorized, name)
+	}
+	resp := e.call(t, "GET", "/api/v1/me", signParentToken(t, valid()), nil, nil)
+	expectStatus(t, resp, http.StatusOK, "valid token")
 }
 
 func TestParentEndpointsRequireAuth(t *testing.T) {

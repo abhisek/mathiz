@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/abhisek/mathiz/internal/saas/auth"
 )
 
 // Config holds all settings for `mathiz serve`.
@@ -17,14 +19,28 @@ type Config struct {
 	// accepted too, which is handy for tests and single-box setups.
 	DatabaseURL string
 
-	// SupabaseURL is the Supabase project URL.
-	SupabaseURL string
+	// AuthProvider selects the parent auth preset: "supabase" or "test"
+	// (specs/17-auth-providers.md). One provider per deployment.
+	AuthProvider string
 
-	// SupabaseAnonKey is served to the SPA via /api/v1/config (public by design).
-	SupabaseAnonKey string
+	// AuthURL is the provider's base URL (Supabase: the project URL). It
+	// pins the token issuer and is served to the SPA.
+	AuthURL string
 
-	// SupabaseJWTSecret enables HS256 token verification.
-	SupabaseJWTSecret string
+	// AuthPublicKey is the provider's public client key (Supabase: the
+	// anon/publishable key), served to the SPA via /api/v1/config.
+	AuthPublicKey string
+
+	// AuthHS256Secret enables HS256 verification: required by the test
+	// preset, optional for Supabase projects that sign with a shared secret.
+	AuthHS256Secret string
+
+	// AuthAudience overrides the preset's expected aud claim.
+	AuthAudience string
+
+	// AuthAllowTest must be set for the test preset, whose tokens anyone
+	// holding the secret can mint.
+	AuthAllowTest bool
 
 	// CORSOrigins optionally allows cross-origin SPA deployments.
 	CORSOrigins []string
@@ -81,9 +97,12 @@ func ConfigFromEnv() (*Config, error) {
 	cfg := &Config{
 		Addr:                envOr("MATHIZ_SERVER_ADDR", ":8080"),
 		DatabaseURL:         os.Getenv("MATHIZ_DATABASE_URL"),
-		SupabaseURL:         strings.TrimRight(os.Getenv("MATHIZ_SUPABASE_URL"), "/"),
-		SupabaseAnonKey:     os.Getenv("MATHIZ_SUPABASE_ANON_KEY"),
-		SupabaseJWTSecret:   os.Getenv("MATHIZ_SUPABASE_JWT_SECRET"),
+		AuthProvider:        os.Getenv("MATHIZ_AUTH_PROVIDER"),
+		AuthURL:             strings.TrimRight(os.Getenv("MATHIZ_AUTH_URL"), "/"),
+		AuthPublicKey:       os.Getenv("MATHIZ_AUTH_PUBLIC_KEY"),
+		AuthHS256Secret:     os.Getenv("MATHIZ_AUTH_HS256_SECRET"),
+		AuthAudience:        os.Getenv("MATHIZ_AUTH_AUDIENCE"),
+		AuthAllowTest:       os.Getenv("MATHIZ_AUTH_ALLOW_TEST") == "1",
 		SessionIdleTimeout:  time.Duration(envIntOr("MATHIZ_SESSION_IDLE_MINUTES", 30)) * time.Minute,
 		TrustProxy:          os.Getenv("MATHIZ_TRUST_PROXY") == "true",
 		BillingProvider:     os.Getenv("MATHIZ_BILLING_PROVIDER"),
@@ -98,6 +117,13 @@ func ConfigFromEnv() (*Config, error) {
 	}
 	if cfg.PostHogAPIKey != "" && cfg.PostHogHost == "" {
 		cfg.PostHogHost = "https://us.i.posthog.com"
+	}
+	// The MATHIZ_SUPABASE_* names are gone. An old .env must fail loudly,
+	// not boot into a half-configured state.
+	for old, repl := range removedAuthVars {
+		if os.Getenv(old) != "" {
+			return nil, fmt.Errorf("%s was removed: use %s (see .env.example)", old, repl)
+		}
 	}
 	if origins := os.Getenv("MATHIZ_CORS_ORIGINS"); origins != "" {
 		for _, o := range strings.Split(origins, ",") {
@@ -114,8 +140,30 @@ func (c *Config) Validate() error {
 	if c.DatabaseURL == "" {
 		return fmt.Errorf("MATHIZ_DATABASE_URL is required (postgres://... for SaaS mode)")
 	}
-	if c.SupabaseURL == "" && c.SupabaseJWTSecret == "" {
-		return fmt.Errorf("configure MATHIZ_SUPABASE_URL and/or MATHIZ_SUPABASE_JWT_SECRET for parent auth")
+	switch c.AuthProvider {
+	case auth.ProviderSupabase:
+		if c.AuthURL == "" {
+			return fmt.Errorf("MATHIZ_AUTH_URL is required for the supabase provider (the project URL)")
+		}
+		if c.AuthPublicKey == "" {
+			return fmt.Errorf("MATHIZ_AUTH_PUBLIC_KEY is required for the supabase provider (the anon key)")
+		}
+	case auth.ProviderTest:
+		if !c.AuthAllowTest {
+			return fmt.Errorf("the test auth provider needs MATHIZ_AUTH_ALLOW_TEST=1")
+		}
+		if c.AuthHS256Secret == "" {
+			return fmt.Errorf("the test auth provider needs MATHIZ_AUTH_HS256_SECRET")
+		}
+		// A public HTTPS origin is a real deployment: test tokens there
+		// would let anyone with the secret sign in as any parent.
+		if strings.HasPrefix(c.PublicBaseURL, "https://") {
+			return fmt.Errorf("the test auth provider is refused when MATHIZ_PUBLIC_BASE_URL is https")
+		}
+	case "":
+		return fmt.Errorf("MATHIZ_AUTH_PROVIDER is required (available: %s, %s)", auth.ProviderSupabase, auth.ProviderTest)
+	default:
+		return fmt.Errorf("unsupported MATHIZ_AUTH_PROVIDER %q (available: %s, %s)", c.AuthProvider, auth.ProviderSupabase, auth.ProviderTest)
 	}
 	switch c.LogFormat {
 	case "", "text", "json":
@@ -128,6 +176,24 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("unsupported MATHIZ_LOG_LEVEL %q (available: debug, info, warn, error)", c.LogLevel)
 	}
 	return nil
+}
+
+// removedAuthVars maps each removed variable to its replacement.
+var removedAuthVars = map[string]string{
+	"MATHIZ_SUPABASE_URL":        "MATHIZ_AUTH_PROVIDER=supabase and MATHIZ_AUTH_URL",
+	"MATHIZ_SUPABASE_ANON_KEY":   "MATHIZ_AUTH_PUBLIC_KEY",
+	"MATHIZ_SUPABASE_JWT_SECRET": "MATHIZ_AUTH_HS256_SECRET",
+}
+
+// VerifierConfig is the auth preset configuration for this deployment.
+func (c *Config) VerifierConfig() auth.Config {
+	return auth.Config{
+		Provider:    c.AuthProvider,
+		URL:         c.AuthURL,
+		HS256Secret: c.AuthHS256Secret,
+		Audience:    c.AuthAudience,
+		AllowTest:   c.AuthAllowTest,
+	}
 }
 
 func envOr(key, def string) string {

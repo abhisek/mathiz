@@ -73,18 +73,19 @@ const (
 // AccountMutation represents an operation that mutates the Account nodes in the graph.
 type AccountMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *int
-	uid              *string
-	supabase_user_id *string
-	email            *string
-	display_name     *string
-	created_at       *time.Time
-	clearedFields    map[string]struct{}
-	done             bool
-	oldValue         func(context.Context) (*Account, error)
-	predicates       []predicate.Account
+	op            Op
+	typ           string
+	id            *int
+	uid           *string
+	auth_provider *string
+	auth_subject  *string
+	email         *string
+	display_name  *string
+	created_at    *time.Time
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*Account, error)
+	predicates    []predicate.Account
 }
 
 var _ ent.Mutation = (*AccountMutation)(nil)
@@ -221,40 +222,76 @@ func (m *AccountMutation) ResetUID() {
 	m.uid = nil
 }
 
-// SetSupabaseUserID sets the "supabase_user_id" field.
-func (m *AccountMutation) SetSupabaseUserID(s string) {
-	m.supabase_user_id = &s
+// SetAuthProvider sets the "auth_provider" field.
+func (m *AccountMutation) SetAuthProvider(s string) {
+	m.auth_provider = &s
 }
 
-// SupabaseUserID returns the value of the "supabase_user_id" field in the mutation.
-func (m *AccountMutation) SupabaseUserID() (r string, exists bool) {
-	v := m.supabase_user_id
+// AuthProvider returns the value of the "auth_provider" field in the mutation.
+func (m *AccountMutation) AuthProvider() (r string, exists bool) {
+	v := m.auth_provider
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldSupabaseUserID returns the old "supabase_user_id" field's value of the Account entity.
+// OldAuthProvider returns the old "auth_provider" field's value of the Account entity.
 // If the Account object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AccountMutation) OldSupabaseUserID(ctx context.Context) (v string, err error) {
+func (m *AccountMutation) OldAuthProvider(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSupabaseUserID is only allowed on UpdateOne operations")
+		return v, errors.New("OldAuthProvider is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSupabaseUserID requires an ID field in the mutation")
+		return v, errors.New("OldAuthProvider requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSupabaseUserID: %w", err)
+		return v, fmt.Errorf("querying old value for OldAuthProvider: %w", err)
 	}
-	return oldValue.SupabaseUserID, nil
+	return oldValue.AuthProvider, nil
 }
 
-// ResetSupabaseUserID resets all changes to the "supabase_user_id" field.
-func (m *AccountMutation) ResetSupabaseUserID() {
-	m.supabase_user_id = nil
+// ResetAuthProvider resets all changes to the "auth_provider" field.
+func (m *AccountMutation) ResetAuthProvider() {
+	m.auth_provider = nil
+}
+
+// SetAuthSubject sets the "auth_subject" field.
+func (m *AccountMutation) SetAuthSubject(s string) {
+	m.auth_subject = &s
+}
+
+// AuthSubject returns the value of the "auth_subject" field in the mutation.
+func (m *AccountMutation) AuthSubject() (r string, exists bool) {
+	v := m.auth_subject
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAuthSubject returns the old "auth_subject" field's value of the Account entity.
+// If the Account object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountMutation) OldAuthSubject(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAuthSubject is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAuthSubject requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAuthSubject: %w", err)
+	}
+	return oldValue.AuthSubject, nil
+}
+
+// ResetAuthSubject resets all changes to the "auth_subject" field.
+func (m *AccountMutation) ResetAuthSubject() {
+	m.auth_subject = nil
 }
 
 // SetEmail sets the "email" field.
@@ -399,12 +436,15 @@ func (m *AccountMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AccountMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
 	if m.uid != nil {
 		fields = append(fields, account.FieldUID)
 	}
-	if m.supabase_user_id != nil {
-		fields = append(fields, account.FieldSupabaseUserID)
+	if m.auth_provider != nil {
+		fields = append(fields, account.FieldAuthProvider)
+	}
+	if m.auth_subject != nil {
+		fields = append(fields, account.FieldAuthSubject)
 	}
 	if m.email != nil {
 		fields = append(fields, account.FieldEmail)
@@ -425,8 +465,10 @@ func (m *AccountMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case account.FieldUID:
 		return m.UID()
-	case account.FieldSupabaseUserID:
-		return m.SupabaseUserID()
+	case account.FieldAuthProvider:
+		return m.AuthProvider()
+	case account.FieldAuthSubject:
+		return m.AuthSubject()
 	case account.FieldEmail:
 		return m.Email()
 	case account.FieldDisplayName:
@@ -444,8 +486,10 @@ func (m *AccountMutation) OldField(ctx context.Context, name string) (ent.Value,
 	switch name {
 	case account.FieldUID:
 		return m.OldUID(ctx)
-	case account.FieldSupabaseUserID:
-		return m.OldSupabaseUserID(ctx)
+	case account.FieldAuthProvider:
+		return m.OldAuthProvider(ctx)
+	case account.FieldAuthSubject:
+		return m.OldAuthSubject(ctx)
 	case account.FieldEmail:
 		return m.OldEmail(ctx)
 	case account.FieldDisplayName:
@@ -468,12 +512,19 @@ func (m *AccountMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUID(v)
 		return nil
-	case account.FieldSupabaseUserID:
+	case account.FieldAuthProvider:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetSupabaseUserID(v)
+		m.SetAuthProvider(v)
+		return nil
+	case account.FieldAuthSubject:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAuthSubject(v)
 		return nil
 	case account.FieldEmail:
 		v, ok := value.(string)
@@ -548,8 +599,11 @@ func (m *AccountMutation) ResetField(name string) error {
 	case account.FieldUID:
 		m.ResetUID()
 		return nil
-	case account.FieldSupabaseUserID:
-		m.ResetSupabaseUserID()
+	case account.FieldAuthProvider:
+		m.ResetAuthProvider()
+		return nil
+	case account.FieldAuthSubject:
+		m.ResetAuthSubject()
 		return nil
 	case account.FieldEmail:
 		m.ResetEmail()

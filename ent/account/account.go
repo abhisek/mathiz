@@ -15,8 +15,10 @@ const (
 	FieldID = "id"
 	// FieldUID holds the string denoting the uid field in the database.
 	FieldUID = "uid"
-	// FieldSupabaseUserID holds the string denoting the supabase_user_id field in the database.
-	FieldSupabaseUserID = "supabase_user_id"
+	// FieldAuthProvider holds the string denoting the auth_provider field in the database.
+	FieldAuthProvider = "auth_provider"
+	// FieldAuthSubject holds the string denoting the auth_subject field in the database.
+	FieldAuthSubject = "auth_subject"
 	// FieldEmail holds the string denoting the email field in the database.
 	FieldEmail = "email"
 	// FieldDisplayName holds the string denoting the display_name field in the database.
@@ -31,7 +33,8 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldUID,
-	FieldSupabaseUserID,
+	FieldAuthProvider,
+	FieldAuthSubject,
 	FieldEmail,
 	FieldDisplayName,
 	FieldCreatedAt,
@@ -48,6 +51,10 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// AuthProviderValidator is a validator for the "auth_provider" field. It is called by the builders before save.
+	AuthProviderValidator func(string) error
+	// AuthSubjectValidator is a validator for the "auth_subject" field. It is called by the builders before save.
+	AuthSubjectValidator func(string) error
 	// DefaultEmail holds the default value on creation for the "email" field.
 	DefaultEmail string
 	// DefaultDisplayName holds the default value on creation for the "display_name" field.
@@ -69,9 +76,14 @@ func ByUID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUID, opts...).ToFunc()
 }
 
-// BySupabaseUserID orders the results by the supabase_user_id field.
-func BySupabaseUserID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSupabaseUserID, opts...).ToFunc()
+// ByAuthProvider orders the results by the auth_provider field.
+func ByAuthProvider(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAuthProvider, opts...).ToFunc()
+}
+
+// ByAuthSubject orders the results by the auth_subject field.
+func ByAuthSubject(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAuthSubject, opts...).ToFunc()
 }
 
 // ByEmail orders the results by the email field.

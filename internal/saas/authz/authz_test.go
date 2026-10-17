@@ -32,8 +32,8 @@ func newFixture(t *testing.T) *fixture {
 	svc := family.New(st.Client())
 	ctx := context.Background()
 
-	owner, _ := svc.EnsureAccount(ctx, "sb-owner", "o@example.com", "Owner")
-	other, _ := svc.EnsureAccount(ctx, "sb-other", "x@example.com", "Other")
+	owner, _ := svc.EnsureAccount(ctx, family.Identity{Provider: "test", Subject: "sb-owner", Email: "o@example.com", DisplayName: "Owner"})
+	other, _ := svc.EnsureAccount(ctx, family.Identity{Provider: "test", Subject: "sb-other", Email: "x@example.com", DisplayName: "Other"})
 	sp, _ := svc.CreateSpace(ctx, owner.UID, "Family A")
 	child, _ := svc.AddChild(ctx, sp.UID, "Alice", 3, "")
 	inv, _ := svc.CreateInvite(ctx, sp.UID, 0)
