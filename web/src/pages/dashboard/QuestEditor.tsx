@@ -7,8 +7,7 @@ import {
   type Quest,
   type QuestQuestion,
   type QuestQuestionInput,
-  type QuestStatus,
-} from '../../api'
+  type QuestStatus, type TokenGetter } from '../../api'
 import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
@@ -30,7 +29,7 @@ const EMPTY_QUESTION: QuestQuestionInput = {
 // QuestEditorModal with room to breathe: natural page scroll for the
 // question list, a sticky-ish header for the actions.
 export default function QuestEditor() {
-  const { token, children } = useDashboard()
+  const { auth, children } = useDashboard()
   const kids = children.filter((c) => !c.profile.archived).map((c) => c.profile)
   const { id: questId } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -56,7 +55,7 @@ export default function QuestEditor() {
   const load = useCallback(async () => {
     if (!questId) return
     try {
-      const res = await api.getQuest(token, questId)
+      const res = await api.getQuest(auth, questId)
       if (activeQuestId.current !== questId) return
       setQuest(res.quest)
       setQuestions(res.questions ?? [])
@@ -67,11 +66,11 @@ export default function QuestEditor() {
       if (err instanceof ApiError && err.status === 404) setNotFound(true)
       else setError(err instanceof Error ? err.message : String(err))
     }
-  }, [token, questId])
+  }, [auth, questId])
 
   // Fresh quest, fresh page: clear everything carried over from the
   // previous :id (loaded quest, sticky notFound, open forms, warnings).
-  // Keyed on questId alone — a token refresh must not wipe an open form.
+  // Keyed on questId alone — an auth change must not wipe an open form.
   useEffect(() => {
     activeQuestId.current = questId
     setQuest(null)
@@ -94,8 +93,8 @@ export default function QuestEditor() {
     setError(null)
     try {
       const res = qid
-        ? await api.updateQuestQuestion(token, questId, qid, input)
-        : await api.addQuestQuestion(token, questId, input)
+        ? await api.updateQuestQuestion(auth, questId, qid, input)
+        : await api.addQuestQuestion(auth, questId, input)
       setWarnings((w) => {
         const next = { ...w }
         if (res.warning) next[res.question.id] = res.warning
@@ -115,7 +114,7 @@ export default function QuestEditor() {
     if (!questId) return
     setError(null)
     try {
-      await api.deleteQuestQuestion(token, questId, qid)
+      await api.deleteQuestQuestion(auth, questId, qid)
       setWarnings((w) => {
         const next = { ...w }
         delete next[qid]
@@ -132,7 +131,7 @@ export default function QuestEditor() {
     setBusy(true)
     setPublishError(null)
     try {
-      await api.publishQuest(token, questId)
+      await api.publishQuest(auth, questId)
       track.questPublished()
       await load()
     } catch (err) {
@@ -147,7 +146,7 @@ export default function QuestEditor() {
     setBusy(true)
     setPublishError(null)
     try {
-      await api.updateQuest(token, questId, { status })
+      await api.updateQuest(auth, questId, { status })
       await load()
     } catch (err) {
       setPublishError(err instanceof Error ? err.message : String(err))
@@ -160,7 +159,7 @@ export default function QuestEditor() {
     if (!quest || !questId) return
     if (!window.confirm(`Delete the quest "${quest.name}"? This cannot be undone.`)) return
     try {
-      await api.deleteQuest(token, questId)
+      await api.deleteQuest(auth, questId)
       navigate('/dashboard/quests')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -276,7 +275,7 @@ export default function QuestEditor() {
       {editingDetails && (
         <QuestDetailsForm
           key={quest.id}
-          token={token}
+          auth={auth}
           quest={quest}
           kids={kids}
           onSaved={async () => {
@@ -353,7 +352,7 @@ export default function QuestEditor() {
       )}
 
       <GenerateBox
-        token={token}
+        auth={auth}
         questId={questId}
         status={quest.status}
         onMakeDraft={() => void setStatus('draft')}
@@ -366,13 +365,13 @@ export default function QuestEditor() {
 
 // Rename / re-emoji / retarget / retag the quest (PATCH /api/v1/quests/{id}).
 function QuestDetailsForm({
-  token,
+  auth,
   quest,
   kids,
   onSaved,
   onCancel,
 }: {
-  token: string
+  auth: TokenGetter
   quest: Quest
   kids: ChildProfile[]
   onSaved: () => Promise<void>
@@ -386,7 +385,7 @@ function QuestDetailsForm({
 
   const [save, saving] = useAction(async () => {
     try {
-      await api.updateQuest(token, quest.id, {
+      await api.updateQuest(auth, quest.id, {
         name: name.trim(),
         emoji,
         childId,
@@ -566,14 +565,14 @@ function QuestionForm({
 // (the server replays the original result). A fresh key is minted only after
 // a successful generation, when the next click really is a new request.
 function GenerateBox({
-  token,
+  auth,
   questId,
   status,
   onMakeDraft,
   makeDraftBusy,
   onGenerated,
 }: {
-  token: string
+  auth: TokenGetter
   questId: string
   status: QuestStatus
   onMakeDraft: () => void
@@ -593,7 +592,7 @@ function GenerateBox({
     setError(null)
     setNotice(null)
     try {
-      const res = await api.generateQuestQuestions(token, questId, brief.trim(), count, clientKey)
+      const res = await api.generateQuestQuestions(auth, questId, brief.trim(), count, clientKey)
       track.questAiGenerated(res.questions.length)
       setClientKey(crypto.randomUUID())
       setBrief('')

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { api, type BillingInfo } from '../../api'
+import { api, type BillingInfo, type TokenGetter } from '../../api'
 import { track } from '../../analytics'
 import Skeleton from '../../components/Skeleton'
 import { useDashboard } from './context'
@@ -8,7 +8,7 @@ import { useDashboard } from './context'
 // Billing — owner-only. A co-parent landing here (deep link, stale tab) is
 // bounced to the kids page; the server enforces the same rule with 404s.
 export default function Billing() {
-  const { token, family, role } = useDashboard()
+  const { auth, family, role } = useDashboard()
   const [searchParams, setSearchParams] = useSearchParams()
   // Checkout success lands on this route (?billing=success). Read the flag
   // once, then scrub it from the URL so a refresh doesn't re-celebrate.
@@ -40,7 +40,7 @@ export default function Billing() {
           balance below updates as soon as the payment provider confirms.
         </div>
       )}
-      <BillingCard token={token} familyId={family.id} />
+      <BillingCard auth={auth} familyId={family.id} />
     </div>
   )
 }
@@ -49,7 +49,7 @@ export default function Billing() {
 // billing (public beta / self-hosted free mode → the endpoint 404s) it shows
 // a friendly beta card instead; the plans guard also covers any malformed
 // response so a billing hiccup can never blank the whole dashboard.
-function BillingCard({ token, familyId }: { token: string; familyId: string }) {
+function BillingCard({ auth, familyId }: { auth: TokenGetter; familyId: string }) {
   const [info, setInfo] = useState<BillingInfo | null>(null)
   const [hidden, setHidden] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -58,11 +58,11 @@ function BillingCard({ token, familyId }: { token: string; familyId: string }) {
 
   useEffect(() => {
     api
-      .billing(token, familyId)
+      .billing(auth, familyId)
       .then(setInfo)
       .catch(() => setHidden(true))
       .finally(() => setLoading(false))
-  }, [token, familyId])
+  }, [auth, familyId])
 
   if (hidden) {
     return (
@@ -113,7 +113,7 @@ function BillingCard({ token, familyId }: { token: string; familyId: string }) {
     setBusy(planId)
     setError(null)
     try {
-      const { url } = await api.billingCheckout(token, familyId, planId)
+      const { url } = await api.billingCheckout(auth, familyId, planId)
       track.checkoutStarted(planId)
       window.location.href = url
     } catch (err) {
@@ -124,7 +124,7 @@ function BillingCard({ token, familyId }: { token: string; familyId: string }) {
 
   async function portal() {
     try {
-      const { url } = await api.billingPortal(token, familyId)
+      const { url } = await api.billingPortal(auth, familyId)
       window.location.href = url
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

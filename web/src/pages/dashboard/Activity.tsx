@@ -3,8 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
   api,
   type ActivityItem,
-  type ActivitySessionDetail,
-} from '../../api'
+  type ActivitySessionDetail, type TokenGetter } from '../../api'
 import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
@@ -24,7 +23,7 @@ type RangeKey = '7' | '30' | 'all'
 // Activity — a per-child timeline of expeditions, micro-lessons, and
 // mastery milestones, newest first, paged by the seq cursor.
 export default function Activity() {
-  const { token, children, childrenLoading } = useDashboard()
+  const { auth, children, childrenLoading } = useDashboard()
   const kids = useMemo(
     () => children.filter((c) => !c.profile.archived).map((c) => c.profile),
     [children],
@@ -113,7 +112,7 @@ export default function Activity() {
     setNextBefore(null)
     setError(null)
     api
-      .activity(token, childId, {
+      .activity(auth, childId, {
         limit: PAGE_SIZE,
         // All kinds on = no filter param — the server default.
         kinds:
@@ -137,13 +136,13 @@ export default function Activity() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, childId, kindsKey, fromParam, questId])
+  }, [auth, childId, kindsKey, fromParam, questId])
 
   const [loadMore, loadingMore] = useAction(async () => {
     if (!childId || nextBefore === null) return
     const generation = fetchGeneration.current
     try {
-      const res = await api.activity(token, childId, {
+      const res = await api.activity(auth, childId, {
         before: nextBefore,
         limit: PAGE_SIZE,
         kinds:
@@ -288,7 +287,7 @@ export default function Activity() {
       ) : (
         <>
           <Timeline
-            token={token}
+            auth={auth}
             childId={childId!}
             items={items}
             details={details}
@@ -347,13 +346,13 @@ interface DetailCacheProps {
 }
 
 function Timeline({
-  token,
+  auth,
   childId,
   items,
   details,
   onDetail,
 }: {
-  token: string
+  auth: TokenGetter
   childId: string
   items: ActivityItem[]
 } & DetailCacheProps) {
@@ -374,7 +373,7 @@ function Timeline({
           {g.items.map((item) => (
             <TimelineRow
               key={`${item.kind}-${item.seq}`}
-              token={token}
+              auth={auth}
               childId={childId}
               item={item}
               details={details}
@@ -388,20 +387,20 @@ function Timeline({
 }
 
 function TimelineRow({
-  token,
+  auth,
   childId,
   item,
   details,
   onDetail,
 }: {
-  token: string
+  auth: TokenGetter
   childId: string
   item: ActivityItem
 } & DetailCacheProps) {
   if (item.kind === 'expedition' && item.expedition) {
     return (
       <ExpeditionRow
-        token={token}
+        auth={auth}
         childId={childId}
         item={item}
         details={details}
@@ -458,13 +457,13 @@ const WHY_CHIP: Record<string, string> = {
 }
 
 function ExpeditionRow({
-  token,
+  auth,
   childId,
   item,
   details,
   onDetail,
 }: {
-  token: string
+  auth: TokenGetter
   childId: string
   item: ActivityItem
 } & DetailCacheProps) {
@@ -484,7 +483,7 @@ function ExpeditionRow({
     setDetailLoading(true)
     setDetailError(null)
     api
-      .activitySession(token, childId, exp.sessionId)
+      .activitySession(auth, childId, exp.sessionId)
       .then((d) => onDetail(cacheKey, d))
       .catch((err) => setDetailError(err instanceof Error ? err.message : String(err)))
       .finally(() => setDetailLoading(false))

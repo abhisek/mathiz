@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { api, type Invite, type ParentInvite, type ParentMember } from '../../api'
+import { api, type Invite, type ParentInvite, type ParentMember, type TokenGetter } from '../../api'
 import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
@@ -7,11 +7,11 @@ import { useDashboard } from './context'
 
 // Family — co-parents roster + join codes.
 export default function Family() {
-  const { token, family, role } = useDashboard()
+  const { auth, family, role } = useDashboard()
   return (
     <div className="family">
-      <ParentsSection token={token} familyId={family.id} isOwner={role === 'owner'} />
-      <InvitesSection token={token} familyId={family.id} />
+      <ParentsSection auth={auth} familyId={family.id} isOwner={role === 'owner'} />
+      <InvitesSection auth={auth} familyId={family.id} />
     </div>
   )
 }
@@ -21,11 +21,11 @@ export default function Family() {
 // (the server enforces via authz — the UI just hides the controls).
 
 function ParentsSection({
-  token,
+  auth,
   familyId,
   isOwner,
 }: {
-  token: string
+  auth: TokenGetter
   familyId: string
   isOwner: boolean
 }) {
@@ -36,7 +36,7 @@ function ParentsSection({
 
   const refresh = useCallback(async () => {
     try {
-      const res = await api.listParents(token, familyId)
+      const res = await api.listParents(auth, familyId)
       setMembers(res.parents ?? [])
       setPending(res.invites ?? [])
       setError(null)
@@ -45,7 +45,7 @@ function ParentsSection({
     } finally {
       setLoading(false)
     }
-  }, [token, familyId])
+  }, [auth, familyId])
 
   useEffect(() => {
     void refresh()
@@ -61,7 +61,7 @@ function ParentsSection({
     setInviting(true)
     setInviteError(null)
     try {
-      await api.inviteParent(token, familyId, inviteEmail.trim())
+      await api.inviteParent(auth, familyId, inviteEmail.trim())
       track.coparentInvited()
       setInviteEmail('')
       await refresh()
@@ -79,7 +79,7 @@ function ParentsSection({
   const [revoke, revoking] = useAction(async (id: string) => {
     setRevokingId(id)
     try {
-      await api.revokeParentInvite(token, id)
+      await api.revokeParentInvite(auth, id)
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -95,7 +95,7 @@ function ParentsSection({
     if (!window.confirm(`Remove ${who} from the family? They lose access immediately.`)) return
     setRemovingId(m.accountId)
     try {
-      await api.removeParent(token, familyId, m.accountId)
+      await api.removeParent(auth, familyId, m.accountId)
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -189,7 +189,7 @@ function ParentsSection({
 }
 
 // Join codes — minting, listing, revoking (kids redeem them at /join).
-function InvitesSection({ token, familyId }: { token: string; familyId: string }) {
+function InvitesSection({ auth, familyId }: { auth: TokenGetter; familyId: string }) {
   const [invites, setInvites] = useState<Invite[]>([])
   // True until the FIRST fetch resolves — drives the skeletons.
   const [loading, setLoading] = useState(true)
@@ -197,7 +197,7 @@ function InvitesSection({ token, familyId }: { token: string; familyId: string }
 
   const refresh = useCallback(async () => {
     try {
-      const invs = await api.listInvites(token, familyId)
+      const invs = await api.listInvites(auth, familyId)
       setInvites(invs.invites ?? [])
       setError(null)
     } catch (err) {
@@ -205,7 +205,7 @@ function InvitesSection({ token, familyId }: { token: string; familyId: string }
     } finally {
       setLoading(false)
     }
-  }, [token, familyId])
+  }, [auth, familyId])
 
   useEffect(() => {
     void refresh()
@@ -218,7 +218,7 @@ function InvitesSection({ token, familyId }: { token: string; familyId: string }
     if (minting) return
     setMinting(true)
     try {
-      await api.createInvite(token, familyId, inviteDays * 24)
+      await api.createInvite(auth, familyId, inviteDays * 24)
       track.joinCodeCreated()
       await refresh()
     } catch (err) {
@@ -233,7 +233,7 @@ function InvitesSection({ token, familyId }: { token: string; familyId: string }
   const [revokeInvite, revokingInvite] = useAction(async (id: string) => {
     setRevokingInviteId(id)
     try {
-      await api.revokeInvite(token, id)
+      await api.revokeInvite(auth, id)
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

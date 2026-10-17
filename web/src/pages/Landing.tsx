@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ensureAnalyticsBooted, track } from '../analytics'
 
-// The front door: Supabase-free (kids never pay the auth boot cost), just
+// The front door: auth-free (kids never pay the auth boot cost), just
 // two clearly-signed paths — parents to sign-in, kids to the join code.
 export default function Landing() {
   useEffect(() => {

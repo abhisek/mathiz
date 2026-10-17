@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-// Minimal legal pages (/terms, /privacy, /contact). Static and Supabase-free,
+// Minimal legal pages (/terms, /privacy, /contact). Static and auth-free,
 // honest v1 documents — enough for payment-provider review. NOTE for the
 // repo: still awaiting counsel review; the UI no longer says "placeholder"
 // (users shouldn't see our to-do list), but the content is v1 until then.
@@ -78,8 +78,9 @@ export function Privacy() {
       <h2>What we store</h2>
       <ul>
         <li>
-          <strong>Parent email</strong> — used for sign-in, handled via
-          Supabase authentication.
+          <strong>Parent email</strong> — used for sign-in, handled by our
+          hosted authentication provider. Mathiz never stores parent
+          passwords.
         </li>
         <li>
           <strong>Child first name and learning progress</strong> — skill

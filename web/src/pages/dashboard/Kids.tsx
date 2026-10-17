@@ -5,8 +5,7 @@ import {
   type ChildProfile,
   type ChildStats,
   type ChildWithSummary,
-  type Device,
-} from '../../api'
+  type Device, type TokenGetter } from '../../api'
 import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
@@ -14,7 +13,7 @@ import { useDashboard } from './context'
 
 // Kids — the dashboard index: child cards, add child, PIN nudge, rename.
 export default function Kids() {
-  const { token, family, children, childrenLoading, refreshChildren, refreshMe } = useDashboard()
+  const { auth, family, children, childrenLoading, refreshChildren, refreshMe } = useDashboard()
   const [searchParams] = useSearchParams()
   const [showAddChild, setShowAddChild] = useState(false)
   const [openChild, setOpenChild] = useState<string | null>(null)
@@ -28,7 +27,7 @@ export default function Kids() {
   return (
     <div className="family">
       <div className="family-header">
-        <FamilyName token={token} familyId={family.id} name={family.name} onRenamed={refreshMe} />
+        <FamilyName auth={auth} familyId={family.id} name={family.name} onRenamed={refreshMe} />
         <button className="btn btn-primary" onClick={() => setShowAddChild(true)}>
           + Add child
         </button>
@@ -71,7 +70,7 @@ export default function Kids() {
         {children.map((c) => (
           <ChildCard
             key={c.profile.id}
-            token={token}
+            auth={auth}
             child={c}
             open={openChild === c.profile.id}
             onToggle={() =>
@@ -84,7 +83,7 @@ export default function Kids() {
 
       {showAddChild && (
         <AddChildModal
-          token={token}
+          auth={auth}
           familyId={family.id}
           onClose={() => setShowAddChild(false)}
           onAdded={async () => {
@@ -100,12 +99,12 @@ export default function Kids() {
 // FamilyName renders the space name with a quiet inline rename affordance
 // (PATCH /api/v1/family/{id} — any member may rename).
 function FamilyName({
-  token,
+  auth,
   familyId,
   name,
   onRenamed,
 }: {
-  token: string
+  auth: TokenGetter
   familyId: string
   name: string
   onRenamed: () => Promise<void>
@@ -116,7 +115,7 @@ function FamilyName({
 
   const [save, saving] = useAction(async () => {
     try {
-      await api.renameFamily(token, familyId, draft.trim())
+      await api.renameFamily(auth, familyId, draft.trim())
       await onRenamed()
       setEditing(false)
       setError(null)
@@ -175,12 +174,12 @@ function FamilyName({
 }
 
 function AddChildModal({
-  token,
+  auth,
   familyId,
   onClose,
   onAdded,
 }: {
-  token: string
+  auth: TokenGetter
   familyId: string
   onClose: () => void
   onAdded: () => Promise<void>
@@ -196,7 +195,7 @@ function AddChildModal({
     setBusy(true)
     setError(null)
     try {
-      await api.addChild(token, familyId, name, grade, pin)
+      await api.addChild(auth, familyId, name, grade, pin)
       track.childAdded(grade)
       await onAdded()
     } catch (err) {
@@ -250,13 +249,13 @@ function AddChildModal({
 }
 
 function ChildCard({
-  token,
+  auth,
   child,
   open,
   onToggle,
   onChanged,
 }: {
-  token: string
+  auth: TokenGetter
   child: ChildWithSummary
   open: boolean
   onToggle: () => void
@@ -272,24 +271,24 @@ function ChildCard({
     if (!open) return
     setStatsLoading(true)
     void api
-      .childStats(token, profile.id)
+      .childStats(auth, profile.id)
       .then(setStats)
       .catch(() => {})
       .finally(() => setStatsLoading(false))
     void api
-      .listDevices(token, profile.id)
+      .listDevices(auth, profile.id)
       .then((d) => setDevices(d.devices ?? []))
       .catch(() => {})
-  }, [open, token, profile.id])
+  }, [open, auth, profile.id])
 
   const [revokingDeviceId, setRevokingDeviceId] = useState<string | null>(null)
 
   const [revokeDevice, revokingDevice] = useAction(async (id: string) => {
     setRevokingDeviceId(id)
     try {
-      await api.revokeDevice(token, id)
+      await api.revokeDevice(auth, id)
       // Only the device list changed — targeted refetch, not a full refresh.
-      const d = await api.listDevices(token, profile.id)
+      const d = await api.listDevices(auth, profile.id)
       setDevices(d.devices ?? [])
       setActionError(null)
     } catch (err) {
@@ -303,7 +302,7 @@ function ChildCard({
   const [archive, archiving] = useAction(async () => {
     if (!window.confirm(`Archive ${profile.name}? Their devices will be signed out.`)) return
     try {
-      await api.updateChild(token, profile.id, { archived: true })
+      await api.updateChild(auth, profile.id, { archived: true })
       await onChanged()
     } catch (err) {
       setActionError(err instanceof Error ? err.message : String(err))
@@ -421,7 +420,7 @@ function ChildCard({
             </>
           )}
 
-          <PinControl token={token} profile={profile} onChanged={onChanged} />
+          <PinControl auth={auth} profile={profile} onChanged={onChanged} />
 
           <h4>Devices</h4>
           {devices.length === 0 ? (
@@ -466,11 +465,11 @@ function ChildCard({
 // Set / change a child's PIN after creation. Encouraged (nudge + chip),
 // never forced.
 function PinControl({
-  token,
+  auth,
   profile,
   onChanged,
 }: {
-  token: string
+  auth: TokenGetter
   profile: ChildProfile
   onChanged: () => Promise<void>
 }) {
@@ -484,7 +483,7 @@ function PinControl({
     setBusy(true)
     setError(null)
     try {
-      await api.updateChild(token, profile.id, { pin })
+      await api.updateChild(auth, profile.id, { pin })
       await onChanged()
       setEditing(false)
       setPin('')

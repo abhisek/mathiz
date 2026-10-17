@@ -5,7 +5,7 @@ import { ensureAnalyticsBooted, track } from '../analytics'
 // /demo — the shareable "see it before you sign up" page: one headline,
 // the launch video, one exit (start free). Deliberately no nav, feature
 // grids, or second pitch — a demo page with one exit converts better than
-// a second homepage. Supabase-free like every public page.
+// a second homepage. auth-free like every public page.
 //
 // The video lives on our public CDN bucket; the dated filename is
 // immutable and cache-friendly — re-recording the demo means uploading a
