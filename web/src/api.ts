@@ -374,11 +374,13 @@ export async function request<T>(
     }
     let resp: Response
     if (typeof auth === 'function') {
-      resp = await send(await auth())
+      const first = await auth()
+      resp = await send(first)
       if (resp.status === 401) {
         // The token may have expired between the getter and the server:
-        // retry once with a fresh one before giving up on the session.
-        resp = await send(await auth(true))
+        // retry once, but only with a token that is actually new.
+        const fresh = await auth(true)
+        if (fresh && fresh !== first) resp = await send(fresh)
         if (resp.status === 401) onParentUnauthorized()
       }
     } else {

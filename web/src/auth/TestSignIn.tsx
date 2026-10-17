@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { track } from '../analytics'
 
 // The paste-a-token form of the test adapter (see ./test.ts).
 export default function TestSignIn({ onToken }: { onToken: (token: string) => void }) {
@@ -13,7 +12,6 @@ export default function TestSignIn({ onToken }: { onToken: (token: string) => vo
       setError('That does not look like a JWT (three dot-separated parts).')
       return
     }
-    track.signinCompleted()
     onToken(t)
   }
 

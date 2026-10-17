@@ -37,7 +37,7 @@ export default function SupabaseSignIn({ client }: { client: SupabaseClient }) {
     setError(null)
     setNotice(null)
     try {
-            const { error } = await client.auth.signInWithOtp({
+      const { error } = await client.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
@@ -60,7 +60,7 @@ export default function SupabaseSignIn({ client }: { client: SupabaseClient }) {
     setBusy(true)
     setError(null)
     try {
-            const { error } = await client.auth.verifyOtp({
+      const { error } = await client.auth.verifyOtp({
         email,
         token: code.trim(),
         type: 'email',
@@ -81,7 +81,7 @@ export default function SupabaseSignIn({ client }: { client: SupabaseClient }) {
     setError(null)
     setNotice(null)
     try {
-            if (passwordMode === 'signup') {
+      if (passwordMode === 'signup') {
         const { data, error } = await client.auth.signUp({
           email,
           password,
@@ -107,7 +107,7 @@ export default function SupabaseSignIn({ client }: { client: SupabaseClient }) {
 
   return (
     <>
-{mode === 'otp' && !codeSent && (
+      {mode === 'otp' && !codeSent && (
         <form onSubmit={sendCode}>
           <label>
             Email

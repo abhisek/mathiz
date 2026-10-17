@@ -5,7 +5,9 @@ import {
   type ChildProfile,
   type ChildStats,
   type ChildWithSummary,
-  type Device, type TokenGetter } from '../../api'
+  type Device,
+  type TokenGetter,
+} from '../../api'
 import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'

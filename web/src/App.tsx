@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
-import { getAuth, type AuthAdapter } from './auth'
+import { getAuth, type AuthAdapter, type AuthUser } from './auth'
 import { ensureAnalyticsBooted, track } from './analytics'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -69,7 +69,7 @@ function PublicLayout({ variant }: { variant?: 'full' | 'minimal' }) {
 // ParentArea owns the auth adapter; only parent pages pay its boot cost.
 function ParentArea({ page }: { page: 'login' | 'dashboard' }) {
   const [adapter, setAdapter] = useState<AuthAdapter | null>(null)
-  const [user, setUser] = useState<{ email: string } | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [booted, setBooted] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
   const location = useLocation()
@@ -88,7 +88,12 @@ function ParentArea({ page }: { page: 'login' | 'dashboard' }) {
         if (cancelled) return
         setAdapter(a)
         setUser(a.user())
-        unsub = a.onChange(() => setUser(a.user()))
+        // Token refreshes fire onChange too: keep the same object unless
+        // the parent actually changed, so the dashboard doesn't re-render.
+        unsub = a.onChange(() => {
+          const next = a.user()
+          setUser((prev) => (prev?.id === next?.id && prev?.email === next?.email ? prev : next))
+        })
         setBooted(true)
       })
       .catch((err) => {
@@ -120,5 +125,11 @@ function ParentArea({ page }: { page: 'login' | 'dashboard' }) {
   if (page === 'login') {
     return user ? <Navigate to="/dashboard" replace /> : <Login SignIn={adapter.SignIn} />
   }
-  return user ? <Dashboard adapter={adapter} email={user.email} /> : <Navigate to="/login" replace />
+  // Keyed on the parent: a different parent signing in (another tab) gets
+  // a fresh dashboard, never the previous parent's cached family.
+  return user ? (
+    <Dashboard key={user.id} adapter={adapter} email={user.email} />
+  ) : (
+    <Navigate to="/login" replace />
+  )
 }

@@ -24,7 +24,7 @@ export async function createSupabaseAdapter(cfg: AuthBootConfig): Promise<AuthAd
       const { data } = fresh ? await client.auth.refreshSession() : await client.auth.getSession()
       return data.session?.access_token ?? null
     },
-    user: () => (session ? { email: session.user.email ?? '' } : null),
+    user: () => (session ? { id: session.user.id, email: session.user.email ?? '' } : null),
     onChange(cb) {
       listeners.add(cb)
       return () => {

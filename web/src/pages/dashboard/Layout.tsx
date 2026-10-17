@@ -8,8 +8,8 @@ import {
   type TokenGetter,
 } from '../../api'
 import { useAction } from '../../hooks'
-import { identifyFamilyGroup, identifyParent, resetAnalytics, track } from '../../analytics'
-import type { AuthAdapter } from '../../auth'
+import { identifyFamilyGroup, identifyParent, track } from '../../analytics'
+import { signOut, type AuthAdapter } from '../../auth'
 import ShareMathiz from '../../components/ShareMathiz'
 import { type DashboardContext } from './context'
 import Kids from './Kids'
@@ -55,6 +55,9 @@ function DashboardLayout({ adapter, email }: Props) {
   const [role, setRole] = useState<string | null>(null)
   const [pendingInvite, setPendingInvite] = useState<PendingParentInvite | null>(null)
   const [loaded, setLoaded] = useState(false)
+  // True once /me has answered: until then a failure (e.g. a 503 while
+  // the auth provider is down) must not look like "no family yet".
+  const [meOk, setMeOk] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const refreshMe = useCallback(async () => {
@@ -64,6 +67,7 @@ function DashboardLayout({ adapter, email }: Props) {
       setRole(me.role ?? null)
       setPendingInvite(me.pendingInvite ?? null)
       setError(null)
+      setMeOk(true)
       // Parents consented by signing up: identify by account UID (never
       // email as the id) and attach the family group parent-side — the only
       // place the family NAME may enter analytics.
@@ -107,11 +111,6 @@ function DashboardLayout({ adapter, email }: Props) {
     void refreshChildren()
   }, [refreshChildren])
 
-  async function signOut() {
-    resetAnalytics()
-    await adapter.signOut()
-  }
-
   if (!loaded) return <div className="boot">Loading…</div>
 
   const isOwner = (role ?? 'parent') === 'owner'
@@ -137,7 +136,7 @@ function DashboardLayout({ adapter, email }: Props) {
           </NavLink>
           <span className="muted dash-email">{email}</span>
           <ShareMathiz variant="nav" />
-          <button className="btn btn-ghost" onClick={signOut}>
+          <button className="btn btn-ghost" onClick={() => void signOut()}>
             Sign out
           </button>
         </div>
@@ -145,7 +144,14 @@ function DashboardLayout({ adapter, email }: Props) {
 
       <main className="dash-main">
         {error && <p className="form-error">{error}</p>}
-        {family ? (
+        {!meOk ? (
+          <div className="card dash-retry">
+            <p>We couldn&apos;t load your family right now.</p>
+            <button className="btn" onClick={() => void refreshMe()}>
+              Try again
+            </button>
+          </div>
+        ) : family ? (
           <Outlet
             context={
               {
