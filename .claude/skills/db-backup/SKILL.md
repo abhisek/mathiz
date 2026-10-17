@@ -34,7 +34,8 @@ committed.
 - Custom format: `pg_restore --no-owner --no-privileges -d "$TARGET_DSN" <file>.dump`
 - Plain format: `psql "$TARGET_DSN" -f <file>.sql`
 
-The production database is the `mathiz` database on the Supabase cluster
-(NOT the default `postgres` database — the Supabase dashboard cannot see it;
-that is intentional, it keeps tables out of PostgREST's reach). Restoring
-into a Supabase target: connect to the same `/mathiz` database name.
+The production database is the `mathiz` database in the `prod-db` service
+of the compose `prod` profile, on the production VM (docs/saas.md
+"Deploying on a VM"). It has no published port: on the VM, run the dump
+inside the container instead of this script:
+`docker compose --profile prod exec -T prod-db pg_dump -Fc -U mathiz mathiz > <file>.dump`.

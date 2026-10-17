@@ -122,7 +122,7 @@ fi
 [ -d "$(dirname "$OUTPUT")" ] || die "directory does not exist: $(dirname "$OUTPUT")"
 [ -e "$OUTPUT" ] && die "refusing to overwrite existing file: $OUTPUT"
 
-# --no-owner/--no-privileges: hosted providers (Supabase) use roles that won't
+# --no-owner/--no-privileges: hosted providers use roles that won't
 # exist on a restore target.
 "$PG_DUMP" --format="$PG_FORMAT" --no-owner --no-privileges \
 	--file="$OUTPUT" "$MATHIZ_DATABASE_URL"

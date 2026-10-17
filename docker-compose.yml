@@ -8,12 +8,19 @@
 #                      .claude/skills/saas-e2e/assets/mint-jwt.mjs) and the
 #                      kid flows only need a join code.
 #
-# To use a real Supabase project and/or a real LLM, set the MATHIZ_* env
-# vars (or a .env file next to this compose file) — every default below is
-# overridable. Production uses hosted PostgreSQL instead.
+# To use a real LLM, set the MATHIZ_* env vars (or a .env file next to
+# this compose file) — every default below is overridable.
+#
+#   docker compose --profile prod up -d
+#                    → PRODUCTION on one VM: PostgreSQL + mathiz serve, no
+#                      dev defaults. Every secret comes from .env. See
+#                      docs/saas.md "Deploying on a VM".
 services:
   postgres:
-    image: postgres:16-alpine
+    # Dev only. `make dev-db` names this service, so it starts without the
+    # profile flag; the profiles keep it out of `--profile prod`.
+    profiles: ["dev", "full"]
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: mathiz
       POSTGRES_PASSWORD: mathiz
@@ -21,7 +28,10 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - mathiz-pgdata:/var/lib/postgresql/data
+      # PostgreSQL 18+ images keep data in /var/lib/postgresql/<major>/docker,
+      # so the volume mounts one level up. The volume name carries the major:
+      # an old 16 volume must never be mounted into an 18 server.
+      - mathiz-pg18data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mathiz"]
       interval: 5s
@@ -66,5 +76,50 @@ services:
     ports:
       - "8080:8080"
 
+  # ---- Production (one VM) ----
+  # The database is reachable only on the private compose network: no
+  # published port, so sslmode=disable in the app's DSN is safe. Back it up
+  # every 12 hours from the host (docs/saas.md "Backups").
+  prod-db:
+    profiles: ["prod"]
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mathiz
+      # Empty = the postgres image refuses to initialise, so a missing
+      # MATHIZ_DB_PASSWORD in .env stops the stack instead of booting with
+      # a guessable password. (A `:?` check would break every dev profile:
+      # compose interpolates all services, active or not.)
+      POSTGRES_PASSWORD: ${MATHIZ_DB_PASSWORD:-}
+      POSTGRES_DB: mathiz
+    volumes:
+      - mathiz-prod-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mathiz -d mathiz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  prod-app:
+    profiles: ["prod"]
+    build: .
+    restart: unless-stopped
+    depends_on:
+      prod-db:
+        condition: service_healthy
+    # Auth, LLM, billing and analytics settings come from .env only: the
+    # prod profile has no defaults, so a missing setting fails at boot.
+    env_file: .env
+    environment:
+      MATHIZ_DATABASE_URL: postgres://mathiz:${MATHIZ_DB_PASSWORD:-}@prod-db:5432/mathiz?sslmode=disable
+      MATHIZ_SERVER_ADDR: ":8080"
+      # Wins over env_file: a .env copied from dev can never enable the
+      # test auth preset, whose tokens anyone with the dev secret can mint.
+      MATHIZ_AUTH_ALLOW_TEST: ""
+    # Loopback only: a TLS reverse proxy on the host fronts the server.
+    ports:
+      - "127.0.0.1:8080:8080"
+
 volumes:
-  mathiz-pgdata:
+  mathiz-pg18data:
+  mathiz-prod-pgdata:

@@ -87,8 +87,15 @@ Kids never see prices or balances. Design:
 
 ## Production notes
 
-- Point `MATHIZ_DATABASE_URL` at Supabase's Postgres connection string or any
-  hosted PostgreSQL. Schema migrates automatically on startup.
+- Point `MATHIZ_DATABASE_URL` at a PostgreSQL 16 or newer that you run.
+  Production runs PostgreSQL 18. No Mathiz data lives on Supabase. The
+  schema migrates automatically on startup.
+- The server caps its connection pool at 20 open and 10 idle connections.
+  `MATHIZ_DB_MAX_OPEN_CONNS` and `MATHIZ_DB_MAX_IDLE_CONNS` override the
+  caps. At startup the server logs the PostgreSQL version and the effective
+  `sslmode`, and refuses a server older than 16.
+- Use `sslmode=verify-full` when the database is not on the same host or
+  private network.
 - The binary is self-contained (SPA embedded): deploy it anywhere that can
   run a Go binary and reach Postgres. Put TLS in front.
 - LLM API keys stay server-side; browsers never see them.
@@ -96,6 +103,70 @@ Kids never see prices or balances. Design:
 - Logging: one structured line per request on stdout (`MATHIZ_LOG_FORMAT`
   `text`/`json`, `MATHIZ_LOG_LEVEL`); `MATHIZ_LOG_FILE` tees to a file.
   No built-in rotation — use logrotate or your container's log driver.
+
+## Deploying on a VM
+
+Production is one VM that runs the `prod` profile of `docker-compose.yml`:
+PostgreSQL 18 (`prod-db`) and `mathiz serve` (`prod-app`). Kubernetes is
+not in scope.
+
+1. Install Docker Engine with the compose plugin on the VM.
+2. Clone the repository on the VM. Create `.env` from `.env.example`. Set
+   `MATHIZ_DB_PASSWORD`, the auth settings, the LLM key and, if you bill,
+   the billing settings. The prod profile has no defaults: a missing
+   setting stops the server at boot.
+3. Start the stack:
+
+   ```bash
+   docker compose --profile prod up -d --build
+   ```
+
+4. Put a TLS reverse proxy (Caddy, nginx) on the host in front of
+   `127.0.0.1:8080`. The app port is bound to loopback only. Set
+   `MATHIZ_TRUST_PROXY=true` and `MATHIZ_PUBLIC_BASE_URL=https://…`.
+5. The database has no published port. The app reaches it on the private
+   compose network, so its DSN uses `sslmode=disable`.
+
+Upgrades: a minor PostgreSQL upgrade is an image pull and a restart
+(`docker compose --profile prod pull prod-db && docker compose --profile
+prod up -d`). A major upgrade is a dump and a restore into a new volume.
+Use the backup and restore steps below.
+
+### Recovery targets
+
+| Target | Value | How |
+|---|---|---|
+| RPO (data loss) | 12 hours | a `pg_dump` every 12 hours, copied off the VM |
+| RTO (downtime) | 12 hours | a new VM, the compose stack, and a restore of the latest dump |
+
+There is no point-in-time recovery, no WAL archiving and no standby. These
+targets do not need them.
+
+### Backups
+
+Add this host cron entry on the VM. It writes a custom-format dump every
+12 hours. Copy the directory off the VM (object storage, another host)
+with the tool you use for off-site copies. Keep at least 14 days of dumps.
+
+```cron
+0 */12 * * * cd /srv/mathiz && docker compose --profile prod exec -T prod-db pg_dump -Fc -U mathiz mathiz > /var/backups/mathiz/mathiz-$(date +\%Y\%m\%d-\%H\%M).dump
+```
+
+`scripts/db-backup.sh` does the same from any machine that can reach the
+database. Alert when a dump fails or is missing.
+
+### Restore and the monthly drill
+
+```bash
+docker compose --profile prod exec -T prod-db createdb -U mathiz mathiz_restore
+docker compose --profile prod exec -T prod-db pg_restore --no-owner --no-privileges -U mathiz -d mathiz_restore < mathiz-YYYYMMDD-HHMM.dump
+```
+
+Once a month, restore the latest dump into a scratch database as above.
+Compare the row counts of the main tables (`accounts`, `family_spaces`,
+`child_profiles`, `credit_entries`, `snapshots`) with production. Then
+drop the scratch database. A real restore uses the same steps into the
+`mathiz` database of a new `prod-db`.
 
 ## API surface
 
