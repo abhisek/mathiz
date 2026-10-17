@@ -76,22 +76,23 @@ func runServe(ctx context.Context) error {
 	// lands in the same stream instead of vanishing to stderr.
 	slog.SetDefault(logger)
 
-	st, err := store.Open(cfg.DatabaseURL)
-	if err != nil {
-		return fmt.Errorf("open database: %w", err)
-	}
-	defer st.Close()
-
+	// Before the database: a bad auth setting fails without touching it.
 	verifier, err := auth.NewVerifier(cfg.VerifierConfig())
 	if err != nil {
 		return err
 	}
 	defer verifier.Close()
 
+	st, err := store.Open(cfg.DatabaseURL, store.BeforeMigrate(checkLegacyAccounts))
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+	defer st.Close()
+
 	// The family service backing the API server.
 	svc := family.New(st.Client())
 
-	if err := checkAccounts(ctx, st, svc, verifier.Provider()); err != nil {
+	if err := checkProviderPin(ctx, svc, verifier.Provider()); err != nil {
 		return err
 	}
 	if err := verifier.Warm(); err != nil {
@@ -252,28 +253,32 @@ func runServe(ctx context.Context) error {
 	}
 }
 
-// checkAccounts refuses to start on an accounts table this release can't
-// serve: a column from before pluggable auth, or families that belong to a
-// provider other than the configured one (a config typo would otherwise
-// lock every parent out of their family).
-func checkAccounts(ctx context.Context, st *store.Store, svc *family.Service, provider string) error {
-	// Auto-migrate never drops columns, and this one is NOT NULL: every new
-	// account insert would fail.
+// checkLegacyAccounts refuses an accounts table from before pluggable auth
+// (specs/17). It runs before auto-migrate: adding the new NOT NULL identity
+// columns to rows that lack them fails with an error that doesn't name the
+// fix, and the old NOT NULL column would fail every new account insert.
+func checkLegacyAccounts(ctx context.Context, st *store.Store) error {
 	legacy, err := st.ColumnExists(ctx, "accounts", "supabase_user_id")
 	if err != nil {
 		return err
 	}
 	if legacy {
-		return errors.New(`database predates pluggable auth (specs/17): run "ALTER TABLE accounts DROP COLUMN supabase_user_id;" or start on a fresh database`)
+		return errors.New(`database predates pluggable auth (specs/17): start on a fresh database, or for an empty accounts table run "ALTER TABLE accounts DROP COLUMN supabase_user_id;"`)
 	}
+	return nil
+}
 
+// checkProviderPin refuses to start when families belong to a provider
+// other than the configured one: a config typo would otherwise lock every
+// parent out of their family.
+func checkProviderPin(ctx context.Context, svc *family.Service, provider string) error {
 	foreign, err := svc.CountForeignAccounts(ctx, provider)
 	if err != nil {
 		return err
 	}
 	if len(foreign) > 0 {
 		other := slices.Sorted(maps.Keys(foreign))[0]
-		return fmt.Errorf(`auth: %d accounts belong to provider %q, configured %q: run "mathiz auth remap --from %s --to %s" (specs/17 §6)`,
+		return fmt.Errorf(`auth: %d accounts belong to provider %q, configured %q: run "mathiz auth remap --from %s --to %s --map <old,new subjects csv>" (specs/17 §6)`,
 			foreign[other], other, provider, other, provider)
 	}
 	return nil

@@ -254,6 +254,34 @@ func TestParentTokenRejections(t *testing.T) {
 	expectStatus(t, resp, http.StatusOK, "valid token")
 }
 
+// unavailableVerifier stands in for a provider whose keys can't be fetched.
+type unavailableVerifier struct{}
+
+func (unavailableVerifier) Verify(context.Context, string) (*auth.Identity, error) {
+	return nil, auth.ErrUnavailable
+}
+func (unavailableVerifier) Provider() string { return auth.ProviderTest }
+
+func TestParentAuthProviderOutageIs503(t *testing.T) {
+	st, err := store.Open("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+	srv := New(Deps{
+		Config:   &Config{Addr: ":0", DatabaseURL: "test", AuthProvider: auth.ProviderTest},
+		Store:    st,
+		Family:   family.New(st.Client()),
+		Verifier: unavailableVerifier{},
+	})
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	e := &testEnv{ts: ts, st: st}
+	// A 401 would make the SPA sign the parent out over a provider blip.
+	resp := e.call(t, "GET", "/api/v1/me", parentToken(t, "u-1", "p@example.com"), nil, nil)
+	expectStatus(t, resp, http.StatusServiceUnavailable, "provider outage")
+}
+
 func TestParentEndpointsRequireAuth(t *testing.T) {
 	e := newTestEnv(t)
 	for _, path := range []string{"/api/v1/me", "/api/v1/family/x/children"} {

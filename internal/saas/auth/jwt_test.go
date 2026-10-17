@@ -77,12 +77,18 @@ func TestTestPresetIdentity(t *testing.T) {
 		t.Errorf("Provider() = %q", v.Provider())
 	}
 
-	id, err = v.Verify(context.Background(), testToken(t, func(c jwt.MapClaims) { c["email_verified"] = false }))
-	if err != nil {
-		t.Fatalf("verify unverified: %v", err)
-	}
-	if id.EmailVerified {
-		t.Error("email_verified=false must map to EmailVerified=false")
+	for name, mutate := range map[string]func(jwt.MapClaims){
+		"top-level email_verified=false":     func(c jwt.MapClaims) { c["email_verified"] = false },
+		"user_metadata.email_verified=false": func(c jwt.MapClaims) { c["user_metadata"] = map[string]any{"email_verified": false} },
+		"no email":                           func(c jwt.MapClaims) { delete(c, "email") },
+	} {
+		id, err := v.Verify(context.Background(), testToken(t, mutate))
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if id.EmailVerified {
+			t.Errorf("%s: EmailVerified = true", name)
+		}
 	}
 }
 

@@ -113,7 +113,13 @@ func TestPreset(cfg Config) (Preset, error) {
 			meta, _ := c["user_metadata"].(map[string]any)
 			email, _ := c["email"].(string)
 			verified := email != ""
+			// Either shape refuses: top level (mint-jwt.mjs) or the
+			// Supabase-style user_metadata, so a dev token copied from
+			// either one can't slip an unverified email through.
 			if v, ok := c["email_verified"].(bool); ok && !v {
+				verified = false
+			}
+			if v, ok := meta["email_verified"].(bool); ok && !v {
 				verified = false
 			}
 			return Profile{Email: email, EmailVerified: verified, DisplayName: metadataName(meta)}
