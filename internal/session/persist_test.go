@@ -529,6 +529,10 @@ func TestMasteryStandingChanged(t *testing.T) {
 			id: {SkillID: id, State: state, CurrentTier: tier},
 		}}
 	}
+	otherID := skillgraph.AllSkills()[1].ID
+	other := &store.MasterySnapshotData{Skills: map[string]*store.SkillMasteryData{
+		otherID: {SkillID: otherID, State: "learning", CurrentTier: "learn"},
+	}}
 	cases := []struct {
 		name       string
 		prev, next *store.MasterySnapshotData
@@ -539,10 +543,11 @@ func TestMasteryStandingChanged(t *testing.T) {
 		{"tier advanced", snap("learning", "learn"), snap("learning", "prove"), true},
 		{"mastered", snap("learning", "prove"), snap("mastered", "prove"), true},
 		{"decayed", snap("mastered", "prove"), snap("rusty", "prove"), true},
-		{"skill started", nil, snap("learning", "learn"), true},
-		{"skill untouched", nil, snap("new", "learn"), false},
+		{"skill started", other, snap("learning", "learn"), true},
+		{"skill untouched", other, snap("new", "learn"), false},
+		{"no previous mastery data", nil, snap("learning", "learn"), false},
 		{"no mastery data", snap("learning", "learn"), nil, false},
-		{"off-curriculum skill", nil, &store.MasterySnapshotData{Skills: map[string]*store.SkillMasteryData{
+		{"off-curriculum skill", other, &store.MasterySnapshotData{Skills: map[string]*store.SkillMasteryData{
 			"quest:abc": {SkillID: "quest:abc", State: "learning"},
 		}}, false},
 	}
@@ -579,13 +584,38 @@ func TestSessionsSinceKeepsSubSecondOrder(t *testing.T) {
 	}
 }
 
-// expectNoProfileCall fails when the refresh goroutine calls the model.
-func expectNoProfileCall(t *testing.T, provider *signalProvider, why string) {
+// captureLogs sends slog output to a buffer for the rest of the test.
+func captureLogs(t *testing.T) *syncBuffer {
 	t.Helper()
+	var logs syncBuffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &logs
+}
+
+// waitForLog waits until the refresh goroutine logs want. A fixed sleep
+// would let a skip test pass on a slow runner before the goroutine ran.
+func waitForLog(t *testing.T, logs *syncBuffer, want string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for !strings.Contains(logs.String(), want) {
+		if time.Now().After(deadline) {
+			t.Fatalf("no log %q; got %q", want, logs.String())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// expectSkipped waits for the refresh to log its decision, then fails if
+// it called the model.
+func expectSkipped(t *testing.T, logs *syncBuffer, provider *signalProvider, reason, why string) {
+	t.Helper()
+	waitForLog(t, logs, `"reason":"`+reason+`"`)
 	select {
 	case <-provider.called:
 		t.Error(why)
-	case <-time.After(250 * time.Millisecond):
+	default:
 	}
 }
 
@@ -614,6 +644,7 @@ func TestFirstExpeditionWritesNoProfile(t *testing.T) {
 	seedAnswers(t, repo, skill.ID, 5, 4)
 	endSession(t, repo, "sess-1", skill.ID, 5, 4)
 
+	logs := captureLogs(t)
 	provider := newSignalProvider([]byte(profileJSONv1))
 	state := &SessionState{
 		TotalQuestions:  5,
@@ -627,7 +658,7 @@ func TestFirstExpeditionWritesNoProfile(t *testing.T) {
 	if err := SaveSnapshotWithProfile(ctx, owner, st.SnapshotRepoFor(owner), lessons.NewCompressor(provider, lessons.DefaultCompressorConfig()), state, snapData); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	expectNoProfileCall(t, provider, "a first five-question expedition generated a profile")
+	expectSkipped(t, logs, provider, "too little evidence", "a first five-question expedition generated a profile")
 }
 
 // strongHistory sets up the FOU-241 case: a child with 40/45 lifetime on a
@@ -678,11 +709,12 @@ func TestBadExpeditionDoesNotRewriteStrongProfile(t *testing.T) {
 	owner := "child-strong"
 	_, state, snapData := strongHistory(t, st, owner)
 
+	logs := captureLogs(t)
 	provider := newSignalProvider([]byte(profileJSONv1))
 	if err := SaveSnapshotWithProfile(context.Background(), owner, st.SnapshotRepoFor(owner), lessons.NewCompressor(provider, lessons.DefaultCompressorConfig()), state, snapData); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	expectNoProfileCall(t, provider, "one bad expedition rewrote the profile of a child with strong history")
+	expectSkipped(t, logs, provider, "not due", "one bad expedition rewrote the profile of a child with strong history")
 }
 
 // TestGroundedPromptLeadsWithHistory: when the refresh is due, the prompt
@@ -745,23 +777,13 @@ func TestProfileSkippedWhenHistoryFails(t *testing.T) {
 	state.EventRepo = failingHistory{state.EventRepo}
 	snapData.Mastery.Skills[skillgraph.AllSkills()[0].ID].State = "rusty"
 
-	var logs syncBuffer
-	prev := slog.Default()
-	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
-	t.Cleanup(func() { slog.SetDefault(prev) })
-
+	logs := captureLogs(t)
 	provider := newSignalProvider([]byte(profileJSONv1))
 	if err := SaveSnapshotWithProfile(context.Background(), owner, st.SnapshotRepoFor(owner), lessons.NewCompressor(provider, lessons.DefaultCompressorConfig()), state, snapData); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 	// The skip log is the last thing the refresh goroutine does.
-	deadline := time.Now().Add(5 * time.Second)
-	for !strings.Contains(logs.String(), "learner profile skipped") {
-		if time.Now().After(deadline) {
-			t.Fatalf("skipped refresh left no log; got %q", logs.String())
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitForLog(t, logs, "learner profile skipped")
 	if out := logs.String(); !strings.Contains(out, `"owner_id":"`+owner+`"`) {
 		t.Errorf("skip log is not owner-attributable; got %q", out)
 	}

@@ -590,7 +590,7 @@ type LearnerProfile struct {
 
 1. A session with no questions never refreshes.
 2. **Evidence gate.** Below 15 lifetime answers on curriculum skills (about three expeditions), no profile is written. A parent sees no profile until then.
-3. A refresh is due when there is no profile yet, when a skill changed state or tier in this session (learn to prove counts, so does decay to rusty), or when 3 sessions have ended since the profile's `generated_at`.
+3. A refresh is due when there is no profile yet, when a skill changed state or tier against the previous snapshot (learn to prove counts, so does decay to rusty), or when 3 sessions have ended since the profile's `generated_at`.
 4. Otherwise the profile stays. One bad expedition does not rewrite the profile of a child with a strong record.
 
 If a history read fails, the refresh is skipped and logged. It never falls back to a profile from the session alone.
@@ -600,7 +600,7 @@ If a history read fails, the refresh is skipped and logged. It never falls back 
 | Field | Source |
 |---|---|
 | `MasteryData` | snapshot (name, grade, state, tier, fluency) plus lifetime attempts and correct answers from `EventRepo.AnswerTallies`. The snapshot counters restart on a tier change or decay, so they are not used for accuracy. |
-| `SessionCount` | `EventRepo.CompletedSessionCount` |
+| `SessionCount` | `EventRepo.CompletedSessionCount`: sessions that served at least one question, untagged quests included |
 | `RecentSessions` | the 10 newest `QuerySessionSummaries`; untagged quests (no curriculum skill) are left out and do not count towards the cadence |
 | `ErrorPatterns` | `EventRepo.DiagnosisCounts` over the last 60 days, grouped by skill, category and misconception, top 15, misconception labels from the taxonomy |
 | `PerSkillResults`, `ErrorHistory` | this session only; at most 3 error lines per skill |

@@ -397,7 +397,8 @@ type EventRepo interface {
 	// ordered by skill ID.
 	AnswerTallies(ctx context.Context) ([]AnswerTally, error)
 
-	// CompletedSessionCount returns how many sessions have ended.
+	// CompletedSessionCount returns how many sessions have ended with at
+	// least one question served.
 	CompletedSessionCount(ctx context.Context) (int, error)
 
 	// RecentReviewAccuracy returns the accuracy and count of the last N

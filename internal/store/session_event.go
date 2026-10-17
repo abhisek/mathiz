@@ -182,10 +182,12 @@ func (r *eventRepo) AnswerTallies(ctx context.Context) ([]AnswerTally, error) {
 	return out, nil
 }
 
+// CompletedSessionCount skips sessions that served no question: they are
+// not practice, and the profile prompt reports this count as such.
 func (r *eventRepo) CompletedSessionCount(ctx context.Context) (int, error) {
 	ctx = r.scope(ctx)
 	n, err := r.client.SessionEvent.Query().
-		Where(sessionevent.OwnerID(r.owner), sessionevent.Action("end")).
+		Where(sessionevent.OwnerID(r.owner), sessionevent.Action("end"), sessionevent.QuestionsServedGT(0)).
 		Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count completed sessions: %w", err)

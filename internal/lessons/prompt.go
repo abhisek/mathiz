@@ -1,6 +1,7 @@
 package lessons
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
@@ -97,8 +98,11 @@ func buildProfileUserMessage(input ProfileInput) string {
 		if d.Attempts == 0 {
 			continue
 		}
+		// Answers can outlive the snapshot entry (legacy snapshots), and a
+		// blank "state=" reads as a value.
+		state, tier := cmp.Or(d.State, "unknown"), cmp.Or(d.Tier, "unknown")
 		fmt.Fprintf(&b, "- %s: grade %d, state=%s, tier=%s, %d/%d correct (%.0f%%), fluency=%.2f\n",
-			skillLabel(id, d.Name), d.Grade, d.State, d.Tier, d.Correct, d.Attempts,
+			skillLabel(id, d.Name), d.Grade, state, tier, d.Correct, d.Attempts,
 			float64(d.Correct)/float64(d.Attempts)*100, d.FluencyScore)
 	}
 

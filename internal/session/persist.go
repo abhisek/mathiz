@@ -227,7 +227,7 @@ func groundProfileInput(ctx context.Context, ownerID string, eventRepo store.Eve
 	}
 	due, reason := profileRefreshDue(facts)
 	if !due {
-		slog.Debug("session: learner profile not refreshed", "owner_id", ownerID, "reason", reason,
+		slog.Info("session: learner profile not refreshed", "owner_id", ownerID, "reason", reason,
 			"lifetime_attempts", facts.LifetimeAttempts, "sessions_since_profile", facts.SessionsSinceProfile)
 		return false
 	}
@@ -324,19 +324,18 @@ func errorPatterns(counts []store.DiagnosisCount) []lessons.ErrorPatternSummary 
 
 // masteryStandingChanged reports whether any skill changed state or tier
 // between two snapshots. The tier matters: learn to prove is a step forward
-// with no change of state.
+// with no change of state. With no previous mastery data (a failed snapshot
+// read, a legacy or untagged-quest snapshot) nothing is known to have
+// changed. A child with no profile yet gets one by the first-profile rule.
 func masteryStandingChanged(prev, next *store.MasterySnapshotData) bool {
-	if next == nil {
+	if prev == nil || next == nil {
 		return false
 	}
 	for id, skm := range next.Skills {
 		if !curriculumSkill(id) {
 			continue
 		}
-		var before *store.SkillMasteryData
-		if prev != nil {
-			before = prev.Skills[id]
-		}
+		before := prev.Skills[id]
 		if before == nil {
 			if skm.State != "new" {
 				return true

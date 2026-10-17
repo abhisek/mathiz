@@ -708,8 +708,12 @@ func TestOwnerIsolationProfileHistory(t *testing.T) {
 	if err := alice.AppendSessionEvent(ctx, SessionEventData{SessionID: "sess-a", Action: "start"}); err != nil {
 		t.Fatalf("alice start: %v", err)
 	}
-	if err := alice.AppendSessionEvent(ctx, SessionEventData{SessionID: "sess-a", Action: "end"}); err != nil {
+	if err := alice.AppendSessionEvent(ctx, SessionEventData{SessionID: "sess-a", Action: "end", QuestionsServed: 4}); err != nil {
 		t.Fatalf("alice end: %v", err)
+	}
+	// A session that served nothing is not counted as completed.
+	if err := alice.AppendSessionEvent(ctx, SessionEventData{SessionID: "sess-empty", Action: "end"}); err != nil {
+		t.Fatalf("alice empty end: %v", err)
 	}
 	if err := bob.AppendAnswerEvent(ctx, answer("sess-b", "add-1", true)); err != nil {
 		t.Fatalf("bob answer: %v", err)
@@ -717,7 +721,7 @@ func TestOwnerIsolationProfileHistory(t *testing.T) {
 	if err := bob.AppendDiagnosisEvent(ctx, diagnosis("sess-b", "careless", nil)); err != nil {
 		t.Fatalf("bob diagnosis: %v", err)
 	}
-	if err := bob.AppendSessionEvent(ctx, SessionEventData{SessionID: "sess-b", Action: "end"}); err != nil {
+	if err := bob.AppendSessionEvent(ctx, SessionEventData{SessionID: "sess-b", Action: "end", QuestionsServed: 1}); err != nil {
 		t.Fatalf("bob end: %v", err)
 	}
 
