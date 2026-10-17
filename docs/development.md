@@ -31,9 +31,10 @@ make dev-up        # builds the image (SPA + Go, multi-stage) and starts
 ```
 
 Open `http://localhost:8080/join` — kids need only a join code, so once a
-family exists you can play immediately. For the parent API without a real
-Supabase project, mint a dev JWT (the compose file's default HS256 secret
-matches the minting script):
+family exists you can play immediately. Parent auth uses the `test`
+preset: mint a dev JWT (the compose file's default HS256 secret matches the
+minting script) and paste it into `http://localhost:8080/login`, or use it
+with curl:
 
 ```bash
 JWT=$(node .claude/skills/saas-e2e/assets/mint-jwt.mjs)
@@ -50,17 +51,20 @@ curl -s -H "$AUTH" -H "Content-Type: application/json" -X POST \
 # → {"code":"TIGER-4207",...} — enter it at /join and play.
 ```
 
-Note: in this Supabase-free mode the **browser parent login cannot work**
-(there's no real Supabase behind it) — the minted JWT *is* your parent
-session, and the parent role is curl-driven. The kid experience is fully
-browser-based. For the real parent dashboard, configure Supabase
-(§2b / docs/saas.md) — compose picks the `MATHIZ_SUPABASE_*` values up
-from a `.env` file automatically.
+The minted JWT *is* your parent session, in the browser (paste it at
+`/login`) and with curl. Each `sub` is a separate parent. To use a real
+Supabase project instead, set `MATHIZ_AUTH_PROVIDER=supabase`,
+`MATHIZ_AUTH_URL` and `MATHIZ_AUTH_PUBLIC_KEY` (§2b / docs/saas.md) —
+compose picks them up from a `.env` file automatically.
 
 Questions come from the bundled stub (always "What is 12 + 7?"). Point the
 stack at real services by overriding env vars, e.g.
 `MATHIZ_LLM_PROVIDER=gemini MATHIZ_GEMINI_API_KEY=... make dev-up`, or a real
-`MATHIZ_SUPABASE_URL`/`_ANON_KEY`/`_JWT_SECRET`. `make dev-down` stops it.
+auth provider (`MATHIZ_AUTH_PROVIDER=supabase` plus `MATHIZ_AUTH_URL` and
+`MATHIZ_AUTH_PUBLIC_KEY`). `make dev-down` stops it. A dev database from
+before PostgreSQL 18 lives in the old `mathiz-pgdata` volume, which the
+stack no longer mounts; remove it with `docker volume rm` when you no
+longer need it.
 
 Billing runs too: the stack defaults to the **fake payment provider**, so
 every new family gets 30 starter expeditions and the dashboard's wallet card
@@ -111,15 +115,17 @@ set -a; source .env; set +a
 Two ways to satisfy parent auth:
 
 - **Real Supabase (the production path)** — create a free project at
-  supabase.com, enable the Email provider, and set `MATHIZ_SUPABASE_URL`,
-  `MATHIZ_SUPABASE_ANON_KEY`, and (for HS256 projects) 
-  `MATHIZ_SUPABASE_JWT_SECRET`. Sign up through the web UI like a real parent.
-- **No Supabase (pure-local hacking)** — set any dummy
-  `MATHIZ_SUPABASE_URL`/`_ANON_KEY` plus a `MATHIZ_SUPABASE_JWT_SECRET` of
-  your choosing, then mint parent JWTs yourself:
-  `node .claude/skills/saas-e2e/assets/mint-jwt.mjs` and drive the parent
+  supabase.com, follow the setup in docs/saas.md (Confirm email ON), and
+  set `MATHIZ_AUTH_PROVIDER=supabase`, `MATHIZ_AUTH_URL`,
+  `MATHIZ_AUTH_PUBLIC_KEY` and (for shared-secret projects)
+  `MATHIZ_AUTH_HS256_SECRET`. Sign up through the web UI like a real parent.
+- **Test preset (pure-local hacking)** — set `MATHIZ_AUTH_PROVIDER=test`,
+  `MATHIZ_AUTH_ALLOW_TEST=1` and a `MATHIZ_AUTH_HS256_SECRET` of 32+
+  characters, then mint parent JWTs yourself:
+  `node .claude/skills/saas-e2e/assets/mint-jwt.mjs` (same secret in
+  `MATHIZ_AUTH_HS256_SECRET`). Paste one at `/login`, or drive the parent
   API with `curl -H "Authorization: Bearer $JWT"`. The **kid experience
-  needs no Supabase at all** — a join code is the only credential.
+  needs no auth provider at all** — a join code is the only credential.
 
 No LLM key handy? Point the OpenAI provider at the bundled stub:
 
@@ -285,7 +291,9 @@ docs/                 this guide, personas.md, saas.md
 | Compile errors in `ent/...` after editing a schema | Run `make generate`. |
 | `internal/selfupdate` tests fail (HTTP 404 to 127.0.0.1) | Pre-existing sandbox/proxy artifact — ignore unless you touched selfupdate. |
 | `mathiz serve` exits: `MATHIZ_DATABASE_URL is required` | Source your `.env` (`set -a; source .env; set +a`). |
-| Parent login fails locally | JWT secret/issuer mismatch: `MATHIZ_SUPABASE_JWT_SECRET` and `MATHIZ_SUPABASE_URL` must match what minted the token. |
+| Parent login fails locally | Test preset: `MATHIZ_AUTH_HS256_SECRET` must match what minted the token (issuer `mathiz-test`). Supabase: `MATHIZ_AUTH_URL` must be the project URL exactly. |
+| `mathiz serve` exits: `database predates pluggable auth` | The database has the removed `accounts.supabase_user_id` column. Use a fresh database (or drop the column if `accounts` is empty). |
+| `mathiz serve` exits: `MATHIZ_SUPABASE_URL was removed` | Rename to the `MATHIZ_AUTH_*` variables (see `.env.example`). |
 | Expedition won't start, API 500s | Check the serve process's stderr/log — usually the LLM provider (missing key or unreachable base URL). |
 | Changed the SPA but `:8080` serves the old one | Rebuild both: `make web && make mathiz` (the binary embeds the SPA at compile time). |
 | No wallet/billing card on the dashboard | Billing is off (`MATHIZ_BILLING_PROVIDER` empty). Set it to `fake` and restart — the card hides on 404 by design. |

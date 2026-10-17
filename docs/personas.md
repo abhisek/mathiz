@@ -14,7 +14,8 @@ browser) — and four personas across them.
 ## 1. Parent (hosted mode)
 
 Runs the Family Space and follows the children's progress. Authenticated by
-a **Supabase JWT**; an account is auto-provisioned on first authenticated
+a **JWT from the deployment's auth provider** (Supabase in production); an
+account is auto-provisioned, keyed on provider + provider user ID, on first authenticated
 request. A family holds one **owner** plus any number of **co-parents**
 (role `parent`): co-parents can do everything except billing and managing
 parents — those stay with the owner. One family per account.
@@ -25,7 +26,7 @@ parents — those stay with the owner. One family per account.
 | Read indicative pricing before signing up — public, pre-auth; while no billing provider is configured (public beta) the page shows a "everything is free right now" banner instead of live purchase flows | `/pricing` (static SPA page, linked from the landing + legal footers) | `GET /api/v1/pricing` (public: `billingEnabled`, starter credits, plan catalog) |
 | Read how the teaching engine works before (or after) signing up — fresh-generated questions, the mastery journey (learning → mastered → re-checks → rusty), what an expedition is, quests, and the full curriculum by island and grade | `/how-it-works` (public, pre-auth; linked from the landing footer, the pricing explainer, and the dashboard sidebar foot) | `GET /api/v1/curriculum` (public skill catalog; static fallback copy if unavailable) |
 | Watch the 1-minute launch demo before signing up — shareable page with the video (CDN-hosted MP4, branded poster, loads nothing until play) and a single "Start free" exit | `/demo` (public, pre-auth; linked from the landing hero + footer and the how-it-works footer) | none (video served from cdn.mathiz.app) |
-| Sign in — email code (OTP) first; the emailed magic link also works; email+password behind a fallback link. Account auto-created on first sign-in | `/login` (SPA, supabase-js) | Supabase Auth (`signInWithOtp`/`verifyOtp`, password fallback); server verifies JWT locally (HS256 secret or JWKS) |
+| Sign in — email code (OTP) first; the emailed magic link also works; email+password behind a fallback link. Account auto-created on first sign-in | `/login` (SPA, Supabase adapter in `web/src/auth/`) | Supabase Auth (`signInWithOtp`/`verifyOtp`, password fallback); server verifies JWT locally (HS256 secret or JWKS) |
 | Create / rename Family Space (one per account) | `/dashboard` (Kids) | `POST/PATCH /api/v1/family` |
 | Add child (name, grade 2–5, optional 4–6 digit PIN) | `/dashboard` (Kids) | `POST /api/v1/family/{id}/children` |
 | Edit / archive child (archiving revokes their devices) | `/dashboard` (Kids) child card | `PATCH /api/v1/children/{id}` |
@@ -50,7 +51,7 @@ surfaces are role-agnostic.
 
 ## 2. Child (hosted mode)
 
-The learner. **No email, no Supabase account** — a join code from a parent,
+The learner. **No email, no auth-provider account** — a join code from a parent,
 redeemed once per device (with the profile PIN if set), yields a revocable
 device token stored in the browser.
 
@@ -100,7 +101,7 @@ Whoever runs `mathiz serve` for their family or a community.
 |---|---|
 | Deploy: one self-contained binary (SPA embedded) | `make web && make mathiz`, run behind TLS |
 | Database: PostgreSQL 16+ (production: 18 in the compose `prod` profile on one VM); schema auto-migrates; pool caps | `MATHIZ_DATABASE_URL`, `MATHIZ_DB_PASSWORD`, `MATHIZ_DB_MAX_OPEN_CONNS`/`_IDLE_CONNS` |
-| Auth config: Supabase project URL + anon key (+ legacy JWT secret) | `MATHIZ_SUPABASE_*` |
+| Auth config: one provider per deployment (`supabase`, or `test` for dev/E2E); provider URL + public key (+ optional HS256 secret); `mathiz auth remap` to switch provider | `MATHIZ_AUTH_*` |
 | LLM provider selection & keys (server-side only) | `MATHIZ_LLM_PROVIDER`, `MATHIZ_*_API_KEY`, `MATHIZ_OPENAI_BASE_URL` for compatible gateways |
 | Resource limits: session idle timeout | `MATHIZ_SESSION_IDLE_MINUTES` |
 | Reverse-proxy correctness (rate limiting by real client IP) | `MATHIZ_TRUST_PROXY=true` |

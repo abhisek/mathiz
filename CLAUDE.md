@@ -19,7 +19,7 @@ gofmt -w <files you touched>    # Format ONLY files you touch (see Quirks)
 ```
 
 Project skills in `.claude/skills/` cover the recurring multi-step jobs:
-`saas-e2e` (full-stack browser E2E in a sandbox, no real LLM or Supabase
+`saas-e2e` (full-stack browser E2E in a sandbox, no real LLM or auth provider
 needed), `frontend` (web/ patterns — read it BEFORE touching web/),
 `analytics` (PostHog pattern + child-privacy rules — read it BEFORE any
 tracking/telemetry change), `add-event-type`, `add-math-skill`,
@@ -38,7 +38,7 @@ learner profile, recent errors, and mastery tier.
 
 Two deployment modes, one engine:
 - **Local CLI**: single learner, SQLite file, Bubble Tea TUI.
-- **`mathiz serve` (SaaS)**: multi-tenant PostgreSQL, Supabase-authenticated
+- **`mathiz serve` (SaaS)**: multi-tenant PostgreSQL, auth-provider-authenticated
   parents, join-code-authenticated children, browser treasure-map game.
 
 ### Data Flow
@@ -65,8 +65,9 @@ Two deployment modes, one engine:
   `SnapshotRepo` interfaces; SQLite or PostgreSQL behind one `store.Open(dsn)`.
 - **`internal/saas/`** — `family` (accounts, family spaces, child profiles,
   join codes, device tokens), `authz` (ALL permission decisions), `auth`
-  (Supabase JWT verify), `server` (REST API), `game` (treasure-map
-  expeditions), `webui` (embedded SPA),
+  (one generic JWT verifier + provider presets `supabase`, `test`;
+  specs/17), `server` (REST API), `game` (treasure-map expeditions),
+  `webui` (embedded SPA),
   `credits` (prepaid credit ledger — THE entitlement source of truth),
   `billing` (thin payment-provider abstraction; `fake` + `stripe` shipped),
   `quests` (parent-authored one-off question sets played on the map;
@@ -225,7 +226,9 @@ endpoint — this is how E2E tests stub the LLM), bare `GEMINI_API_KEY` /
 `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `OPENROUTER_API_KEY` also discovered.
 
 `mathiz serve`: see `.env.example` — `MATHIZ_DATABASE_URL` (postgres),
-`MATHIZ_SUPABASE_URL` / `_ANON_KEY` / `_JWT_SECRET`, `MATHIZ_SERVER_ADDR`,
+`MATHIZ_AUTH_PROVIDER` / `_URL` / `_PUBLIC_KEY` / `_HS256_SECRET` /
+`_ALLOW_TEST` (specs/17), `MATHIZ_DB_MAX_OPEN_CONNS` / `_IDLE_CONNS`,
+`MATHIZ_DB_PASSWORD` (compose prod profile), `MATHIZ_SERVER_ADDR`,
 `MATHIZ_SESSION_IDLE_MINUTES`, `MATHIZ_CORS_ORIGINS`,
 `MATHIZ_TRUST_PROXY`, `MATHIZ_LOG_FILE` (optional file tee),
 `MATHIZ_LOG_FORMAT` (`text`|`json`), `MATHIZ_LOG_LEVEL`
@@ -249,6 +252,8 @@ Billing: `MATHIZ_BILLING_PROVIDER` (empty = billing off/everything free;
   `postgresql` package (`initdb`/`pg_ctl` as the `postgres` user) — the
   `saas-e2e` skill scripts this.
 - Playwright + Chromium are preinstalled in Claude Code web sandboxes
-  (`executablePath: '/opt/pw-browsers/chromium'`); Supabase is NOT needed for
-  E2E — HS256 `MATHIZ_SUPABASE_JWT_SECRET` plus a self-minted JWT covers the
+  (`executablePath: '/opt/pw-browsers/chromium'`); no auth provider is needed
+  for E2E — the `test` preset (`MATHIZ_AUTH_PROVIDER=test`,
+  `MATHIZ_AUTH_ALLOW_TEST=1`, `MATHIZ_AUTH_HS256_SECRET`) plus a self-minted
+  JWT (pasted at `/login` or sent with curl) covers the
   parent API, and children only need a join code.
