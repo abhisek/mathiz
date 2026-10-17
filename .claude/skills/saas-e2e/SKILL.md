@@ -1,13 +1,14 @@
 ---
 name: saas-e2e
-description: Run the full Mathiz SaaS stack (PostgreSQL + mathiz serve + stub LLM) and drive browser E2E flows with Playwright in a sandbox — no real Supabase project or LLM API key required. Use when verifying changes to internal/saas/**, web/**, cmd/serve.go, or the store's Postgres path.
+description: Run the full Mathiz SaaS stack (PostgreSQL + mathiz serve + stub LLM) and drive browser E2E flows with Playwright in a sandbox — no auth provider or LLM API key required. Use when verifying changes to internal/saas/**, web/**, cmd/serve.go, or the store's Postgres path.
 ---
 
 # Full-stack SaaS E2E in a sandbox
 
 Everything runs locally: Postgres bootstrapped from the distro package, the
-LLM stubbed with an OpenAI-compatible fake, parent auth via a self-minted
-HS256 JWT. Children never need Supabase at all (join codes + device tokens).
+LLM stubbed with an OpenAI-compatible fake, parent auth via the `test`
+preset and a self-minted HS256 JWT. Children never need an auth provider
+(join codes + device tokens).
 
 ## 1. Start PostgreSQL (no Docker needed)
 
@@ -22,9 +23,9 @@ node .claude/skills/saas-e2e/assets/llmstub.mjs &   # OpenAI-compatible on :9993
 make web && make mathiz                              # SPA + binary
 
 MATHIZ_DATABASE_URL="postgres://postgres@127.0.0.1:5433/mathiz_e2e?sslmode=disable" \
-MATHIZ_SUPABASE_URL="https://dummy.supabase.co" \
-MATHIZ_SUPABASE_ANON_KEY="dummy-anon-key" \
-MATHIZ_SUPABASE_JWT_SECRET="e2e-test-secret-with-plenty-of-length!!" \
+MATHIZ_AUTH_PROVIDER=test \
+MATHIZ_AUTH_ALLOW_TEST=1 \
+MATHIZ_AUTH_HS256_SECRET="e2e-test-secret-with-plenty-of-length!!" \
 MATHIZ_SERVER_ADDR=":8091" \
 MATHIZ_LLM_PROVIDER=openai \
 MATHIZ_OPENAI_API_KEY=stub-key \
@@ -40,7 +41,7 @@ batch for parent quest generation. Anything else gets the default question,
 "What is 12 + 7?" (answer **19**). Diagnosis calls fall through to that and
 fail to parse harmlessly (async best-effort).
 
-## 3. Parent onboarding via API (mint a JWT, no Supabase)
+## 3. Parent onboarding via API (mint a JWT, no auth provider)
 
 ```bash
 JWT=$(node .claude/skills/saas-e2e/assets/mint-jwt.mjs)   # same secret as above
@@ -89,3 +90,7 @@ kill $(ss -tlnp | grep 9993 | grep -oP 'pid=\K[0-9]+' | head -1)
   500s log the underlying error there.
 - The store's Postgres suite (unit level) is cheaper than full E2E:
   `MATHIZ_TEST_DATABASE_URL="postgres://postgres@127.0.0.1:5433/mathiz_test?sslmode=disable" go test ./internal/store/`.
+- A database created before pluggable auth (specs/17) has the removed
+  `accounts.supabase_user_id` column, and `mathiz serve` refuses to start on
+  it. Drop the column (`ALTER TABLE accounts DROP COLUMN supabase_user_id;`)
+  or recreate the database.

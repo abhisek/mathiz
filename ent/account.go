@@ -19,8 +19,10 @@ type Account struct {
 	ID int `json:"id,omitempty"`
 	// Internal account ID (UUID)
 	UID string `json:"uid,omitempty"`
-	// Supabase auth user ID (JWT sub claim)
-	SupabaseUserID string `json:"supabase_user_id,omitempty"`
+	// Auth provider preset that issued the identity (MATHIZ_AUTH_PROVIDER)
+	AuthProvider string `json:"auth_provider,omitempty"`
+	// Provider user ID (JWT sub claim); opaque, unique per provider
+	AuthSubject string `json:"auth_subject,omitempty"`
 	// Email holds the value of the "email" field.
 	Email string `json:"email,omitempty"`
 	// DisplayName holds the value of the "display_name" field.
@@ -37,7 +39,7 @@ func (*Account) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case account.FieldID:
 			values[i] = new(sql.NullInt64)
-		case account.FieldUID, account.FieldSupabaseUserID, account.FieldEmail, account.FieldDisplayName:
+		case account.FieldUID, account.FieldAuthProvider, account.FieldAuthSubject, account.FieldEmail, account.FieldDisplayName:
 			values[i] = new(sql.NullString)
 		case account.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -68,11 +70,17 @@ func (_m *Account) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UID = value.String
 			}
-		case account.FieldSupabaseUserID:
+		case account.FieldAuthProvider:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field supabase_user_id", values[i])
+				return fmt.Errorf("unexpected type %T for field auth_provider", values[i])
 			} else if value.Valid {
-				_m.SupabaseUserID = value.String
+				_m.AuthProvider = value.String
+			}
+		case account.FieldAuthSubject:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field auth_subject", values[i])
+			} else if value.Valid {
+				_m.AuthSubject = value.String
 			}
 		case account.FieldEmail:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -131,8 +139,11 @@ func (_m *Account) String() string {
 	builder.WriteString("uid=")
 	builder.WriteString(_m.UID)
 	builder.WriteString(", ")
-	builder.WriteString("supabase_user_id=")
-	builder.WriteString(_m.SupabaseUserID)
+	builder.WriteString("auth_provider=")
+	builder.WriteString(_m.AuthProvider)
+	builder.WriteString(", ")
+	builder.WriteString("auth_subject=")
+	builder.WriteString(_m.AuthSubject)
 	builder.WriteString(", ")
 	builder.WriteString("email=")
 	builder.WriteString(_m.Email)

@@ -86,6 +86,24 @@ func open(dsn, entDialect, driver string) (*Store, error) {
 	return &Store{db: db, client: client, seq: seq, dialect: entDialect}, nil
 }
 
+// ColumnExists reports whether table has column. Auto-migrate adds columns
+// but never drops them, so callers use this to detect a column a release
+// removed from the schema.
+func (s *Store) ColumnExists(ctx context.Context, table, column string) (bool, error) {
+	var q string
+	if s.dialect == dialect.Postgres {
+		q = `SELECT COUNT(*) FROM information_schema.columns
+			WHERE table_schema = current_schema() AND table_name = $1 AND column_name = $2`
+	} else {
+		q = `SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`
+	}
+	var n int
+	if err := s.db.QueryRowContext(ctx, q, table, column).Scan(&n); err != nil {
+		return false, fmt.Errorf("inspect %s.%s: %w", table, column, err)
+	}
+	return n > 0, nil
+}
+
 // Client returns the underlying ent client.
 func (s *Store) Client() *ent.Client {
 	return s.client

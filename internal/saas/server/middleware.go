@@ -25,7 +25,7 @@ type parentHandler func(w http.ResponseWriter, r *http.Request, p authz.Principa
 // childHandler receives the verified principal and child profile.
 type childHandler func(w http.ResponseWriter, r *http.Request, p authz.Principal, child *ent.ChildProfile)
 
-// withParent verifies the Supabase JWT, provisions the account, and invokes
+// withParent verifies the provider JWT, provisions the account, and invokes
 // the handler with a parent principal.
 func (s *Server) withParent(h parentHandler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -35,11 +35,26 @@ func (s *Server) withParent(h parentHandler) http.Handler {
 			return
 		}
 		id, err := s.verifier.Verify(r.Context(), token)
-		if err != nil {
+		if errors.Is(err, auth.ErrUnavailable) {
+			// The provider's keys are unreachable: a 401 here would make
+			// the SPA sign out a parent whose token may be fine.
+			recordErrDetail(w, err)
+			writeError(w, http.StatusServiceUnavailable, "sign-in is temporarily unavailable")
+			return
+		}
+		// An unverified email is refused like a bad token: invite
+		// acceptance matches on Account.Email, so trusting an unverified
+		// address would let anyone claim an invite sent to it.
+		if err != nil || !id.EmailVerified {
 			writeError(w, http.StatusUnauthorized, "invalid credentials")
 			return
 		}
-		acct, err := s.family.EnsureAccount(r.Context(), id.SupabaseUserID, id.Email, id.DisplayName)
+		acct, err := s.family.EnsureAccount(r.Context(), family.Identity{
+			Provider:    id.Provider,
+			Subject:     id.Subject,
+			Email:       id.Email,
+			DisplayName: id.DisplayName,
+		})
 		if err != nil {
 			recordErrDetail(w, fmt.Errorf("ensure account: %w", err))
 			writeError(w, http.StatusInternalServerError, "account provisioning failed")

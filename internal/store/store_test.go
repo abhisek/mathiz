@@ -315,3 +315,25 @@ func TestPostgresPool(t *testing.T) {
 		t.Error("expected an error for a malformed MATHIZ_DB_MAX_OPEN_CONNS")
 	}
 }
+
+func TestColumnExists(t *testing.T) {
+	stores := []*Store{openTestStore(t)}
+	if dsn := os.Getenv("MATHIZ_TEST_DATABASE_URL"); dsn != "" {
+		pg, err := Open(dsn)
+		if err != nil {
+			t.Fatalf("open postgres: %v", err)
+		}
+		t.Cleanup(func() { pg.Close() })
+		stores = append(stores, pg)
+	}
+	for _, s := range stores {
+		ok, err := s.ColumnExists(context.Background(), "accounts", "auth_subject")
+		if err != nil || !ok {
+			t.Errorf("%s: accounts.auth_subject = %v, %v; want true", s.dialect, ok, err)
+		}
+		ok, err = s.ColumnExists(context.Background(), "accounts", "no_such_column")
+		if err != nil || ok {
+			t.Errorf("%s: accounts.no_such_column = %v, %v; want false", s.dialect, ok, err)
+		}
+	}
+}

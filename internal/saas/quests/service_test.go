@@ -37,7 +37,7 @@ func newQuestEnv(t *testing.T) *questEnv {
 	e := &questEnv{client: st.Client(), st: st, family: family.New(st.Client()), credits: credits.New(st.Client())}
 	ctx := context.Background()
 	bootstrap := func(sb, name string) (string, string, string) {
-		acct, err := e.family.EnsureAccount(ctx, sb, sb+"@example.com", name)
+		acct, err := e.family.EnsureAccount(ctx, family.Identity{Provider: "test", Subject: sb, Email: sb + "@example.com", DisplayName: name})
 		if err != nil {
 			t.Fatalf("account: %v", err)
 		}

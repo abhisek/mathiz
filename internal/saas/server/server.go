@@ -25,7 +25,7 @@ type Deps struct {
 	Config   *Config
 	Store    *store.Store
 	Family   *family.Service
-	Verifier *auth.SupabaseVerifier
+	Verifier auth.Verifier
 	WebUI    http.Handler
 	Game     *game.Manager
 	Credits  *credits.Service
@@ -41,7 +41,7 @@ type Server struct {
 	st       *store.Store
 	family   *family.Service
 	checker  *authz.Checker
-	verifier *auth.SupabaseVerifier
+	verifier auth.Verifier
 
 	webui    http.Handler
 	game     *game.Manager
@@ -98,7 +98,7 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("POST /api/v1/join/preview", s.rateLimited(http.HandlerFunc(s.handleJoinPreview)))
 	mux.Handle("POST /api/v1/join/redeem", s.rateLimited(http.HandlerFunc(s.handleJoinRedeem)))
 
-	// Parent (Supabase JWT).
+	// Parent (auth-provider JWT).
 	mux.Handle("GET /api/v1/me", s.withParent(s.handleMe))
 	mux.Handle("POST /api/v1/family", s.withParent(s.handleCreateFamily))
 	mux.Handle("PATCH /api/v1/family/{id}", s.withParent(s.handleRenameFamily))

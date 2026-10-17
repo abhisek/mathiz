@@ -12,7 +12,8 @@ var (
 	AccountsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "uid", Type: field.TypeString, Unique: true},
-		{Name: "supabase_user_id", Type: field.TypeString, Unique: true},
+		{Name: "auth_provider", Type: field.TypeString},
+		{Name: "auth_subject", Type: field.TypeString},
 		{Name: "email", Type: field.TypeString, Default: ""},
 		{Name: "display_name", Type: field.TypeString, Default: ""},
 		{Name: "created_at", Type: field.TypeTime},
@@ -24,9 +25,9 @@ var (
 		PrimaryKey: []*schema.Column{AccountsColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "account_supabase_user_id",
-				Unique:  false,
-				Columns: []*schema.Column{AccountsColumns[2]},
+				Name:    "account_auth_provider_auth_subject",
+				Unique:  true,
+				Columns: []*schema.Column{AccountsColumns[2], AccountsColumns[3]},
 			},
 		},
 	}

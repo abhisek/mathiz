@@ -164,16 +164,12 @@ func TestPricingWithoutBillingProvider(t *testing.T) {
 		t.Fatalf("open store: %v", err)
 	}
 	t.Cleanup(func() { st.Close() })
-	verifier, err := auth.NewSupabaseVerifier(auth.SupabaseConfig{JWTSecret: testJWTSecret})
-	if err != nil {
-		t.Fatalf("verifier: %v", err)
-	}
+	verifier := testVerifier(t)
 	srv := New(Deps{
 		Config: &Config{
-			Addr:            ":0",
-			DatabaseURL:     "test",
-			SupabaseURL:     "https://example.supabase.co",
-			SupabaseAnonKey: "anon-key",
+			Addr:         ":0",
+			DatabaseURL:  "test",
+			AuthProvider: auth.ProviderTest,
 		},
 		Store:    st,
 		Family:   family.New(st.Client()),

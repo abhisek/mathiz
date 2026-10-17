@@ -24,7 +24,7 @@ func newTestService(t *testing.T) *Service {
 func bootstrap(t *testing.T, svc *Service, pin string) (accountUID, spaceUID, childUID string) {
 	t.Helper()
 	ctx := context.Background()
-	acct, err := svc.EnsureAccount(ctx, "sb-user-1", "parent@example.com", "Pat Parent")
+	acct, err := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-user-1", Email: "parent@example.com", DisplayName: "Pat Parent"})
 	if err != nil {
 		t.Fatalf("ensure account: %v", err)
 	}
@@ -43,11 +43,11 @@ func TestEnsureAccountIdempotent(t *testing.T) {
 	svc := newTestService(t)
 	ctx := context.Background()
 
-	a1, err := svc.EnsureAccount(ctx, "sb-1", "a@example.com", "A")
+	a1, err := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-1", Email: "a@example.com", DisplayName: "A"})
 	if err != nil {
 		t.Fatalf("first: %v", err)
 	}
-	a2, err := svc.EnsureAccount(ctx, "sb-1", "new@example.com", "A2")
+	a2, err := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-1", Email: "new@example.com", DisplayName: "A2"})
 	if err != nil {
 		t.Fatalf("second: %v", err)
 	}
@@ -59,10 +59,51 @@ func TestEnsureAccountIdempotent(t *testing.T) {
 	}
 }
 
+func TestEnsureAccountKeyedByProviderAndSubject(t *testing.T) {
+	svc := newTestService(t)
+	ctx := context.Background()
+
+	// The same subject and email at two providers are two people: matching
+	// on either alone would let one provider's user take over another's
+	// family.
+	a, err := svc.EnsureAccount(ctx, Identity{Provider: "supabase", Subject: "user-1", Email: "same@example.com"})
+	if err != nil {
+		t.Fatalf("supabase: %v", err)
+	}
+	b, err := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "user-1", Email: "same@example.com"})
+	if err != nil {
+		t.Fatalf("test: %v", err)
+	}
+	c, err := svc.EnsureAccount(ctx, Identity{Provider: "supabase", Subject: "user-2", Email: "same@example.com"})
+	if err != nil {
+		t.Fatalf("second subject: %v", err)
+	}
+	if a.UID == b.UID || a.UID == c.UID || b.UID == c.UID {
+		t.Errorf("identities merged: %s %s %s", a.UID, b.UID, c.UID)
+	}
+
+	for _, id := range []Identity{{Provider: "", Subject: "x"}, {Provider: "test", Subject: ""}} {
+		if _, err := svc.EnsureAccount(ctx, id); err == nil {
+			t.Errorf("incomplete identity %+v accepted", id)
+		}
+	}
+
+	foreign, err := svc.CountForeignAccounts(ctx, "supabase")
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if len(foreign) != 1 || foreign["test"] != 1 {
+		t.Errorf("foreign accounts = %v, want map[test:1]", foreign)
+	}
+	if none, _ := svc.CountForeignAccounts(ctx, "nobody"); none["supabase"] != 2 || none["test"] != 1 {
+		t.Errorf("all foreign = %v", none)
+	}
+}
+
 func TestCreateSpaceOnePerAccount(t *testing.T) {
 	svc := newTestService(t)
 	ctx := context.Background()
-	acct, _ := svc.EnsureAccount(ctx, "sb-1", "a@example.com", "A")
+	acct, _ := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-1", Email: "a@example.com", DisplayName: "A"})
 
 	if _, err := svc.CreateSpace(ctx, acct.UID, "First"); err != nil {
 		t.Fatalf("create: %v", err)
@@ -209,7 +250,7 @@ func TestRedeemCrossFamilyDenied(t *testing.T) {
 	ctx := context.Background()
 
 	// Second family with its own child.
-	acct2, _ := svc.EnsureAccount(ctx, "sb-user-2", "other@example.com", "Other")
+	acct2, _ := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-user-2", Email: "other@example.com", DisplayName: "Other"})
 	sp2, _ := svc.CreateSpace(ctx, acct2.UID, "The Others")
 	otherChild, _ := svc.AddChild(ctx, sp2.UID, "Zed", 4, "")
 

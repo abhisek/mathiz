@@ -1,11 +1,10 @@
-// Mint a Supabase-style HS256 parent JWT for local E2E.
-// Secret must match MATHIZ_SUPABASE_JWT_SECRET; issuer must match
-// MATHIZ_SUPABASE_URL + /auth/v1.
+// Mint a parent JWT for the `test` auth preset (local dev and E2E).
+// Secret must match MATHIZ_AUTH_HS256_SECRET. The server accepts it only
+// with MATHIZ_AUTH_PROVIDER=test and MATHIZ_AUTH_ALLOW_TEST=1.
 // Usage: node mint-jwt.mjs [sub] [email]
 import crypto from 'node:crypto'
 
-const secret = process.env.MATHIZ_SUPABASE_JWT_SECRET ?? 'e2e-test-secret-with-plenty-of-length!!'
-const supabaseUrl = process.env.MATHIZ_SUPABASE_URL ?? 'https://dummy.supabase.co'
+const secret = process.env.MATHIZ_AUTH_HS256_SECRET ?? 'e2e-test-secret-with-plenty-of-length!!'
 const sub = process.argv[2] ?? 'e2e-parent-1'
 const email = process.argv[3] ?? 'parent@e2e.test'
 
@@ -15,7 +14,8 @@ const payload = b64({
   sub,
   aud: 'authenticated',
   email,
-  iss: `${supabaseUrl}/auth/v1`,
+  email_verified: true,
+  iss: 'mathiz-test',
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
   user_metadata: { full_name: 'E2E Parent' },

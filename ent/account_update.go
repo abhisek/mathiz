@@ -27,6 +27,34 @@ func (_u *AccountUpdate) Where(ps ...predicate.Account) *AccountUpdate {
 	return _u
 }
 
+// SetAuthProvider sets the "auth_provider" field.
+func (_u *AccountUpdate) SetAuthProvider(v string) *AccountUpdate {
+	_u.mutation.SetAuthProvider(v)
+	return _u
+}
+
+// SetNillableAuthProvider sets the "auth_provider" field if the given value is not nil.
+func (_u *AccountUpdate) SetNillableAuthProvider(v *string) *AccountUpdate {
+	if v != nil {
+		_u.SetAuthProvider(*v)
+	}
+	return _u
+}
+
+// SetAuthSubject sets the "auth_subject" field.
+func (_u *AccountUpdate) SetAuthSubject(v string) *AccountUpdate {
+	_u.mutation.SetAuthSubject(v)
+	return _u
+}
+
+// SetNillableAuthSubject sets the "auth_subject" field if the given value is not nil.
+func (_u *AccountUpdate) SetNillableAuthSubject(v *string) *AccountUpdate {
+	if v != nil {
+		_u.SetAuthSubject(*v)
+	}
+	return _u
+}
+
 // SetEmail sets the "email" field.
 func (_u *AccountUpdate) SetEmail(v string) *AccountUpdate {
 	_u.mutation.SetEmail(v)
@@ -87,7 +115,25 @@ func (_u *AccountUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *AccountUpdate) check() error {
+	if v, ok := _u.mutation.AuthProvider(); ok {
+		if err := account.AuthProviderValidator(v); err != nil {
+			return &ValidationError{Name: "auth_provider", err: fmt.Errorf(`ent: validator failed for field "Account.auth_provider": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.AuthSubject(); ok {
+		if err := account.AuthSubjectValidator(v); err != nil {
+			return &ValidationError{Name: "auth_subject", err: fmt.Errorf(`ent: validator failed for field "Account.auth_subject": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *AccountUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(account.Table, account.Columns, sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -95,6 +141,12 @@ func (_u *AccountUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.AuthProvider(); ok {
+		_spec.SetField(account.FieldAuthProvider, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AuthSubject(); ok {
+		_spec.SetField(account.FieldAuthSubject, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Email(); ok {
 		_spec.SetField(account.FieldEmail, field.TypeString, value)
@@ -120,6 +172,34 @@ type AccountUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *AccountMutation
+}
+
+// SetAuthProvider sets the "auth_provider" field.
+func (_u *AccountUpdateOne) SetAuthProvider(v string) *AccountUpdateOne {
+	_u.mutation.SetAuthProvider(v)
+	return _u
+}
+
+// SetNillableAuthProvider sets the "auth_provider" field if the given value is not nil.
+func (_u *AccountUpdateOne) SetNillableAuthProvider(v *string) *AccountUpdateOne {
+	if v != nil {
+		_u.SetAuthProvider(*v)
+	}
+	return _u
+}
+
+// SetAuthSubject sets the "auth_subject" field.
+func (_u *AccountUpdateOne) SetAuthSubject(v string) *AccountUpdateOne {
+	_u.mutation.SetAuthSubject(v)
+	return _u
+}
+
+// SetNillableAuthSubject sets the "auth_subject" field if the given value is not nil.
+func (_u *AccountUpdateOne) SetNillableAuthSubject(v *string) *AccountUpdateOne {
+	if v != nil {
+		_u.SetAuthSubject(*v)
+	}
+	return _u
 }
 
 // SetEmail sets the "email" field.
@@ -195,7 +275,25 @@ func (_u *AccountUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *AccountUpdateOne) check() error {
+	if v, ok := _u.mutation.AuthProvider(); ok {
+		if err := account.AuthProviderValidator(v); err != nil {
+			return &ValidationError{Name: "auth_provider", err: fmt.Errorf(`ent: validator failed for field "Account.auth_provider": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.AuthSubject(); ok {
+		if err := account.AuthSubjectValidator(v); err != nil {
+			return &ValidationError{Name: "auth_subject", err: fmt.Errorf(`ent: validator failed for field "Account.auth_subject": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(account.Table, account.Columns, sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -220,6 +318,12 @@ func (_u *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err er
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.AuthProvider(); ok {
+		_spec.SetField(account.FieldAuthProvider, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AuthSubject(); ok {
+		_spec.SetField(account.FieldAuthSubject, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Email(); ok {
 		_spec.SetField(account.FieldEmail, field.TypeString, value)

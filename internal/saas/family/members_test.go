@@ -65,7 +65,7 @@ func TestSpaceForAccountLazyBackfill(t *testing.T) {
 	}
 
 	// Accounts with no family at all resolve to (nil, "").
-	stray, _ := svc.EnsureAccount(ctx, "sb-stray", "stray@example.com", "S")
+	stray, _ := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-stray", Email: "stray@example.com", DisplayName: "S"})
 	sp2, role2, err := svc.SpaceForAccount(ctx, stray.UID)
 	if err != nil || sp2 != nil || role2 != "" {
 		t.Errorf("no-family resolution = %v, %q, %v", sp2, role2, err)
@@ -122,12 +122,12 @@ func TestAcceptInviteLifecycle(t *testing.T) {
 	}
 
 	// An account whose email doesn't match cannot accept (404 semantics).
-	wrong, _ := svc.EnsureAccount(ctx, "sb-wrong", "wrong@example.com", "W")
+	wrong, _ := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-wrong", Email: "wrong@example.com", DisplayName: "W"})
 	if _, err := svc.AcceptInvite(ctx, inv.UID, wrong.UID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("email-mismatch accept: got %v, want ErrNotFound", err)
 	}
 
-	co, _ := svc.EnsureAccount(ctx, "sb-co", "Co@Example.com", "Casey")
+	co, _ := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-co", Email: "Co@Example.com", DisplayName: "Casey"})
 	m, err := svc.AcceptInvite(ctx, inv.UID, co.UID)
 	if err != nil {
 		t.Fatalf("accept: %v", err)
@@ -154,7 +154,7 @@ func TestAcceptInviteLifecycle(t *testing.T) {
 	if _, err := svc.CreateSpace(ctx, co.UID, "Second Family"); !errors.Is(err, ErrSpaceExists) {
 		t.Errorf("co-parent create space: got %v, want ErrSpaceExists", err)
 	}
-	other, _ := svc.EnsureAccount(ctx, "sb-other", "other-owner@example.com", "O")
+	other, _ := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-other", Email: "other-owner@example.com", DisplayName: "O"})
 	otherSpace, _ := svc.CreateSpace(ctx, other.UID, "The Others")
 	if _, err := svc.InviteParent(ctx, otherSpace.UID, "co@example.com", other.UID); !errors.Is(err, ErrAlreadyMember) {
 		t.Errorf("cross-family invite of a member: got %v, want ErrAlreadyMember", err)
@@ -206,7 +206,7 @@ func TestRevokeParentInvite(t *testing.T) {
 	if got, _ := svc.PendingInviteForEmail(ctx, "co@example.com"); got != nil {
 		t.Errorf("revoked invite still pending: %v", got)
 	}
-	co, _ := svc.EnsureAccount(ctx, "sb-co", "co@example.com", "Casey")
+	co, _ := svc.EnsureAccount(ctx, Identity{Provider: "test", Subject: "sb-co", Email: "co@example.com", DisplayName: "Casey"})
 	if _, err := svc.AcceptInvite(ctx, inv.UID, co.UID); !errors.Is(err, ErrParentInviteInvalid) {
 		t.Errorf("accept revoked: got %v, want ErrParentInviteInvalid", err)
 	}

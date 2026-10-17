@@ -67,25 +67,35 @@ func New(client *ent.Client) *Service {
 
 // ---- Accounts ----
 
-// EnsureAccount returns the account for a verified Supabase user, creating it
-// on first sight. Email and display name are refreshed from the latest token.
-func (s *Service) EnsureAccount(ctx context.Context, supabaseUserID, email, displayName string) (*ent.Account, error) {
-	if supabaseUserID == "" {
-		return nil, fmt.Errorf("empty supabase user id")
-	}
+// Identity is a verified parent identity from the deployment's auth
+// provider. Subject is unique only within Provider.
+type Identity struct {
+	Provider    string
+	Subject     string
+	Email       string
+	DisplayName string
+}
 
-	existing, err := s.client.Account.Query().
-		Where(account.SupabaseUserID(supabaseUserID)).
-		Only(ctx)
+// EnsureAccount returns the account for a verified identity, creating it on
+// first sight. Email and display name are refreshed from the latest token.
+// The lookup key is (Provider, Subject), never the email: "same email =
+// same parent" across identities is an account-takeover vector.
+func (s *Service) EnsureAccount(ctx context.Context, id Identity) (*ent.Account, error) {
+	if id.Provider == "" || id.Subject == "" {
+		return nil, fmt.Errorf("incomplete identity: provider %q, subject %q", id.Provider, id.Subject)
+	}
+	byIdentity := account.And(account.AuthProvider(id.Provider), account.AuthSubject(id.Subject))
+
+	existing, err := s.client.Account.Query().Where(byIdentity).Only(ctx)
 	switch {
 	case err == nil:
-		if (email != "" && existing.Email != email) || (displayName != "" && existing.DisplayName != displayName) {
+		if (id.Email != "" && existing.Email != id.Email) || (id.DisplayName != "" && existing.DisplayName != id.DisplayName) {
 			upd := existing.Update()
-			if email != "" {
-				upd.SetEmail(email)
+			if id.Email != "" {
+				upd.SetEmail(id.Email)
 			}
-			if displayName != "" {
-				upd.SetDisplayName(displayName)
+			if id.DisplayName != "" {
+				upd.SetDisplayName(id.DisplayName)
 			}
 			return upd.Save(ctx)
 		}
@@ -96,20 +106,42 @@ func (s *Service) EnsureAccount(ctx context.Context, supabaseUserID, email, disp
 
 	created, err := s.client.Account.Create().
 		SetUID(uuid.NewString()).
-		SetSupabaseUserID(supabaseUserID).
-		SetEmail(email).
-		SetDisplayName(displayName).
+		SetAuthProvider(id.Provider).
+		SetAuthSubject(id.Subject).
+		SetEmail(id.Email).
+		SetDisplayName(id.DisplayName).
 		Save(ctx)
 	if err != nil {
 		// Lost a race with a concurrent first request for the same user.
 		if ent.IsConstraintError(err) {
-			return s.client.Account.Query().
-				Where(account.SupabaseUserID(supabaseUserID)).
-				Only(ctx)
+			return s.client.Account.Query().Where(byIdentity).Only(ctx)
 		}
 		return nil, fmt.Errorf("create account: %w", err)
 	}
 	return created, nil
+}
+
+// CountForeignAccounts counts accounts whose provider is not provider. A
+// deployment serves exactly one provider, so a non-zero count means the
+// configured provider would orphan those families.
+func (s *Service) CountForeignAccounts(ctx context.Context, provider string) (map[string]int, error) {
+	var rows []struct {
+		AuthProvider string `json:"auth_provider"`
+		Count        int    `json:"count"`
+	}
+	err := s.client.Account.Query().
+		Where(account.AuthProviderNEQ(provider)).
+		GroupBy(account.FieldAuthProvider).
+		Aggregate(ent.Count()).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, fmt.Errorf("count accounts by provider: %w", err)
+	}
+	out := make(map[string]int, len(rows))
+	for _, r := range rows {
+		out[r.AuthProvider] = r.Count
+	}
+	return out, nil
 }
 
 // ---- Family spaces ----

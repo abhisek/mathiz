@@ -95,15 +95,20 @@ func toDeviceJSON(dt *ent.DeviceToken) deviceJSON {
 
 // ---- Public ----
 
-// handleBootConfig hands the SPA what it needs to initialize supabase-js.
-// The anon key is public by design (it ships in every Supabase frontend).
-// The posthog fields are OMITTED entirely when no key is configured —
-// key unset = analytics fully off (specs/16-analytics.md).
+// handleBootConfig hands the SPA what it needs to load its auth adapter:
+// the provider name plus that provider's public URL and client key (public
+// by design: they ship in every frontend of that provider). The posthog
+// fields are OMITTED entirely when no key is configured — key unset =
+// analytics fully off (specs/16-analytics.md).
 func (s *Server) handleBootConfig(w http.ResponseWriter, r *http.Request) {
-	cfg := map[string]string{
-		"supabaseUrl":     s.cfg.SupabaseURL,
-		"supabaseAnonKey": s.cfg.SupabaseAnonKey,
+	authCfg := map[string]string{"provider": s.cfg.AuthProvider}
+	if s.cfg.AuthURL != "" {
+		authCfg["url"] = s.cfg.AuthURL
 	}
+	if s.cfg.AuthPublicKey != "" {
+		authCfg["publicKey"] = s.cfg.AuthPublicKey
+	}
+	cfg := map[string]any{"auth": authCfg}
 	if s.cfg.PostHogAPIKey != "" {
 		cfg["posthogKey"] = s.cfg.PostHogAPIKey
 		// Same-origin relay path, NOT the upstream URL: the browser only

@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -33,7 +35,7 @@ var serveCmd = &cobra.Command{
 	Short: "Run the Mathiz SaaS server (parent dashboard + browser learning sessions)",
 	Long: `Starts the multi-tenant Mathiz server:
 
-  - Parent dashboard API under /api/v1 (Supabase-authenticated)
+  - Parent dashboard API under /api/v1 (auth-provider JWTs)
   - Child join flow (join codes + device tokens)
   - Browser learning sessions: the treasure-map game API
   - Embedded web app (when built with 'make web')
@@ -41,9 +43,10 @@ var serveCmd = &cobra.Command{
 Configuration is environment-driven:
 
   MATHIZ_DATABASE_URL         PostgreSQL DSN (required)
-  MATHIZ_SUPABASE_URL         Supabase project URL
-  MATHIZ_SUPABASE_ANON_KEY    Supabase anon key (served to the SPA)
-  MATHIZ_SUPABASE_JWT_SECRET  Legacy HS256 JWT secret (optional)
+  MATHIZ_AUTH_PROVIDER        Parent auth provider: supabase | test (required)
+  MATHIZ_AUTH_URL             Provider URL (supabase: the project URL)
+  MATHIZ_AUTH_PUBLIC_KEY      Provider client key, served to the SPA (supabase: anon key)
+  MATHIZ_AUTH_HS256_SECRET    Shared signing secret (test; HS256 Supabase projects)
   MATHIZ_SERVER_ADDR          Listen address (default :8080)
   MATHIZ_*_API_KEY            LLM provider credentials (as for local mode)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,16 +82,22 @@ func runServe(ctx context.Context) error {
 	}
 	defer st.Close()
 
-	verifier, err := auth.NewSupabaseVerifier(auth.SupabaseConfig{
-		ProjectURL: cfg.SupabaseURL,
-		JWTSecret:  cfg.SupabaseJWTSecret,
-	})
+	verifier, err := auth.NewVerifier(cfg.VerifierConfig())
 	if err != nil {
 		return err
 	}
+	defer verifier.Close()
 
 	// The family service backing the API server.
 	svc := family.New(st.Client())
+
+	if err := checkAccounts(ctx, st, svc, verifier.Provider()); err != nil {
+		return err
+	}
+	if err := verifier.Warm(); err != nil {
+		// Not fatal: the provider may be briefly down, and logins retry.
+		logger.Warn("auth: provider keys unreachable at boot", "provider", verifier.Provider(), "err", err)
+	}
 
 	// Monetisation: enabled only when a billing provider is configured.
 	// Without one, everything is free (local/self-hosted default).
@@ -219,6 +228,7 @@ func runServe(ctx context.Context) error {
 		"quests", questsSvc != nil,
 		"billing", billingSvc != nil,
 		"billing_provider", billingProvider,
+		"auth_provider", verifier.Provider(),
 		"analytics", cfg.PostHogAPIKey != "",
 		"activity", activityReader != nil,
 	)
@@ -240,4 +250,31 @@ func runServe(ctx context.Context) error {
 		defer cancel()
 		return httpServer.Shutdown(shutdownCtx)
 	}
+}
+
+// checkAccounts refuses to start on an accounts table this release can't
+// serve: a column from before pluggable auth, or families that belong to a
+// provider other than the configured one (a config typo would otherwise
+// lock every parent out of their family).
+func checkAccounts(ctx context.Context, st *store.Store, svc *family.Service, provider string) error {
+	// Auto-migrate never drops columns, and this one is NOT NULL: every new
+	// account insert would fail.
+	legacy, err := st.ColumnExists(ctx, "accounts", "supabase_user_id")
+	if err != nil {
+		return err
+	}
+	if legacy {
+		return errors.New(`database predates pluggable auth (specs/17): run "ALTER TABLE accounts DROP COLUMN supabase_user_id;" or start on a fresh database`)
+	}
+
+	foreign, err := svc.CountForeignAccounts(ctx, provider)
+	if err != nil {
+		return err
+	}
+	if len(foreign) > 0 {
+		other := slices.Sorted(maps.Keys(foreign))[0]
+		return fmt.Errorf(`auth: %d accounts belong to provider %q, configured %q: run "mathiz auth remap --from %s --to %s" (specs/17 §6)`,
+			foreign[other], other, provider, other, provider)
+	}
+	return nil
 }
