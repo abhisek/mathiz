@@ -139,6 +139,9 @@ var gameErrorCodes = []struct {
 	{game.ErrQuestDone, http.StatusConflict, "quest_done"},
 	{game.ErrElsewhere, http.StatusConflict, "elsewhere"},
 	{game.ErrGeneration, http.StatusServiceUnavailable, "generation_failed"},
+	// 499 (nginx's "client closed request"): nobody reads this response,
+	// and latency data must not count it as a generation failure.
+	{game.ErrClientGone, 499, "client_gone"},
 }
 
 // writeGameError maps game errors onto kid-safe HTTP responses.
