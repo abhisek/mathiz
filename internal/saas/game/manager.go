@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -99,6 +100,11 @@ type Config struct {
 	// Quests serves parent-authored quests (specs/15-quests.md). Nil =
 	// quests disabled: no quest cards on the map, StartQuest refuses.
 	Quests QuestSource
+
+	// DisablePrefetch stops warming the next question (specs/19 §5, the
+	// MATHIZ_QUESTION_PREFETCH=0 off switch). Generation still runs
+	// without exp.mu held and double taps still share one call.
+	DisablePrefetch bool
 }
 
 // Manager owns all live expeditions (one per child).
@@ -171,6 +177,11 @@ type expedition struct {
 
 	learnerProfile string // cached summary for question generation
 
+	// prefetch warms the next question while the kid reads feedback
+	// (specs/19 §5). Nil for quest expeditions: questGenerator advances a
+	// cursor on every call, so a discarded warm would skip a question.
+	prefetch *problemgen.Prefetcher
+
 	questionsAsked int  // questions generated so far
 	answered       bool // current question already graded
 	genFailures    int
@@ -180,8 +191,9 @@ type expedition struct {
 
 	// lastActivity is atomic (unix nanos) so reapIdle can read it WITHOUT
 	// exp.mu. Taking exp.mu under m.mu deadlocks against handlers that
-	// call m.remove while holding exp.mu, and exp.mu is held across LLM
-	// calls — never acquire it from anything that holds m.mu.
+	// call m.remove while holding exp.mu — never acquire it from anything
+	// that holds m.mu. (Quest questions are generated under exp.mu; LLM
+	// questions are not, see Question.)
 	lastActivity atomic.Int64
 }
 
@@ -387,8 +399,15 @@ func (m *Manager) Start(ctx context.Context, childUID, skillID string) (*Expedit
 		snapRepo:       snapRepo,
 		learnerProfile: learnerProfile,
 		releaseSlot:    releaseSlot,
+		prefetch: problemgen.NewPrefetcher(tools.Generator, problemgen.PrefetchConfig{
+			Budget:      questionGenBudget,
+			DisableWarm: m.cfg.DisablePrefetch,
+			LogAttrs:    []any{"child_uid", childUID},
+		}),
 	}
 	exp.touch()
+	// Q1 generates while the client shows "Setting sail…" (specs/19 §5.2 B).
+	exp.prefetch.Warm(exp.nextInputLocked())
 
 	m.mu.Lock()
 	m.byID[exp.id] = exp
@@ -418,79 +437,133 @@ func (m *Manager) lookup(childUID, expID string) (*expedition, error) {
 }
 
 // Question returns the current question, generating one if needed.
+//
+// LLM questions are generated WITHOUT exp.mu held (specs/19 §3.2): a slow
+// provider must not block "Sail home", hints, or a replacing Start for up
+// to the whole generation budget. The expedition can change while the lock
+// is released, so everything is re-checked before the question installs.
 func (m *Manager) Question(ctx context.Context, childUID, expID string) (*QuestionView, error) {
 	exp, err := m.lookup(childUID, expID)
 	if err != nil {
 		return nil, err
 	}
 	exp.mu.Lock()
-	defer exp.mu.Unlock()
 	exp.touch()
 
 	if exp.finished {
+		exp.mu.Unlock()
 		return nil, ErrExpeditionOver
 	}
-
 	// The unanswered current question is idempotent (page reloads).
 	if exp.state.CurrentQuestion != nil && !exp.answered {
 		v := exp.questionView()
 		v.Source = SourceCurrent
+		exp.mu.Unlock()
 		return v, nil
 	}
 	if exp.questionsAsked >= exp.totalQuestions() {
+		exp.mu.Unlock()
 		return nil, ErrExpeditionOver
 	}
-
-	// Live tier, never the frozen plan tier. Untagged quest expeditions
-	// skip the lookup: their synthetic skill ID must not seed a phantom
-	// mastery entry.
-	tier := skillgraph.TierLearn
-	if exp.quest == nil || exp.quest.tagged {
-		tier = exp.masterySvc.GetMastery(exp.skill.ID).CurrentTier
+	if exp.prefetch == nil {
+		defer exp.mu.Unlock()
+		return m.questQuestionLocked(ctx, exp)
 	}
 
-	exp.state.ErrorMu.Lock()
-	recentErrors := append([]string(nil), exp.state.RecentErrors[exp.skill.ID]...)
-	exp.state.ErrorMu.Unlock()
+	input := exp.nextInputLocked()
+	asked := exp.questionsAsked
+	exp.mu.Unlock()
 
-	// Overall budget for one question, on top of the per-attempt deadline the
-	// provider applies: the retry decorator can make up to three attempts, and
-	// a child watching a spinner must not wait for all of them to play out.
-	// It also bounds how long exp.mu stays held on a degraded provider.
-	genCtx, cancel := context.WithTimeout(ctx, questionGenBudget)
-	defer cancel()
-	genCtx, attempts := llm.WithAttemptCounter(genCtx)
+	// The caller's own budget for waiting; the generation itself runs on the
+	// prefetcher's context and survives this request if the kid leaves.
+	waitCtx, cancel := context.WithTimeout(ctx, questionGenBudget)
+	res, genErr := exp.prefetch.Get(waitCtx, input)
+	cancel()
 
-	q, err := exp.tools.Generator.Generate(genCtx, problemgen.GenerateInput{
-		Skill:          exp.skill,
-		Tier:           tier,
-		PriorQuestions: exp.state.PriorQuestions[exp.skill.ID],
-		RecentErrors:   recentErrors,
-		LearnerProfile: exp.learnerProfile,
-	})
-	if err != nil {
-		exp.genFailures++
-		if exp.genFailures >= maxGenFailures {
-			m.remove(exp)
-			exp.finishLocked(ctx, false)
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+	if exp.finished {
+		return nil, ErrExpeditionOver
+	}
+	// A concurrent request (a double tap) already installed a question.
+	if exp.questionsAsked != asked || (exp.state.CurrentQuestion != nil && !exp.answered) {
+		v := exp.questionView()
+		v.Source = SourceCurrent
+		return v, nil
+	}
+	if genErr != nil {
+		// A kid who left (closed tab, reload) didn't see a failure: only
+		// failures a kid actually waited through count toward the breaker.
+		if ctx.Err() != nil {
+			return nil, ErrGeneration
 		}
-		return nil, ErrGeneration
+		return nil, m.generationFailedLocked(ctx, exp)
 	}
-	exp.genFailures = 0
-
-	exp.state.CurrentQuestion = q
-	exp.state.QuestionStartTime = time.Now()
-	exp.state.HintShown = false
-	exp.state.HintAvailable = false
-	exp.answered = false
-	exp.questionsAsked++
-
+	exp.installLocked(res.Question)
 	v := exp.questionView()
-	v.Source, v.Attempts = SourceFresh, attempts.Count()
-	if exp.quest != nil {
-		v.Source = SourceQuest
-	}
+	v.Source, v.Attempts = QuestionSource(res.Source), res.Attempts
 	return v, nil
+}
+
+// questQuestionLocked serves the next authored quest question. Quest
+// generation is instant and advances a cursor, so it stays under exp.mu
+// and never goes through the prefetcher. Caller holds exp.mu.
+func (m *Manager) questQuestionLocked(ctx context.Context, exp *expedition) (*QuestionView, error) {
+	q, err := exp.tools.Generator.Generate(ctx, exp.nextInputLocked())
+	if err != nil {
+		return nil, m.generationFailedLocked(ctx, exp)
+	}
+	exp.installLocked(q)
+	v := exp.questionView()
+	v.Source = SourceQuest
+	return v, nil
+}
+
+// generationFailedLocked counts a kid-visible generation failure. After
+// maxGenFailures in a row the expedition ends (progress saved, play slot
+// freed) but stays reachable, so the client's End call still returns the
+// summary instead of a 404. Replacing Start, End and the idle reaper
+// remove it. Caller holds exp.mu.
+func (m *Manager) generationFailedLocked(ctx context.Context, exp *expedition) error {
+	exp.genFailures++
+	if exp.genFailures >= maxGenFailures {
+		exp.finishLocked(ctx, false)
+		return ErrExpeditionOver
+	}
+	return ErrGeneration
+}
+
+// installLocked makes q the current question. Caller holds exp.mu.
+func (e *expedition) installLocked(q *problemgen.Question) {
+	e.genFailures = 0
+	e.state.CurrentQuestion = q
+	e.state.QuestionStartTime = time.Now()
+	e.state.HintShown = false
+	e.state.HintAvailable = false
+	e.answered = false
+	e.questionsAsked++
+}
+
+// nextInputLocked builds the generation input for the next question from
+// the live state: the live tier, never the frozen plan tier. The slices are
+// copied, because generation runs after exp.mu is released. Untagged quest
+// expeditions skip the mastery lookup: their synthetic skill ID must not
+// seed a phantom mastery entry. Caller holds exp.mu (or owns exp alone).
+func (e *expedition) nextInputLocked() problemgen.GenerateInput {
+	tier := skillgraph.TierLearn
+	if e.quest == nil || e.quest.tagged {
+		tier = e.masterySvc.GetMastery(e.skill.ID).CurrentTier
+	}
+	e.state.ErrorMu.Lock()
+	recentErrors := slices.Clone(e.state.RecentErrors[e.skill.ID])
+	e.state.ErrorMu.Unlock()
+	return problemgen.GenerateInput{
+		Skill:          e.skill,
+		Tier:           tier,
+		PriorQuestions: slices.Clone(e.state.PriorQuestions[e.skill.ID]),
+		RecentErrors:   recentErrors,
+		LearnerProfile: e.learnerProfile,
+	}
 }
 
 func (e *expedition) questionView() *QuestionView {
@@ -620,6 +693,13 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 		result.Done = true
 		result.Summary = summary
 		result.LessonPending = false // no lesson after the ship sails home
+		return result, nil
+	}
+	// Every input to the next question is known now: generate it while the
+	// kid reads the feedback (specs/19 §5.2 A). If a lesson changes the
+	// input first, the fingerprint discards this warm.
+	if exp.prefetch != nil {
+		exp.prefetch.Warm(exp.nextInputLocked())
 	}
 	return result, nil
 }
@@ -795,6 +875,13 @@ func (e *expedition) finishLocked(ctx context.Context, completed bool) *SummaryV
 
 	e.saveSnapshot(ctx)
 
+	// Before the tools close and the slot frees: no generation may outlive
+	// the expedition. Close only cancels, so it can't stall under e.mu. A
+	// cancelled call may still append one LLM-usage event; that stream is
+	// append-only and never touches the snapshot.
+	if e.prefetch != nil {
+		e.prefetch.Close()
+	}
 	if e.tools != nil && e.tools.Diagnosis != nil {
 		e.tools.Diagnosis.Close()
 	}

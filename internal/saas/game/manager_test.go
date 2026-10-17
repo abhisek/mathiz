@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -27,12 +28,22 @@ func rootSkillID(t *testing.T) string {
 }
 
 // fakeGenerator returns deterministic questions; the answer is always "4".
+// Prefetching calls it from background goroutines, hence the mutex.
 type fakeGenerator struct {
+	mu    sync.Mutex
 	calls int
 	fail  bool
 }
 
+func (f *fakeGenerator) callCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
+}
+
 func (f *fakeGenerator) Generate(_ context.Context, input problemgen.GenerateInput) (*problemgen.Question, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.fail {
 		return nil, errors.New("llm unavailable")
 	}
@@ -426,14 +437,27 @@ func TestGenerationCircuitBreaker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
-	for i := 0; i < maxGenFailures; i++ {
+	for i := 1; i < maxGenFailures; i++ {
 		if _, err := m.Question(ctx, "child-1", exp.ID); !errors.Is(err, ErrGeneration) {
 			t.Fatalf("attempt %d: got %v", i, err)
 		}
 	}
-	// After the breaker trips the expedition is gone.
-	if _, err := m.Question(ctx, "child-1", exp.ID); !errors.Is(err, ErrNoExpedition) {
+	// The failure that trips the breaker ends the expedition: the client
+	// gets "over", not "try again".
+	if _, err := m.Question(ctx, "child-1", exp.ID); !errors.Is(err, ErrExpeditionOver) {
+		t.Fatalf("tripping attempt: got %v, want ErrExpeditionOver", err)
+	}
+	if _, err := m.Question(ctx, "child-1", exp.ID); !errors.Is(err, ErrExpeditionOver) {
 		t.Errorf("after breaker: got %v", err)
+	}
+	// End still reaches it and returns the summary (no 404 for the kid),
+	// then removes it.
+	sum, err := m.End(ctx, "child-1", exp.ID)
+	if err != nil || sum == nil {
+		t.Fatalf("End after breaker = %v, %v", sum, err)
+	}
+	if _, err := m.Question(ctx, "child-1", exp.ID); !errors.Is(err, ErrNoExpedition) {
+		t.Errorf("after End: got %v", err)
 	}
 }
 

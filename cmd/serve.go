@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/abhisek/mathiz/internal/llm"
+	"github.com/abhisek/mathiz/internal/problemgen"
 	"github.com/abhisek/mathiz/internal/saas/activity"
 	"github.com/abhisek/mathiz/internal/saas/auth"
 	"github.com/abhisek/mathiz/internal/saas/billing"
@@ -188,6 +189,8 @@ func runServe(ctx context.Context) error {
 		Charge:      charge,
 		Slots:       slots,
 		Quests:      questsSvc,
+		// specs/19 §9: off switch for the first release of prefetching.
+		DisablePrefetch: problemgen.PrefetchDisabledByEnv(),
 	})
 	srv := server.New(server.Deps{
 		Config:   cfg,
