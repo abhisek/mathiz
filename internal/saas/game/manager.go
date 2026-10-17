@@ -188,6 +188,7 @@ type expedition struct {
 	questionsAsked int  // questions generated so far
 	answered       bool // current question already graded
 	genFailures    int
+	lastFailedGen  uint64          // prefetcher generation of the last counted failure
 	lesson         *lessons.Lesson // delivered lesson awaiting practice
 	finished       bool
 	releaseSlot    func() // frees the child's cross-surface play slot
@@ -513,6 +514,12 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 		if ctx.Err() != nil {
 			return nil, ErrClientGone
 		}
+		// Two taps waiting on one shared generation see one failure, not
+		// two: count it once, or the breaker trips after two outages.
+		if res.Generation != 0 && res.Generation == exp.lastFailedGen {
+			return nil, ErrGeneration
+		}
+		exp.lastFailedGen = res.Generation
 		return nil, m.generationFailedLocked(ctx, exp)
 	}
 	exp.installLocked(res.Question)

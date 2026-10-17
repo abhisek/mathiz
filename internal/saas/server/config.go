@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -157,7 +158,7 @@ func (c *Config) Validate() error {
 		}
 		// A public HTTPS origin is a real deployment: test tokens there
 		// would let anyone with the secret sign in as any parent.
-		if strings.HasPrefix(c.PublicBaseURL, "https://") {
+		if u, err := url.Parse(c.PublicBaseURL); err == nil && strings.EqualFold(u.Scheme, "https") {
 			return fmt.Errorf("the test auth provider is refused when MATHIZ_PUBLIC_BASE_URL is https")
 		}
 	case "":

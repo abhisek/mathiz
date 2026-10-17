@@ -228,6 +228,7 @@ All under `/api/v1`. Parent endpoints require the auth provider's JWT; child end
 | `MATHIZ_AUTH_PUBLIC_KEY` | supabase | Provider client key, served to the SPA via `/api/v1/config` |
 | `MATHIZ_AUTH_HS256_SECRET` | test | Shared signing secret (optional for Supabase) |
 | `MATHIZ_AUTH_ALLOW_TEST` | test | Must be `1` for the test provider |
+| `MATHIZ_QUESTION_PREFETCH` | no | `0` turns off question prefetching ([19-question-latency.md](19-question-latency.md)) |
 | `MATHIZ_SERVER_ADDR` | no (`:8080`) | Listen address |
 | `MATHIZ_LLM_PROVIDER`, `MATHIZ_*_API_KEY` | yes | Existing LLM config, server-side only |
 | `MATHIZ_LOG_FILE` | no | Tee the structured log to an append-mode file (stdout always) |
@@ -262,7 +263,7 @@ Vite + React + TypeScript, embedded into the binary via `embed.FS` (single deplo
 The SPA fetches `/api/v1/config` at boot — no per-environment rebuilds.
 
 Routes:
-- `/` — sign in / sign up (supabase-js)
+- `/login` — sign in / sign up through the deployment's auth adapter (specs/17 §5)
 - `/dashboard` — family space, children cards, add child, join codes, device revocation,
   per-child progress
 - `/join` — kid flow: code → profile picker → PIN → token saved locally
@@ -270,8 +271,9 @@ Routes:
 
 ## 10. Security Considerations
 
-- Supabase JWTs verified cryptographically on every request; `alg` allow-list
-  (HS256 only when the shared secret is configured; RS/ES from JWKS); `none` rejected.
+- Parent JWTs verified cryptographically on every request by the provider preset
+  (specs/17 §3); `alg` allow-list (HS256 only when a shared secret is configured;
+  RS/ES from the JWKS); `none` rejected; unverified email refused.
 - Device tokens: 256-bit random, stored hashed, revocable, `last_used_at` tracked.
 - Join codes: expiring, revocable, family-scoped, PIN-gated profile selection, and
   redemption is rate-limited per IP (simple token bucket) to slow brute force.

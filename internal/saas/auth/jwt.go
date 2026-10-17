@@ -205,6 +205,11 @@ func (v *JWTVerifier) Close() {
 
 // Verify checks the signature and the standard claims, then maps the
 // identity through the preset.
+//
+// Only a key set that could not be fetched at all is ErrUnavailable. A kid
+// missing from a fetched set stays a 401 even if keyfunc's refetch fails:
+// anyone can put a random kid in a forged token, and turning that into a
+// 503 would let them make sign-in look down.
 func (v *JWTVerifier) Verify(ctx context.Context, tokenString string) (*Identity, error) {
 	claims := jwt.MapClaims{}
 

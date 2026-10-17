@@ -141,6 +141,9 @@ Kids never see prices or balances. Design:
   run a Go binary and reach Postgres. Put TLS in front.
 - LLM API keys stay server-side; browsers never see them.
 - `MATHIZ_SESSION_IDLE_MINUTES` bounds idle learning-session lifetime.
+- The next question generates while the kid reads feedback (specs/19).
+  `MATHIZ_QUESTION_PREFETCH=0` turns that off; questions then generate when
+  asked for.
 - Logging: one structured line per request on stdout (`MATHIZ_LOG_FORMAT`
   `text`/`json`, `MATHIZ_LOG_LEVEL`); `MATHIZ_LOG_FILE` tees to a file.
   No built-in rotation — use logrotate or your container's log driver.
@@ -155,7 +158,9 @@ not in scope.
 2. Clone the repository on the VM. Create `.env` from `.env.example`. Set
    `MATHIZ_DB_PASSWORD`, the auth settings, the LLM key and, if you bill,
    the billing settings. The prod profile has no defaults: a missing
-   setting stops the server at boot.
+   setting stops the server at boot. The compose file puts
+   `MATHIZ_DB_PASSWORD` into the database URL: use only letters, digits,
+   `-` and `_` (for example `openssl rand -hex 32`).
 3. Start the stack:
 
    ```bash

@@ -28,6 +28,10 @@ type Result struct {
 	Question *Question
 	Source   Source
 	Attempts int // provider attempts the question took, retries included
+	// Generation identifies the generation that produced (or failed) this
+	// result. Concurrent callers sharing one generation see the same value,
+	// so a caller can count one shared failure once.
+	Generation uint64
 }
 
 // ErrPrefetcherClosed is returned by Get after Close.
@@ -69,12 +73,14 @@ type Prefetcher struct {
 	base context.Context
 	stop context.CancelFunc
 
-	mu     sync.Mutex
-	entry  *prefetchEntry
-	closed bool
+	mu      sync.Mutex
+	entry   *prefetchEntry
+	closed  bool
+	lastGen uint64 // last generation number handed out (guarded by mu)
 }
 
 type prefetchEntry struct {
+	gen     uint64
 	fp      [sha256.Size]byte
 	warm    bool // started by Warm rather than by Get
 	started time.Time
@@ -133,11 +139,11 @@ func (p *Prefetcher) Get(ctx context.Context, input GenerateInput) (Result, erro
 		}
 		if e.err == nil {
 			p.markUsed(e)
-			return Result{Question: e.q, Source: source, Attempts: e.attempts}, nil
+			return Result{Question: e.q, Source: source, Attempts: e.attempts, Generation: e.gen}, nil
 		}
 		p.forget(e)
 		if retried || (!e.warm && !errors.Is(e.err, context.Canceled)) {
-			return Result{Source: source, Attempts: e.attempts}, e.err
+			return Result{Source: source, Attempts: e.attempts, Generation: e.gen}, e.err
 		}
 	}
 }
@@ -221,7 +227,8 @@ func (p *Prefetcher) startLocked(fp [sha256.Size]byte, input GenerateInput, warm
 		ctx, cancel = context.WithCancel(p.base)
 	}
 	ctx, attempts := llm.WithAttemptCounter(ctx)
-	e := &prefetchEntry{fp: fp, warm: warm, started: time.Now(), cancel: cancel, done: make(chan struct{})}
+	p.lastGen++
+	e := &prefetchEntry{gen: p.lastGen, fp: fp, warm: warm, started: time.Now(), cancel: cancel, done: make(chan struct{})}
 	input = input.clone()
 	go func() {
 		defer cancel()

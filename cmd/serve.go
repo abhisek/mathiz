@@ -48,6 +48,9 @@ Configuration is environment-driven:
   MATHIZ_AUTH_URL             Provider URL (supabase: the project URL)
   MATHIZ_AUTH_PUBLIC_KEY      Provider client key, served to the SPA (supabase: anon key)
   MATHIZ_AUTH_HS256_SECRET    Shared signing secret (test; HS256 Supabase projects)
+  MATHIZ_AUTH_AUDIENCE        Override the expected aud claim (optional)
+  MATHIZ_AUTH_ALLOW_TEST      Must be 1 to use the test provider (dev/E2E only)
+  MATHIZ_QUESTION_PREFETCH    0 turns off question prefetching (specs/19)
   MATHIZ_SERVER_ADDR          Listen address (default :8080)
   MATHIZ_*_API_KEY            LLM provider credentials (as for local mode)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
