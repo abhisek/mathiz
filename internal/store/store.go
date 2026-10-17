@@ -173,14 +173,18 @@ func configurePostgres(db *sql.DB, dsn string) error {
 	return nil
 }
 
-// dsnSSLMode reports the sslmode a URL-form DSN asks for. libpq's default
-// is "prefer", which silently falls back to plaintext.
+// dsnSSLMode reports the effective sslmode: the DSN's, else PGSSLMODE
+// (pgx honours it), else libpq's default "prefer", which silently falls
+// back to plaintext.
 func dsnSSLMode(dsn string) string {
 	u, err := url.Parse(dsn)
 	if err != nil {
 		return "unknown"
 	}
 	if m := u.Query().Get("sslmode"); m != "" {
+		return m
+	}
+	if m := os.Getenv("PGSSLMODE"); m != "" {
 		return m
 	}
 	return "prefer"
