@@ -2,6 +2,7 @@ package lessons
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -195,4 +196,56 @@ func searchString(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestProfilePromptRendersHistory(t *testing.T) {
+	input := ProfileInput{
+		SessionCount: 12,
+		MasteryData: map[string]MasteryDataSummary{
+			"mul-facts": {Name: "Multiplication facts", Grade: 3, State: "mastered", Tier: "prove", FluencyScore: 0.9, Attempts: 40, Correct: 38},
+			"frac-add":  {Name: "Adding fractions", Grade: 4, State: "learning", Tier: "learn", Attempts: 10, Correct: 4},
+			"div-long":  {Name: "Long division", Grade: 5, State: "new"},
+		},
+		RecentSessions: []SessionSummary{
+			{EndedAt: time.Date(2026, 10, 3, 9, 0, 0, 0, time.UTC), Skills: []string{"Adding fractions"}, Questions: 5, Correct: 2, Quest: true},
+		},
+		ErrorPatterns: []ErrorPatternSummary{
+			{SkillID: "frac-add", SkillName: "Adding fractions", Category: "misconception", Misconception: "Adds denominators", Count: 4},
+			{SkillID: "frac-add", SkillName: "Adding fractions", Category: "careless", Count: 1},
+		},
+		PerSkillResults: map[string]SkillResultSummary{
+			"frac-add": {Name: "Adding fractions", Attempted: 5, Correct: 2},
+		},
+		ErrorHistory: map[string][]string{"frac-add": {"e1", "e2", "e3", "e4", "e5"}},
+		PreviousProfile: &LearnerProfile{
+			Summary: "Old summary", GeneratedAt: time.Date(2026, 9, 20, 9, 0, 0, 0, time.UTC),
+		},
+	}
+	prompt := buildProfileUserMessage(input)
+
+	for _, want := range []string{
+		"Sessions completed: 12",
+		"Skills mastered: 1, learning: 1, rusty: 0",
+		"- Multiplication facts (mul-facts): grade 3, state=mastered, tier=prove, 38/40 correct (95%), fluency=0.90",
+		"- 2026-10-03 (quest): Adding fractions, 2/5 correct",
+		"- Adding fractions (frac-add): misconception: Adds denominators (4 times)",
+		"- Adding fractions (frac-add): careless (1 times)",
+		"- Adding fractions (frac-add): 5 attempted, 2 correct (40%)",
+		"Previous Profile (from 2026-09-20)",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Errorf("prompt lacks %q:\n%s", want, prompt)
+		}
+	}
+	if strings.Contains(prompt, "Long division") {
+		t.Error("prompt lists a skill the student never attempted")
+	}
+	// Only the newest session errors are kept.
+	if strings.Contains(prompt, "error: e2") || !strings.Contains(prompt, "error: e3") || !strings.Contains(prompt, "error: e5") {
+		t.Errorf("session errors not capped to the newest %d:\n%s", maxSessionErrorsPerSkill, prompt)
+	}
+	// Map order is random, so the skill lists are sorted.
+	if prompt != buildProfileUserMessage(input) {
+		t.Error("the same input rendered two different prompts")
+	}
 }

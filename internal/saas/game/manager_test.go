@@ -666,6 +666,18 @@ func TestExpeditionProfileRefreshVersionsProfile(t *testing.T) {
 	ctx := context.Background()
 	root := rootSkillID(t)
 
+	// Earlier expeditions' answers: one expedition alone is too little
+	// evidence for a first profile.
+	for i := 0; i < 10; i++ {
+		if err := st.EventRepoFor("child-1").AppendAnswerEvent(ctx, store.AnswerEventData{
+			SessionID: "earlier", SkillID: root, Tier: "learn", Category: "core",
+			QuestionText: "What is 2+2?", CorrectAnswer: "4", LearnerAnswer: "4",
+			Correct: true, TimeMs: 1000, AnswerFormat: "integer",
+		}); err != nil {
+			t.Fatalf("seed answer: %v", err)
+		}
+	}
+
 	exp, err := m.Start(ctx, "child-1", root)
 	if err != nil {
 		t.Fatalf("start: %v", err)

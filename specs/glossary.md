@@ -330,7 +330,7 @@ Optional short nudge generated with Learn-tier questions only. Becomes available
 - **Aka / don't call it:** there is no `hint` LLM purpose — hints ride along with question generation.
 
 ### Learner profile
-LLM-written holistic summary of the learner (summary, strengths, weaknesses, patterns, generated-at), regenerated asynchronously after each session, stored on the latest snapshot and — when changed — appended as a learner-profile event. Fed into question generation and shown to parents as "what the tutor has learned".
+LLM-written holistic summary of the learner (summary, strengths, weaknesses, patterns, generated-at), made from the child's history across sessions (lifetime answer totals, recent sessions, diagnosed error patterns) with the last session as the newest evidence. Refreshed asynchronously after a session only past the evidence gate (15 lifetime answers), and then only for a first profile, a change of mastery state or tier, or 3 sessions since the last one. Stored on the latest snapshot and — when changed — appended as a learner-profile event. Fed into question generation and shown to parents as "what the tutor has learned".
 - **Code:** `lessons.LearnerProfile` · `store.LearnerProfileData` · `session.SaveSnapshotWithProfile`
 - **Spec:** [10-ai-lessons.md §5](10-ai-lessons.md) · [12-saas.md §3.1](12-saas.md)
 - **Aka / don't call it:** NOT a child profile — see Homonyms.
@@ -440,8 +440,8 @@ One row per graded answer: session, skill, tier, category, question text, correc
 - **Spec:** [12-saas.md §3](12-saas.md)
 
 ### Diagnosis event
-Persisted diagnosis result for a wrong answer (category, misconception ID, confidence, classifier, reasoning).
-- **Code:** `ent/schema/diagnosis_event.go` · `store.DiagnosisEventData`
+Persisted diagnosis result for a wrong answer (category, misconception ID, confidence, classifier, reasoning). The learner profile reads it back as counts per skill, category and misconception.
+- **Code:** `ent/schema/diagnosis_event.go` · `store.DiagnosisEventData` · `store.EventRepo.DiagnosisCounts`
 - **Spec:** [09-diagnosis.md §9](09-diagnosis.md)
 
 ### Event (event sourcing)

@@ -556,7 +556,7 @@ The `[compressed]` prefix signals to the question generation prompt that this is
 
 ### 5.1 Purpose
 
-The learner profile is a persistent, cross-session summary of the learner's strengths, weaknesses, and learning patterns. It is generated at the end of each session and stored in the snapshot. Future sessions can include the profile in question generation prompts for better personalization.
+The learner profile is a persistent, cross-session summary of the learner's strengths, weaknesses, and learning patterns. It describes the whole child, so it is made from the child's history across sessions, not from the session that just ended (FOU-241: a game expedition is five questions on one skill). It is stored in the snapshot and included in every question generation prompt.
 
 ### 5.2 Profile Type
 
@@ -584,77 +584,42 @@ type LearnerProfile struct {
 
 ### 5.3 Profile Generation
 
-Profile generation is triggered at the **end of each session** (when the session completes or the learner exits). It is async and non-blocking — if it fails, the session still ends normally.
+`session.SaveSnapshotWithProfile` saves the snapshot, then starts an async refresh. A failed refresh logs and keeps the previous profile; the session still ends normally.
 
-```go
-// GenerateProfile creates a learner profile from session and mastery data.
-func (c *Compressor) GenerateProfile(
-    ctx context.Context,
-    input ProfileInput,
-) (*LearnerProfile, error) {
-    // 1. Build prompt from input
-    // 2. Call LLM with profile schema + purpose "profile"
-    // 3. Parse and return profile
-}
+**When a refresh runs.** The refresh first loads history, then decides with `profileRefreshDue`:
 
-// ProfileInput holds all context for profile generation.
-type ProfileInput struct {
-    // PerSkillResults from the session that just ended.
-    PerSkillResults map[string]*session.SkillResult
+1. A session with no questions never refreshes.
+2. **Evidence gate.** Below 15 lifetime answers on curriculum skills (about three expeditions), no profile is written. A parent sees no profile until then.
+3. A refresh is due when there is no profile yet, when a skill changed state or tier against the previous snapshot (learn to prove counts, so does decay to rusty), or when 3 sessions have ended since the profile's `generated_at`.
+4. Otherwise the profile stays. One bad expedition does not rewrite the profile of a child with a strong record.
 
-    // MasterySnapshots from the mastery service.
-    MasteryData map[string]*store.SkillMasteryData
+If a history read fails, the refresh is skipped and logged. It never falls back to a profile from the session alone.
 
-    // ErrorHistory is a map of skill ID → compressed error summaries.
-    ErrorHistory map[string][]string
+**Inputs** (`lessons.ProfileInput`):
 
-    // PreviousProfile is the existing profile (may be nil for first session).
-    PreviousProfile *LearnerProfile
+| Field | Source |
+|---|---|
+| `MasteryData` | snapshot (name, grade, state, tier, fluency) plus lifetime attempts and correct answers from `EventRepo.AnswerTallies`. The snapshot counters restart on a tier change or decay, so they are not used for accuracy. |
+| `SessionCount` | `EventRepo.CompletedSessionCount`: sessions that served at least one question, untagged quests included |
+| `RecentSessions` | the 10 newest `QuerySessionSummaries`; untagged quests (no curriculum skill) are left out and do not count towards the cadence |
+| `ErrorPatterns` | `EventRepo.DiagnosisCounts` over the last 60 days, grouped by skill, category and misconception, top 15, misconception labels from the taxonomy |
+| `PerSkillResults`, `ErrorHistory` | this session only; at most 3 error lines per skill |
+| `PreviousProfile` | latest snapshot, with its `generated_at` |
 
-    // SessionCount is how many sessions the learner has completed.
-    SessionCount int
-}
-```
+All aggregates run in SQL and are owner-scoped. Synthetic skills (`quest:<uid>`) and skill IDs that are not in the graph are left out everywhere.
 
 ### 5.4 Profile Prompt
 
-```
-You are creating a learner profile for a math tutoring system. This profile helps personalize future practice sessions for a student in grades 3-5.
+`lessons.buildProfileUserMessage` writes the sections in this order, so history leads and the session reads as the newest evidence:
 
-## Session Results
-{{range $skillID, $result := .PerSkillResults}}
-- {{$skillID}}: {{$result.Attempted}} attempted, {{$result.Correct}} correct ({{printf "%.0f" (accuracy $result)}}%)
-{{end}}
+1. **Learner History (all sessions):** sessions completed, counts of mastered, learning and rusty skills, then one line per attempted skill: name (id), grade, state, tier, lifetime correct/attempts (accuracy), fluency. Skills never attempted are not listed.
+2. **Recent Sessions (newest first):** date, quest flag, skills, correct/served.
+3. **Diagnosed Error Patterns:** per skill, category and misconception with a count.
+4. **This Session (newest evidence only):** per-skill results and capped error lines.
+5. **Previous Profile (from date):** summary, strengths, weaknesses, patterns.
+6. **Instructions:** base strengths and weaknesses on lifetime evidence; use this session to confirm, refine or flag a change; do not add or remove a strength or weakness because of this session alone when the lifetime evidence disagrees; name only listed skills.
 
-## Mastery State
-{{range $skillID, $data := .MasteryData}}
-- {{$skillID}}: state={{$data.State}}, fluency={{printf "%.2f" $data.FluencyScore}}
-{{end}}
-
-## Error History
-{{range $skillID, $errors := .ErrorHistory}}
-### {{$skillID}}
-{{range $errors}}
-- {{.}}
-{{end}}
-{{end}}
-
-{{if .PreviousProfile}}
-## Previous Profile
-{{.PreviousProfile.Summary}}
-Strengths: {{join .PreviousProfile.Strengths ", "}}
-Weaknesses: {{join .PreviousProfile.Weaknesses ", "}}
-{{end}}
-
-## Instructions
-Create a concise learner profile:
-1. Write a 3-5 sentence summary of the student's current abilities, focusing on what they know well and where they need work.
-2. List 2-4 specific strengths (e.g., "solid multiplication facts", "good with simple fractions").
-3. List 2-4 specific weaknesses (e.g., "struggles with carrying in addition", "confuses fraction denominators").
-4. List 1-3 error patterns observed (e.g., "frequently rushes and makes careless mistakes", "consistently forgets to borrow in subtraction").
-
-If a previous profile exists, update it with new evidence rather than starting fresh. Keep all entries concise (5-10 words each for strengths/weaknesses/patterns).
-```
+Skill lists are sorted, so the same evidence gives the same prompt. `ProfileMaxTokens` is 1024.
 
 ### 5.5 Profile Schema
 
@@ -712,7 +677,7 @@ type LearnerProfileData struct {
     Strengths   []string `json:"strengths"`
     Weaknesses  []string `json:"weaknesses"`
     Patterns    []string `json:"patterns"`
-    GeneratedAt string   `json:"generated_at"` // RFC3339
+    GeneratedAt string   `json:"generated_at"` // RFC3339; written with nanoseconds so the cadence orders it after the session that triggered it
 }
 ```
 
