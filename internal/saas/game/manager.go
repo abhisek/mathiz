@@ -41,6 +41,9 @@ var (
 	ErrNoHint         = errors.New("no hint available")
 	ErrNoLesson       = errors.New("the guide has nothing to show right now")
 	ErrGeneration     = errors.New("could not conjure a question, try again")
+	// ErrClientGone means the request ended before its question was ready
+	// (closed tab, reload). Not a failure the kid saw: no breaker tick.
+	ErrClientGone = errors.New("the client left before the question was ready")
 	// ErrElsewhere means the child's play slot is held by another surface
 	// (e.g. a live expedition in another tab).
 	ErrElsewhere = errors.New("you're already playing on another screen — close it first!")
@@ -198,6 +201,18 @@ type expedition struct {
 }
 
 func (e *expedition) touch() { e.lastActivity.Store(time.Now().UnixNano()) }
+
+// activeLocked refuses a finished expedition and otherwise records the
+// activity. A finished one can stay reachable (a tripped breaker keeps it
+// for End's summary), and requests to it must neither add events after the
+// session's end event nor keep it from the idle reaper. Caller holds e.mu.
+func (e *expedition) activeLocked() error {
+	if e.finished {
+		return ErrExpeditionOver
+	}
+	e.touch()
+	return nil
+}
 
 // totalQuestions is how many questions this expedition serves: the standard
 // 5 for dig spots, min(5, remaining) for quest expeditions.
@@ -448,11 +463,9 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 		return nil, err
 	}
 	exp.mu.Lock()
-	exp.touch()
-
-	if exp.finished {
+	if err := exp.activeLocked(); err != nil {
 		exp.mu.Unlock()
-		return nil, ErrExpeditionOver
+		return nil, err
 	}
 	// The unanswered current question is idempotent (page reloads).
 	if exp.state.CurrentQuestion != nil && !exp.answered {
@@ -481,21 +494,24 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 	cancel()
 
 	exp.mu.Lock()
-	defer exp.mu.Unlock()
 	if exp.finished {
+		exp.mu.Unlock()
 		return nil, ErrExpeditionOver
 	}
-	// A concurrent request (a double tap) already installed a question.
-	if exp.questionsAsked != asked || (exp.state.CurrentQuestion != nil && !exp.answered) {
-		v := exp.questionView()
-		v.Source = SourceCurrent
-		return v, nil
+	// A concurrent request (a double tap) installed a question meanwhile,
+	// and the kid may even have answered it: start over, so the normal
+	// checks decide (current question, next question, or over). Bounded:
+	// questionsAsked only grows.
+	if exp.questionsAsked != asked {
+		exp.mu.Unlock()
+		return m.Question(ctx, childUID, expID)
 	}
+	defer exp.mu.Unlock()
 	if genErr != nil {
 		// A kid who left (closed tab, reload) didn't see a failure: only
 		// failures a kid actually waited through count toward the breaker.
 		if ctx.Err() != nil {
-			return nil, ErrGeneration
+			return nil, ErrClientGone
 		}
 		return nil, m.generationFailedLocked(ctx, exp)
 	}
@@ -594,10 +610,8 @@ func (m *Manager) Answer(ctx context.Context, childUID, expID, answer string) (*
 	}
 	exp.mu.Lock()
 	defer exp.mu.Unlock()
-	exp.touch()
-
-	if exp.finished {
-		return nil, ErrExpeditionOver
+	if err := exp.activeLocked(); err != nil {
+		return nil, err
 	}
 	if exp.state.CurrentQuestion == nil || exp.answered {
 		return nil, ErrNoQuestion
@@ -714,7 +728,9 @@ func (m *Manager) Lesson(ctx context.Context, childUID, expID string) (*LessonVi
 	}
 	exp.mu.Lock()
 	defer exp.mu.Unlock()
-	exp.touch()
+	if err := exp.activeLocked(); err != nil {
+		return nil, err
+	}
 
 	if exp.lesson != nil {
 		return lessonView(exp.lesson, true), nil
@@ -753,7 +769,9 @@ func (m *Manager) AnswerLesson(ctx context.Context, childUID, expID, answer stri
 	}
 	exp.mu.Lock()
 	defer exp.mu.Unlock()
-	exp.touch()
+	if err := exp.activeLocked(); err != nil {
+		return nil, err
+	}
 
 	lesson := exp.lesson
 	if lesson == nil {
@@ -781,7 +799,9 @@ func (m *Manager) Hint(ctx context.Context, childUID, expID string) (*HintView, 
 	}
 	exp.mu.Lock()
 	defer exp.mu.Unlock()
-	exp.touch()
+	if err := exp.activeLocked(); err != nil {
+		return nil, err
+	}
 
 	state := exp.state
 	q := state.CurrentQuestion

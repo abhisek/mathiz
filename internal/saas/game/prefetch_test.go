@@ -261,8 +261,8 @@ func TestLeftClientDoesNotTripBreaker(t *testing.T) {
 		gone, cancel := context.WithTimeout(ctx, 5*time.Millisecond)
 		_, err := m.Question(gone, "child-1", exp.ID)
 		cancel()
-		if !errors.Is(err, ErrGeneration) {
-			t.Fatalf("request %d = %v, want ErrGeneration", i, err)
+		if !errors.Is(err, ErrClientGone) {
+			t.Fatalf("request %d = %v, want ErrClientGone", i, err)
 		}
 	}
 	// The expedition is alive, and the generation that kept running serves
@@ -333,5 +333,40 @@ func TestQuestExpeditionsNeverWarm(t *testing.T) {
 		if _, err := m.Answer(ctx, "child-1", exp.ID, "wrong"); err != nil {
 			t.Fatalf("answer %d: %v", i, err)
 		}
+	}
+}
+
+func TestFinishedExpeditionRefusesEverything(t *testing.T) {
+	m := newTestManager(t, &fakeGenerator{fail: true})
+	ctx := context.Background()
+	exp, err := m.Start(ctx, "child-1", rootSkillID(t))
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	for i := 0; i < maxGenFailures; i++ {
+		_, _ = m.Question(ctx, "child-1", exp.ID)
+	}
+	live, err := m.lookup("child-1", exp.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stamp := live.lastActivity.Load()
+	time.Sleep(2 * time.Millisecond)
+	// The tripped expedition stays reachable for End, but nothing else
+	// works on it, and polling it doesn't keep it from the idle reaper.
+	if _, err := m.Hint(ctx, "child-1", exp.ID); !errors.Is(err, ErrExpeditionOver) {
+		t.Errorf("hint = %v", err)
+	}
+	if _, err := m.Lesson(ctx, "child-1", exp.ID); !errors.Is(err, ErrExpeditionOver) {
+		t.Errorf("lesson = %v", err)
+	}
+	if _, err := m.AnswerLesson(ctx, "child-1", exp.ID, "4", false); !errors.Is(err, ErrExpeditionOver) {
+		t.Errorf("answer lesson = %v", err)
+	}
+	if _, err := m.Question(ctx, "child-1", exp.ID); !errors.Is(err, ErrExpeditionOver) {
+		t.Errorf("question = %v", err)
+	}
+	if live.lastActivity.Load() != stamp {
+		t.Error("requests to a finished expedition refreshed its activity")
 	}
 }
