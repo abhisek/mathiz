@@ -54,6 +54,10 @@ An **expedition** is 5 questions on one skill the kid taps (the terminal's
   compression — identical to the terminal flow.
 - One active expedition per child (in-memory, replaced on new start, expired
   after 30 minutes idle).
+- Q1 generates during "Setting sail…" and each next question while the kid
+  reads feedback; generation never holds the expedition lock, so "Sail home"
+  and hints answer at once ([19-question-latency.md §5](19-question-latency.md)).
+  Quest expeditions generate in place (their questions are authored).
 
 ## 3. API (child device-token auth, `/api/v1/game`)
 
@@ -62,7 +66,7 @@ An **expedition** is 5 questions on one skill the kid taps (the terminal's
 | `GET  /game/map` | Full map state: islands, per-skill `{state, unlocked, dueReview, tierProgress}`, gem counts, child info |
 | `GET  /game/notebook` | The guide's notebook: every past tip with full content, grouped by island client-side |
 | `POST /game/expeditions {skillId}` | Start (replaces any active one) → expedition descriptor |
-| `POST /game/expeditions/{id}/question` | Generate/fetch the current question |
+| `POST /game/expeditions/{id}/question` | Fetch the current question (usually already warmed, [19-question-latency.md](19-question-latency.md)); 503 `generation_failed` = foggy map, retry free; 409 `expedition_over` after 3 failures in a row |
 | `POST /game/expeditions/{id}/answer {answer, timeMs}` | Grade → `{correct, correctAnswer, explanation, gem, mastery, unlockedSkillIds, streak, done}` |
 | `POST /game/expeditions/{id}/hint` | Reveal the hint (records hint event) |
 | `POST /game/expeditions/{id}/lesson` | Poll for the guide's micro-lesson (pending after 2 wrong answers on a skill) |

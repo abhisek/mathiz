@@ -1,13 +1,13 @@
-# SaaS Layer — Family Spaces, Supabase Auth, Hosted Learning
+# SaaS Layer — Family Spaces, Hosted Parent Auth, Hosted Learning
 
 ## 1. Overview
 
 Mathiz today is a single-learner terminal app: one SQLite file, one child, one machine.
 This spec adds a **SaaS layer** so that:
 
-- **Parents sign up** (Supabase handles authentication — email/password or magic link).
+- **Parents sign up** (a hosted auth provider handles authentication — Supabase today, email code/magic link or password; [17-auth-providers.md](17-auth-providers.md)).
 - A parent creates a **Family Space** and adds **child profiles** (name, grade, optional PIN).
-- Children get access via a **join code** — no email, no password, no Supabase account.
+- Children get access via a **join code** — no email, no password, no auth-provider account.
   The child redeems the code once on their device, picks their profile, enters their PIN,
   and receives a long-lived revocable **device token**.
 - Children learn in the **browser**: the existing Bubble Tea TUI runs server-side and is
@@ -25,7 +25,7 @@ SQLite files. This spec supersedes it for the SaaS product:
 |---|---|---|
 | Transport | Browser → WS proxy → SSH → Wish | Browser → WebSocket → in-process `tea.Program` |
 | Learning data | Per-profile SQLite files on disk | Single Postgres DB, owner-scoped rows |
-| Identity | Any JWT IdP, profile = SSH username | Supabase (parents) + device tokens (children) |
+| Identity | Any JWT IdP, profile = SSH username | Hosted auth provider (parents) + device tokens (children) |
 | Authorization | None (filesystem isolation) | Explicit authz layer (`internal/saas/authz`) |
 
 The in-process bridge removes two moving parts (SSH server, WS↔SSH proxy) and a whole
@@ -36,13 +36,13 @@ class of credential plumbing (JWT in the SSH password field).
 ```
 ┌───────────────────────────── Browser ─────────────────────────────┐
 │  Parent dashboard (React SPA)          Kid terminal (xterm.js)    │
-│  supabase-js login → JWT               device token (localStorage)│
+│  auth adapter login → JWT              device token (localStorage)│
 └───────────────┬───────────────────────────────┬───────────────────┘
                 │ HTTPS /api/v1/* (Bearer JWT)   │ WSS /api/v1/terminal
 ┌───────────────▼───────────────────────────────▼───────────────────┐
 │                        mathiz serve (one binary)                  │
 │                                                                   │
-│  auth: Supabase JWT verify (HS256 secret / JWKS) → Account        │
+│  auth: provider JWT verify (preset: JWKS / HS256) → Account       │
 │        device token verify → ChildProfile                         │
 │  authz: internal/saas/authz — all permission decisions            │
 │  api:  family spaces, children, invites, devices, stats           │
@@ -55,7 +55,7 @@ class of credential plumbing (JWT in the SSH password field).
 │  llm:   provider from env, per-session logging decorator          │
 └───────────────────────────────┬───────────────────────────────────┘
                                 │
-                     PostgreSQL (dev: local / prod: Supabase or any hosted PG)
+                     PostgreSQL (dev: local / prod: PostgreSQL 18 we run)
 ```
 
 ## 3. Data Model
@@ -97,7 +97,7 @@ Follows the codebase convention: no ent edges, plain UUID string keys + indexes.
 
 | Entity | Fields |
 |---|---|
-| `Account` | `id` (uuid), `supabase_user_id` (unique), `email`, `display_name`, `created_at` |
+| `Account` | `id` (uuid), `auth_provider` + `auth_subject` (unique pair), `email`, `display_name`, `created_at` |
 | `FamilySpace` | `id`, `owner_account_id` (indexed), `name`, `created_at` |
 | `ChildProfile` | `id`, `family_space_id` (indexed), `name`, `grade` (2–5), `pin_hash` (optional, bcrypt), `created_at`, `archived` (bool) |
 | `Invite` | `id`, `family_space_id` (indexed), `code` (unique, human-friendly e.g. `TIGER-4207`), `expires_at`, `revoked`, `created_at` |
@@ -117,21 +117,18 @@ Notes:
 
 ## 4. Authentication
 
-### 4.1 Parents — Supabase
+### 4.1 Parents — the deployment's auth provider
 
-The SPA authenticates with `supabase-js` and sends `Authorization: Bearer <access_token>`
-on every API call. The server verifies locally (no network call per request):
-
-- **HS256** with `MATHIZ_SUPABASE_JWT_SECRET` (classic Supabase JWT secret), and/or
-- **RS256/ES256** via JWKS at `{MATHIZ_SUPABASE_URL}/auth/v1/.well-known/jwks.json`
-  (new Supabase asymmetric signing keys). Keys cached, refreshed on unknown `kid`.
-
-Claims validated: `exp`/`nbf`/`iat` (30s skew), `iss == {url}/auth/v1` (when URL set),
-`aud == authenticated` (configurable). `sub` = Supabase user id.
+Superseded by [17-auth-providers.md](17-auth-providers.md). In short: one hosted auth
+provider per deployment (`MATHIZ_AUTH_PROVIDER`: `supabase`, or `test` for dev/E2E).
+The SPA loads that provider's adapter and sends `Authorization: Bearer <access_token>`
+on every API call. One generic verifier checks the token locally (no network call per
+request) with the provider's preset: issuer, keys (JWKS and/or an HS256 secret),
+audience, claims. A token without a verified email is refused.
 
 **Account provisioning is implicit**: the first authenticated API call upserts an
-`Account` for the `sub` (email + name from claims). There is no separate signup endpoint;
-Supabase *is* signup.
+`Account` keyed on (provider, `sub`), with email + name from claims. There is no
+separate signup endpoint; the provider *is* signup.
 
 ### 4.2 Children — device tokens
 
@@ -198,11 +195,11 @@ The existing TUI runs unmodified server-side, one `tea.Program` per WebSocket:
 
 ## 7. HTTP API (v1)
 
-All under `/api/v1`. Parent endpoints require Supabase JWT; child endpoints device token.
+All under `/api/v1`. Parent endpoints require the auth provider's JWT; child endpoints device token.
 
 | Method & Path | Auth | Purpose |
 |---|---|---|
-| `GET  /config` | none | Public boot config for SPA (Supabase URL + anon key) |
+| `GET  /config` | none | Public boot config for SPA (`auth{provider,url,publicKey}`) |
 | `GET  /curriculum` | none | Static skill-graph curriculum: islands (strands, canonical order) → skills (`id`, `name`, `grade`, `prereqs`), cacheable (`Cache-Control: public, max-age=3600`) |
 | `GET  /me` | parent | Account (auto-provisioned) + owned family space |
 | `POST /family` | parent | Create family space `{name}` (one per account, v1) |
@@ -225,18 +222,20 @@ All under `/api/v1`. Parent endpoints require Supabase JWT; child endpoints devi
 
 | Env var | Required (serve) | Purpose |
 |---|---|---|
-| `MATHIZ_DATABASE_URL` | yes | Postgres DSN (`postgres://...`). Dev: local PG; prod: Supabase/hosted PG |
-| `MATHIZ_SUPABASE_URL` | yes | Project URL — JWKS + issuer validation + SPA boot config |
-| `MATHIZ_SUPABASE_ANON_KEY` | yes | Served to the SPA via `/api/v1/config` (public by design) |
-| `MATHIZ_SUPABASE_JWT_SECRET` | no | Enables HS256 verification (legacy Supabase keys) |
+| `MATHIZ_DATABASE_URL` | yes | Postgres DSN (`postgres://...`). Dev: local PG; prod: PostgreSQL 18 we run ([18-self-hosted-postgres.md](18-self-hosted-postgres.md)) |
+| `MATHIZ_AUTH_PROVIDER` | yes | `supabase` \| `test` ([17-auth-providers.md](17-auth-providers.md)) |
+| `MATHIZ_AUTH_URL` | supabase | Provider URL (https) — issuer, JWKS, SPA boot config |
+| `MATHIZ_AUTH_PUBLIC_KEY` | supabase | Provider client key, served to the SPA via `/api/v1/config` |
+| `MATHIZ_AUTH_HS256_SECRET` | test | Shared signing secret (optional for Supabase) |
+| `MATHIZ_AUTH_ALLOW_TEST` | test | Must be `1` for the test provider |
 | `MATHIZ_SERVER_ADDR` | no (`:8080`) | Listen address |
 | `MATHIZ_LLM_PROVIDER`, `MATHIZ_*_API_KEY` | yes | Existing LLM config, server-side only |
 | `MATHIZ_LOG_FILE` | no | Tee the structured log to an append-mode file (stdout always) |
 | `MATHIZ_LOG_FORMAT` | no (`text`) | `text` (key=value) or `json` |
 | `MATHIZ_LOG_LEVEL` | no (`info`) | `debug`\|`info`\|`warn`\|`error` |
 
-`mathiz serve` fails fast if the database is unreachable, no Supabase verification
-method is configured, the log format/level is unknown, or `MATHIZ_LOG_FILE`
+`mathiz serve` fails fast if the database is unreachable, the auth provider is
+missing or misconfigured, accounts belong to another provider, the log format/level is unknown, or `MATHIZ_LOG_FILE`
 cannot be opened.
 
 ### Canonical request logging
