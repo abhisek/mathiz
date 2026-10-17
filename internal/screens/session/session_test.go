@@ -2,6 +2,9 @@ package session
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -329,5 +332,88 @@ func TestSessionScreen_TimerDisplay(t *testing.T) {
 	view := s.View(80, 24)
 	if view == "" {
 		t.Error("expected non-empty view with timer")
+	}
+}
+
+// recordingGenerator counts calls and records inputs; prefetching calls it
+// from a background goroutine.
+type recordingGenerator struct {
+	mu     sync.Mutex
+	inputs []problemgen.GenerateInput
+}
+
+func (g *recordingGenerator) Generate(_ context.Context, input problemgen.GenerateInput) (*problemgen.Question, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.inputs = append(g.inputs, input)
+	return &problemgen.Question{
+		Text:       fmt.Sprintf("What is %d + 1?", len(g.inputs)),
+		Format:     problemgen.FormatNumeric,
+		Answer:     fmt.Sprint(len(g.inputs) + 1),
+		AnswerType: problemgen.AnswerTypeInteger,
+		SkillID:    input.Skill.ID,
+		Tier:       input.Tier,
+	}, nil
+}
+
+func (g *recordingGenerator) calls() []problemgen.GenerateInput {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return append([]problemgen.GenerateInput(nil), g.inputs...)
+}
+
+func TestSessionScreen_PrefetchesNextQuestionDuringFeedback(t *testing.T) {
+	gen := &recordingGenerator{}
+	s := New(gen, &mockEventRepo{}, &mockSnapshotRepo{}, nil, nil, nil, nil)
+	t.Cleanup(s.closePrefetch)
+	setupActiveSession(s)
+	s.learnerProfile = "loves pirate stories"
+
+	s.input.Model.SetValue("2")
+	var scr screen.Screen = s
+	scr, _ = scr.Update(specialKey(tea.KeyEnter))
+	ss := scr.(*SessionScreen)
+	if !ss.state.ShowingFeedback {
+		t.Fatal("expected feedback after submit")
+	}
+
+	// The next question starts generating while feedback is on screen.
+	deadline := time.Now().Add(2 * time.Second)
+	for len(gen.calls()) == 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	calls := gen.calls()
+	if len(calls) != 1 {
+		t.Fatalf("generator calls during feedback = %d, want 1", len(calls))
+	}
+	if calls[0].LearnerProfile != "loves pirate stories" {
+		t.Errorf("warm input profile = %q, want the cached profile", calls[0].LearnerProfile)
+	}
+	if len(calls[0].PriorQuestions) != 1 || calls[0].PriorQuestions[0] != "What is 1 + 1?" {
+		t.Errorf("warm input prior questions = %v", calls[0].PriorQuestions)
+	}
+
+	// Dismissing feedback asks for the same input: the warmed question is
+	// served without a second call.
+	ss.state.ShowingFeedback = false
+	ss.state.Phase = sess.PhaseActive
+	ss.state.CurrentQuestion = nil
+	msg := ss.generateNextQuestion()()
+	ready, ok := msg.(questionReadyMsg)
+	if !ok || ready.Err != nil || ready.Question == nil {
+		t.Fatalf("generateNextQuestion = %#v", msg)
+	}
+	if len(gen.calls()) != 1 {
+		t.Errorf("generator calls after dismiss = %d, want 1 (prefetch hit)", len(gen.calls()))
+	}
+}
+
+func TestSessionScreen_SessionEndClosesPrefetch(t *testing.T) {
+	gen := &recordingGenerator{}
+	s := New(gen, &mockEventRepo{}, &mockSnapshotRepo{}, nil, nil, nil, nil)
+	setupActiveSession(s)
+	s.handleSessionEnd()
+	if _, err := s.prefetch.Get(context.Background(), problemgen.GenerateInput{}); !errors.Is(err, problemgen.ErrPrefetcherClosed) {
+		t.Errorf("prefetcher after session end: %v, want closed", err)
 	}
 }
