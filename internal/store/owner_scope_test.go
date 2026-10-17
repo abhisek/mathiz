@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -665,5 +666,110 @@ func TestOwnerGuardStampsAndScopes(t *testing.T) {
 	}
 	if n != 1 {
 		t.Errorf("unfiltered client count for alice = %d, want 1", n)
+	}
+}
+
+func TestOwnerIsolationProfileHistory(t *testing.T) {
+	s := openIsolationStore(t)
+	ctx := context.Background()
+
+	alice := s.EventRepoFor(testOwner(t, "alice"))
+	bob := s.EventRepoFor(testOwner(t, "bob"))
+	carol := s.EventRepoFor(testOwner(t, "carol"))
+
+	misconception := "carry-forget"
+	answer := func(session, skill string, correct bool) AnswerEventData {
+		return AnswerEventData{
+			SessionID: session, SkillID: skill, Tier: "learn", Category: "core",
+			QuestionText: "What is 2+3?", CorrectAnswer: "5", LearnerAnswer: "5",
+			Correct: correct, TimeMs: 1200, AnswerFormat: "integer",
+		}
+	}
+	diagnosis := func(session, category string, m *string) DiagnosisEventData {
+		return DiagnosisEventData{
+			SessionID: session, SkillID: "add-1", QuestionText: "What is 2+3?",
+			CorrectAnswer: "5", LearnerAnswer: "6", Category: category,
+			MisconceptionID: m, Confidence: 0.9, ClassifierName: "rules",
+		}
+	}
+	for _, a := range []struct {
+		skill   string
+		correct bool
+	}{{"add-1", true}, {"add-1", false}, {"add-1", true}, {"sub-1", false}} {
+		if err := alice.AppendAnswerEvent(ctx, answer("sess-a", a.skill, a.correct)); err != nil {
+			t.Fatalf("alice answer: %v", err)
+		}
+	}
+	for _, m := range []*string{&misconception, &misconception, nil} {
+		if err := alice.AppendDiagnosisEvent(ctx, diagnosis("sess-a", "misconception", m)); err != nil {
+			t.Fatalf("alice diagnosis: %v", err)
+		}
+	}
+	if err := alice.AppendSessionEvent(ctx, SessionEventData{SessionID: "sess-a", Action: "start"}); err != nil {
+		t.Fatalf("alice start: %v", err)
+	}
+	if err := alice.AppendSessionEvent(ctx, SessionEventData{SessionID: "sess-a", Action: "end"}); err != nil {
+		t.Fatalf("alice end: %v", err)
+	}
+	if err := bob.AppendAnswerEvent(ctx, answer("sess-b", "add-1", true)); err != nil {
+		t.Fatalf("bob answer: %v", err)
+	}
+	if err := bob.AppendDiagnosisEvent(ctx, diagnosis("sess-b", "careless", nil)); err != nil {
+		t.Fatalf("bob diagnosis: %v", err)
+	}
+	if err := bob.AppendSessionEvent(ctx, SessionEventData{SessionID: "sess-b", Action: "end"}); err != nil {
+		t.Fatalf("bob end: %v", err)
+	}
+
+	tallies, err := alice.AnswerTallies(ctx)
+	if err != nil {
+		t.Fatalf("alice tallies: %v", err)
+	}
+	wantTallies := []AnswerTally{{SkillID: "add-1", Attempts: 3, Correct: 2}, {SkillID: "sub-1", Attempts: 1, Correct: 0}}
+	if !reflect.DeepEqual(tallies, wantTallies) {
+		t.Errorf("alice tallies = %+v, want %+v", tallies, wantTallies)
+	}
+
+	counts, err := alice.DiagnosisCounts(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("alice diagnosis counts: %v", err)
+	}
+	wantCounts := []DiagnosisCount{
+		{SkillID: "add-1", Category: "misconception", MisconceptionID: "carry-forget", Count: 2},
+		{SkillID: "add-1", Category: "misconception", Count: 1},
+	}
+	if !reflect.DeepEqual(counts, wantCounts) {
+		t.Errorf("alice diagnosis counts = %+v, want %+v", counts, wantCounts)
+	}
+	counts, err = alice.DiagnosisCounts(ctx, QueryOpts{From: time.Now().Add(time.Hour)})
+	if err != nil {
+		t.Fatalf("alice future diagnosis counts: %v", err)
+	}
+	if len(counts) != 0 {
+		t.Errorf("diagnosis counts from the future = %+v, want none", counts)
+	}
+
+	n, err := alice.CompletedSessionCount(ctx)
+	if err != nil {
+		t.Fatalf("alice session count: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("alice completed sessions = %d, want 1", n)
+	}
+
+	tallies, err = carol.AnswerTallies(ctx)
+	if err != nil {
+		t.Fatalf("carol tallies: %v", err)
+	}
+	counts, err = carol.DiagnosisCounts(ctx, QueryOpts{})
+	if err != nil {
+		t.Fatalf("carol diagnosis counts: %v", err)
+	}
+	n, err = carol.CompletedSessionCount(ctx)
+	if err != nil {
+		t.Fatalf("carol session count: %v", err)
+	}
+	if len(tallies) != 0 || len(counts) != 0 || n != 0 {
+		t.Errorf("carol sees tallies %v, diagnoses %v, sessions %d, want none", tallies, counts, n)
 	}
 }

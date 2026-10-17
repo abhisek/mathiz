@@ -3,11 +3,14 @@ package store
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/abhisek/mathiz/ent"
 	"github.com/abhisek/mathiz/ent/answerevent"
 	entschema "github.com/abhisek/mathiz/ent/schema"
+	"github.com/abhisek/mathiz/ent/sessionevent"
 )
 
 func (r *eventRepo) AppendSessionEvent(ctx context.Context, data SessionEventData) error {
@@ -139,4 +142,53 @@ func (r *eventRepo) SkillAccuracy(ctx context.Context, skillID string) (float64,
 		}
 	}
 	return float64(correct) / float64(len(events)), nil
+}
+
+// AnswerTallies aggregates in SQL. Snapshot attempt counters are not a
+// substitute: mastery resets them when a skill changes tier or decays.
+func (r *eventRepo) AnswerTallies(ctx context.Context) ([]AnswerTally, error) {
+	ctx = r.scope(ctx)
+	var rows []struct {
+		SkillID string `json:"skill_id"`
+		Correct bool   `json:"correct"`
+		Count   int    `json:"count"`
+	}
+	err := r.client.AnswerEvent.Query().
+		Where(answerevent.OwnerID(r.owner)).
+		GroupBy(answerevent.FieldSkillID, answerevent.FieldCorrect).
+		Aggregate(ent.Count()).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, fmt.Errorf("query answer tallies: %w", err)
+	}
+
+	bySkill := make(map[string]*AnswerTally)
+	for _, row := range rows {
+		t, ok := bySkill[row.SkillID]
+		if !ok {
+			t = &AnswerTally{SkillID: row.SkillID}
+			bySkill[row.SkillID] = t
+		}
+		t.Attempts += row.Count
+		if row.Correct {
+			t.Correct += row.Count
+		}
+	}
+	out := make([]AnswerTally, 0, len(bySkill))
+	for _, t := range bySkill {
+		out = append(out, *t)
+	}
+	slices.SortFunc(out, func(a, b AnswerTally) int { return strings.Compare(a.SkillID, b.SkillID) })
+	return out, nil
+}
+
+func (r *eventRepo) CompletedSessionCount(ctx context.Context) (int, error) {
+	ctx = r.scope(ctx)
+	n, err := r.client.SessionEvent.Query().
+		Where(sessionevent.OwnerID(r.owner), sessionevent.Action("end")).
+		Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count completed sessions: %w", err)
+	}
+	return n, nil
 }

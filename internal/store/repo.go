@@ -284,6 +284,22 @@ type DiagnosisEventData struct {
 	Reasoning       string
 }
 
+// AnswerTally is a learner's lifetime answer totals on one skill.
+type AnswerTally struct {
+	SkillID  string
+	Attempts int
+	Correct  int
+}
+
+// DiagnosisCount is how often one diagnosis (skill, error category, and
+// misconception when the classifier named one) was recorded.
+type DiagnosisCount struct {
+	SkillID         string
+	Category        string
+	MisconceptionID string // "" when none was identified
+	Count           int
+}
+
 // GemEventData captures the data for a gem award event.
 type GemEventData struct {
 	GemType   string
@@ -377,12 +393,23 @@ type EventRepo interface {
 	// or 0 if no answers exist.
 	SkillAccuracy(ctx context.Context, skillID string) (float64, error)
 
+	// AnswerTallies returns lifetime attempts and correct answers per skill,
+	// ordered by skill ID.
+	AnswerTallies(ctx context.Context) ([]AnswerTally, error)
+
+	// CompletedSessionCount returns how many sessions have ended.
+	CompletedSessionCount(ctx context.Context) (int, error)
+
 	// RecentReviewAccuracy returns the accuracy and count of the last N
 	// review answers for a skill.
 	RecentReviewAccuracy(ctx context.Context, skillID string, lastN int) (accuracy float64, count int, err error)
 
 	// AppendDiagnosisEvent records a diagnosis result for a wrong answer.
 	AppendDiagnosisEvent(ctx context.Context, data DiagnosisEventData) error
+
+	// DiagnosisCounts returns diagnosis counts grouped by skill, category
+	// and misconception, most frequent first. Only From/To of opts apply.
+	DiagnosisCounts(ctx context.Context, opts QueryOpts) ([]DiagnosisCount, error)
 
 	// AppendHintEvent records that a hint was shown.
 	AppendHintEvent(ctx context.Context, data HintEventData) error

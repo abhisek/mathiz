@@ -46,6 +46,15 @@ func (m *mockEventRepo) RecentReviewAccuracy(_ context.Context, _ string, _ int)
 func (m *mockEventRepo) AppendDiagnosisEvent(_ context.Context, _ store.DiagnosisEventData) error {
 	return nil
 }
+func (m *mockEventRepo) DiagnosisCounts(_ context.Context, _ store.QueryOpts) ([]store.DiagnosisCount, error) {
+	return nil, nil
+}
+func (m *mockEventRepo) AnswerTallies(_ context.Context) ([]store.AnswerTally, error) {
+	return nil, nil
+}
+func (m *mockEventRepo) CompletedSessionCount(_ context.Context) (int, error) {
+	return 0, nil
+}
 func (m *mockEventRepo) AppendHintEvent(_ context.Context, _ store.HintEventData) error {
 	return nil
 }

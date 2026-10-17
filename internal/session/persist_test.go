@@ -3,6 +3,7 @@ package session
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"sync"
@@ -30,6 +31,21 @@ func newPersistTestStore(t *testing.T) *store.Store {
 
 func compressorWith(responses ...llm.MockResponse) *lessons.Compressor {
 	return lessons.NewCompressor(llm.NewMockProvider(responses...), lessons.DefaultCompressorConfig())
+}
+
+// seedAnswers records answers from earlier sessions: the refresh needs
+// profileMinAttempts lifetime answers before it writes a profile.
+func seedAnswers(t *testing.T, repo store.EventRepo, skillID string, attempts, correct int) {
+	t.Helper()
+	for i := range attempts {
+		if err := repo.AppendAnswerEvent(context.Background(), store.AnswerEventData{
+			SessionID: "earlier", SkillID: skillID, Tier: "learn", Category: "core",
+			QuestionText: "What is 2+2?", CorrectAnswer: "4", LearnerAnswer: "4",
+			Correct: i < correct, TimeMs: 1000, AnswerFormat: "integer",
+		}); err != nil {
+			t.Fatalf("seed answer: %v", err)
+		}
+	}
 }
 
 // signalProvider is a canned-response llm.Provider that announces every call.
@@ -177,6 +193,7 @@ func TestSaveSnapshotWithProfileAppendsVersionEvent(t *testing.T) {
 	// The refresh needs evidence to summarise: a session that answered
 	// nothing is skipped (see TestNoProfileRefreshWithoutQuestions).
 	state.TotalQuestions = 3
+	seedAnswers(t, eventRepo, skillgraph.AllSkills()[0].ID, profileMinAttempts, 10)
 
 	comp := compressorWith(llm.MockResponse{Content: []byte(profileJSONv1)})
 	if err := SaveSnapshotWithProfile(ctx, store.LocalOwner, snapRepo, comp, state, store.SnapshotData{Version: 4}); err != nil {
@@ -309,6 +326,9 @@ func TestProfileInputFidelity(t *testing.T) {
 		EventRepo: st.EventRepoFor(owner),
 	}
 
+	seedAnswers(t, state.EventRepo, practised.ID, 40, 30)
+	seedAnswers(t, state.EventRepo, "quest:abc-123", 20, 5)
+
 	snapData := store.SnapshotData{Version: 4, Mastery: &store.MasterySnapshotData{
 		Skills: map[string]*store.SkillMasteryData{
 			practised.ID: {
@@ -340,6 +360,11 @@ func TestProfileInputFidelity(t *testing.T) {
 	}
 	if strings.Contains(prompt, "quest:abc-123") || strings.Contains(prompt, "Captain's quest") {
 		t.Error("synthetic untagged-quest skill leaked into the profile prompt")
+	}
+	// Accuracy is lifetime, from the answer history, not the snapshot's
+	// current-tier counters (8/10).
+	if !strings.Contains(prompt, "30/40 correct") {
+		t.Error("prompt does not carry the lifetime answer totals")
 	}
 }
 
@@ -474,4 +499,294 @@ func TestProfileSurvivesSnapshotReadFailure(t *testing.T) {
 	if got.Summary != "from the event stream" {
 		t.Errorf("summary = %q, want the newest versioned profile", got.Summary)
 	}
+}
+
+func TestProfileRefreshDue(t *testing.T) {
+	enough := profileMinAttempts
+	cases := []struct {
+		name  string
+		facts refreshFacts
+		want  bool
+	}{
+		{"too little evidence", refreshFacts{LifetimeAttempts: enough - 1}, false},
+		{"too little evidence even with mastery change", refreshFacts{LifetimeAttempts: 5, MasteryChanged: true}, false},
+		{"first profile", refreshFacts{LifetimeAttempts: enough}, true},
+		{"mastery changed", refreshFacts{LifetimeAttempts: enough, HasProfile: true, MasteryChanged: true}, true},
+		{"enough sessions since profile", refreshFacts{LifetimeAttempts: enough, HasProfile: true, SessionsSinceProfile: profileEverySessions}, true},
+		{"not due", refreshFacts{LifetimeAttempts: 500, HasProfile: true, SessionsSinceProfile: profileEverySessions - 1}, false},
+	}
+	for _, tc := range cases {
+		if got, reason := profileRefreshDue(tc.facts); got != tc.want {
+			t.Errorf("%s: due = %v (%s), want %v", tc.name, got, reason, tc.want)
+		}
+	}
+}
+
+func TestMasteryStandingChanged(t *testing.T) {
+	id := skillgraph.AllSkills()[0].ID
+	snap := func(state, tier string) *store.MasterySnapshotData {
+		return &store.MasterySnapshotData{Skills: map[string]*store.SkillMasteryData{
+			id: {SkillID: id, State: state, CurrentTier: tier},
+		}}
+	}
+	cases := []struct {
+		name       string
+		prev, next *store.MasterySnapshotData
+		want       bool
+	}{
+		{"same standing", snap("learning", "learn"), snap("learning", "learn"), false},
+		// learn to prove changes the tier and keeps the state.
+		{"tier advanced", snap("learning", "learn"), snap("learning", "prove"), true},
+		{"mastered", snap("learning", "prove"), snap("mastered", "prove"), true},
+		{"decayed", snap("mastered", "prove"), snap("rusty", "prove"), true},
+		{"skill started", nil, snap("learning", "learn"), true},
+		{"skill untouched", nil, snap("new", "learn"), false},
+		{"no mastery data", snap("learning", "learn"), nil, false},
+		{"off-curriculum skill", nil, &store.MasterySnapshotData{Skills: map[string]*store.SkillMasteryData{
+			"quest:abc": {SkillID: "quest:abc", State: "learning"},
+		}}, false},
+	}
+	for _, tc := range cases {
+		if got := masteryStandingChanged(tc.prev, tc.next); got != tc.want {
+			t.Errorf("%s: changed = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestSessionsSinceKeepsSubSecondOrder: the session that triggered a
+// profile ends a moment before the profile is made. Rounded down to the
+// second, the profile time fell before that end and counted the session as
+// newer than the profile.
+func TestSessionsSinceKeepsSubSecondOrder(t *testing.T) {
+	base := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	ended := base.Add(300 * time.Millisecond)
+	profile := &store.LearnerProfileData{GeneratedAt: base.Add(500 * time.Millisecond).Format(time.RFC3339Nano)}
+	sessions := []lessons.SessionSummary{{EndedAt: ended}, {EndedAt: base.Add(-time.Hour)}}
+	if n := sessionsSince(sessions, profile); n != 0 {
+		t.Errorf("sessions since profile = %d, want 0", n)
+	}
+	later := append([]lessons.SessionSummary{{EndedAt: base.Add(time.Minute)}}, sessions...)
+	if n := sessionsSince(later, profile); n != 1 {
+		t.Errorf("sessions since profile = %d, want 1", n)
+	}
+	// An old second-precision value still parses.
+	old := &store.LearnerProfileData{GeneratedAt: base.Format(time.RFC3339)}
+	if n := sessionsSince(later, old); n != 2 {
+		t.Errorf("sessions since second-precision profile = %d, want 2", n)
+	}
+	if n := sessionsSince(later, &store.LearnerProfileData{GeneratedAt: "garbage"}); n != len(later) {
+		t.Errorf("sessions since unreadable profile time = %d, want %d", n, len(later))
+	}
+}
+
+// expectNoProfileCall fails when the refresh goroutine calls the model.
+func expectNoProfileCall(t *testing.T, provider *signalProvider, why string) {
+	t.Helper()
+	select {
+	case <-provider.called:
+		t.Error(why)
+	case <-time.After(250 * time.Millisecond):
+	}
+}
+
+// endSession records a completed session the way both drivers do: the end
+// event lands before the snapshot save.
+func endSession(t *testing.T, repo store.EventRepo, id, skillID string, served, correct int) {
+	t.Helper()
+	plan := []store.PlanSlotSummaryData{{SkillID: skillID, Tier: "learn", Category: "core"}}
+	for _, action := range []string{"start", "end"} {
+		if err := repo.AppendSessionEvent(context.Background(), store.SessionEventData{
+			SessionID: id, Action: action, QuestionsServed: served, CorrectAnswers: correct, PlanSummary: plan,
+		}); err != nil {
+			t.Fatalf("session %s %s: %v", id, action, err)
+		}
+	}
+}
+
+// TestFirstExpeditionWritesNoProfile: five answers are too little evidence
+// for a whole-child profile.
+func TestFirstExpeditionWritesNoProfile(t *testing.T) {
+	st := newPersistTestStore(t)
+	ctx := context.Background()
+	owner := "child-new"
+	skill := skillgraph.AllSkills()[0]
+	repo := st.EventRepoFor(owner)
+	seedAnswers(t, repo, skill.ID, 5, 4)
+	endSession(t, repo, "sess-1", skill.ID, 5, 4)
+
+	provider := newSignalProvider([]byte(profileJSONv1))
+	state := &SessionState{
+		TotalQuestions:  5,
+		PerSkillResults: map[string]*SkillResult{skill.ID: {SkillID: skill.ID, SkillName: skill.Name, Attempted: 5, Correct: 4}},
+		RecentErrors:    map[string][]string{},
+		EventRepo:       repo,
+	}
+	snapData := store.SnapshotData{Version: 4, Mastery: &store.MasterySnapshotData{Skills: map[string]*store.SkillMasteryData{
+		skill.ID: {SkillID: skill.ID, State: "learning", CurrentTier: "learn", TotalAttempts: 5, CorrectCount: 4},
+	}}}
+	if err := SaveSnapshotWithProfile(ctx, owner, st.SnapshotRepoFor(owner), lessons.NewCompressor(provider, lessons.DefaultCompressorConfig()), state, snapData); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	expectNoProfileCall(t, provider, "a first five-question expedition generated a profile")
+}
+
+// strongHistory sets up the FOU-241 case: a child with 40/45 lifetime on a
+// mastered skill, a profile made after their last session, and a new
+// expedition on that skill that goes badly.
+func strongHistory(t *testing.T, st *store.Store, owner string) (skillgraph.Skill, *SessionState, store.SnapshotData) {
+	t.Helper()
+	ctx := context.Background()
+	skill := skillgraph.AllSkills()[0]
+	repo := st.EventRepoFor(owner)
+	snapRepo := st.SnapshotRepoFor(owner)
+
+	seedAnswers(t, repo, skill.ID, 40, 39)
+	for i := range 8 {
+		endSession(t, repo, "earlier-"+string(rune('a'+i)), skill.ID, 5, 5)
+	}
+	mastered := func(attempts, correct int) *store.MasterySnapshotData {
+		return &store.MasterySnapshotData{Skills: map[string]*store.SkillMasteryData{
+			skill.ID: {SkillID: skill.ID, State: "mastered", CurrentTier: "prove", TotalAttempts: attempts, CorrectCount: correct},
+		}}
+	}
+	if err := snapRepo.Save(ctx, &store.Snapshot{Timestamp: time.Now(), Data: store.SnapshotData{
+		Version: 4, Mastery: mastered(20, 20),
+		LearnerProfile: &store.LearnerProfileData{
+			Summary: "Strong on this skill", Strengths: []string{skill.Name}, Weaknesses: []string{"none yet"},
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		},
+	}}); err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+
+	// This expedition: 1 of 5 correct, no change of state or tier.
+	seedAnswers(t, repo, skill.ID, 5, 1)
+	endSession(t, repo, "bad-day", skill.ID, 5, 1)
+	state := &SessionState{
+		TotalQuestions:  5,
+		PerSkillResults: map[string]*SkillResult{skill.ID: {SkillID: skill.ID, SkillName: skill.Name, Attempted: 5, Correct: 1}},
+		RecentErrors:    map[string][]string{skill.ID: {"Answered 5 for '2+2', correct answer was 4"}},
+		EventRepo:       repo,
+	}
+	return skill, state, store.SnapshotData{Version: 4, Mastery: mastered(25, 21)}
+}
+
+// TestBadExpeditionDoesNotRewriteStrongProfile is the FOU-241 regression:
+// one bad expedition with no change of standing leaves the profile alone.
+func TestBadExpeditionDoesNotRewriteStrongProfile(t *testing.T) {
+	st := newPersistTestStore(t)
+	owner := "child-strong"
+	_, state, snapData := strongHistory(t, st, owner)
+
+	provider := newSignalProvider([]byte(profileJSONv1))
+	if err := SaveSnapshotWithProfile(context.Background(), owner, st.SnapshotRepoFor(owner), lessons.NewCompressor(provider, lessons.DefaultCompressorConfig()), state, snapData); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	expectNoProfileCall(t, provider, "one bad expedition rewrote the profile of a child with strong history")
+}
+
+// TestGroundedPromptLeadsWithHistory: when the refresh is due, the prompt
+// carries the lifetime record ahead of this session, and names diagnosed
+// misconceptions from earlier sessions.
+func TestGroundedPromptLeadsWithHistory(t *testing.T) {
+	st := newPersistTestStore(t)
+	ctx := context.Background()
+	owner := "child-grounded"
+	skill, state, snapData := strongHistory(t, st, owner)
+	misconception := "npv-place-swap"
+	for range 2 {
+		if err := state.EventRepo.AppendDiagnosisEvent(ctx, store.DiagnosisEventData{
+			SessionID: "earlier-a", SkillID: skill.ID, QuestionText: "What is 2+2?", CorrectAnswer: "4",
+			LearnerAnswer: "5", Category: "misconception", MisconceptionID: &misconception,
+			Confidence: 0.9, ClassifierName: "rules",
+		}); err != nil {
+			t.Fatalf("seed diagnosis: %v", err)
+		}
+	}
+	// Mastery decayed this session, so the refresh is due.
+	snapData.Mastery.Skills[skill.ID].State = "rusty"
+
+	provider := newSignalProvider(nil)
+	if err := SaveSnapshotWithProfile(ctx, owner, st.SnapshotRepoFor(owner), lessons.NewCompressor(provider, lessons.DefaultCompressorConfig()), state, snapData); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	prompt := provider.firstPrompt(t)
+
+	history, session := strings.Index(prompt, "Learner History"), strings.Index(prompt, "This Session")
+	if history < 0 || session < 0 || history > session {
+		t.Fatalf("prompt does not put the learner history before this session:\n%s", prompt)
+	}
+	for _, want := range []string{
+		"Sessions completed: 9",
+		"40/45 correct",                             // lifetime, not this session's 1/5
+		"misconception: Place value swap (2 times)", // diagnosis history, read back
+		"Recent Sessions",
+		"Previous Profile (from ",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Errorf("prompt lacks %q:\n%s", want, prompt)
+		}
+	}
+}
+
+// failingHistory is an event repo whose history reads fail.
+type failingHistory struct{ store.EventRepo }
+
+func (failingHistory) AnswerTallies(context.Context) ([]store.AnswerTally, error) {
+	return nil, errors.New("database gone")
+}
+
+// TestProfileSkippedWhenHistoryFails: without history the refresh does not
+// fall back to a profile from this session alone.
+func TestProfileSkippedWhenHistoryFails(t *testing.T) {
+	st := newPersistTestStore(t)
+	owner := "child-nohistory"
+	_, state, snapData := strongHistory(t, st, owner)
+	state.EventRepo = failingHistory{state.EventRepo}
+	snapData.Mastery.Skills[skillgraph.AllSkills()[0].ID].State = "rusty"
+
+	var logs syncBuffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	provider := newSignalProvider([]byte(profileJSONv1))
+	if err := SaveSnapshotWithProfile(context.Background(), owner, st.SnapshotRepoFor(owner), lessons.NewCompressor(provider, lessons.DefaultCompressorConfig()), state, snapData); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	// The skip log is the last thing the refresh goroutine does.
+	deadline := time.Now().Add(5 * time.Second)
+	for !strings.Contains(logs.String(), "learner profile skipped") {
+		if time.Now().After(deadline) {
+			t.Fatalf("skipped refresh left no log; got %q", logs.String())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if out := logs.String(); !strings.Contains(out, `"owner_id":"`+owner+`"`) {
+		t.Errorf("skip log is not owner-attributable; got %q", out)
+	}
+	select {
+	case <-provider.called:
+		t.Error("a refresh without history generated a profile")
+	default:
+	}
+}
+
+// syncBuffer is a bytes.Buffer safe for the refresh goroutine to log into
+// while the test reads it.
+type syncBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
 }

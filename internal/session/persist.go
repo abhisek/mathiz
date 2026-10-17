@@ -6,6 +6,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/abhisek/mathiz/internal/diagnosis"
 	"github.com/abhisek/mathiz/internal/lessons"
 	"github.com/abhisek/mathiz/internal/mastery"
 	"github.com/abhisek/mathiz/internal/skillgraph"
@@ -67,7 +68,9 @@ func SaveSnapshotWithProfile(ctx context.Context, ownerID string, snapRepo store
 		return nil
 	}
 
-	// Async learner-profile refresh from this session's performance.
+	// Everything read from live session state is copied here, before the
+	// goroutine: the mastery snapshot aliases live slices (SpeedScores), and
+	// the session's error map is guarded by ErrorMu.
 	input := lessons.ProfileInput{
 		PerSkillResults: make(map[string]lessons.SkillResultSummary),
 		MasteryData:     make(map[string]lessons.MasteryDataSummary),
@@ -90,10 +93,8 @@ func SaveSnapshotWithProfile(ctx context.Context, ownerID string, snapRepo store
 			if !curriculumSkill(id) {
 				continue
 			}
-			sum := lessons.MasteryDataSummary{State: skm.State, FluencyScore: snapshotFluency(skm)}
-			if s, err := skillgraph.GetSkill(id); err == nil {
-				sum.Name = s.Name
-			}
+			sum := skillSummary(id)
+			sum.State, sum.Tier, sum.FluencyScore = skm.State, skm.CurrentTier, snapshotFluency(skm)
 			input.MasteryData[id] = sum
 		}
 	}
@@ -111,14 +112,242 @@ func SaveSnapshotWithProfile(ctx context.Context, ownerID string, snapRepo store
 			Weaknesses: prevProfile.Weaknesses, Patterns: prevProfile.Patterns,
 		}
 	}
+	var prevMastery *store.MasterySnapshotData
+	if prev != nil {
+		prevMastery = prev.Data.Mastery
+	}
+	masteryChanged := masteryStandingChanged(prevMastery, snapData.Mastery)
 
 	eventRepo := state.EventRepo
 	go func() {
 		bg, cancel := context.WithTimeout(context.Background(), profileTimeout)
 		defer cancel()
+		if !groundProfileInput(bg, ownerID, eventRepo, &input, prevProfile, masteryChanged) {
+			return
+		}
 		refreshProfile(bg, ownerID, snapRepo, eventRepo, compressor, input, prevProfile)
 	}()
 	return nil
+}
+
+// Profile refresh policy (FOU-241). The profile describes the whole child,
+// and the game ends a session every five questions on one skill, so it is
+// not rewritten after every session.
+const (
+	// profileMinAttempts is the lifetime evidence below which no profile is
+	// written: about three expeditions. With less, a model asked for
+	// strengths and weaknesses asserts them from a handful of answers.
+	profileMinAttempts = 15
+	// profileEverySessions is how many completed sessions since the last
+	// profile make it due again when nothing else changed.
+	profileEverySessions = 3
+	// recentSessionLimit bounds the session list in the prompt. It also
+	// bounds the sessions-since-profile count, which only needs to reach
+	// profileEverySessions.
+	recentSessionLimit = 10
+	// errorPatternWindow and errorPatternLimit bound the diagnosed error
+	// patterns: old errors describe a child who has since moved on.
+	errorPatternWindow = 60 * 24 * time.Hour
+	errorPatternLimit  = 15
+)
+
+// refreshFacts is what profileRefreshDue decides on.
+type refreshFacts struct {
+	LifetimeAttempts     int
+	HasProfile           bool
+	MasteryChanged       bool
+	SessionsSinceProfile int
+}
+
+// profileRefreshDue decides whether to regenerate the profile, and says why
+// for the log.
+func profileRefreshDue(f refreshFacts) (bool, string) {
+	switch {
+	case f.LifetimeAttempts < profileMinAttempts:
+		return false, "too little evidence"
+	case !f.HasProfile:
+		return true, "first profile"
+	case f.MasteryChanged:
+		return true, "mastery changed"
+	case f.SessionsSinceProfile >= profileEverySessions:
+		return true, "sessions since profile"
+	default:
+		return false, "not due"
+	}
+}
+
+// groundProfileInput loads the child's history into input and decides
+// whether a refresh is due. It runs inside the async refresh, so the reads
+// never slow the end of a session. A failed read skips the refresh: a
+// profile made from this session alone is the defect this exists to stop.
+func groundProfileInput(ctx context.Context, ownerID string, eventRepo store.EventRepo, input *lessons.ProfileInput, prevProfile *store.LearnerProfileData, masteryChanged bool) bool {
+	if eventRepo == nil {
+		slog.Error("session: learner profile skipped: no event history", "owner_id", ownerID)
+		return false
+	}
+	fail := func(what string, err error) bool {
+		slog.Error("session: learner profile skipped: load "+what, "owner_id", ownerID, "err", err)
+		return false
+	}
+
+	tallies, err := eventRepo.AnswerTallies(ctx)
+	if err != nil {
+		return fail("answer totals", err)
+	}
+	lifetime := 0
+	for _, t := range tallies {
+		if !curriculumSkill(t.SkillID) {
+			continue
+		}
+		sum, ok := input.MasteryData[t.SkillID]
+		if !ok {
+			sum = skillSummary(t.SkillID)
+		}
+		sum.Attempts, sum.Correct = t.Attempts, t.Correct
+		input.MasteryData[t.SkillID] = sum
+		lifetime += t.Attempts
+	}
+
+	summaries, err := eventRepo.QuerySessionSummaries(ctx, store.QueryOpts{Limit: recentSessionLimit})
+	if err != nil {
+		return fail("recent sessions", err)
+	}
+	input.RecentSessions = nil
+	for _, s := range summaries {
+		if sum, ok := sessionSummary(s); ok {
+			input.RecentSessions = append(input.RecentSessions, sum)
+		}
+	}
+
+	facts := refreshFacts{
+		LifetimeAttempts:     lifetime,
+		HasProfile:           prevProfile != nil,
+		MasteryChanged:       masteryChanged,
+		SessionsSinceProfile: sessionsSince(input.RecentSessions, prevProfile),
+	}
+	due, reason := profileRefreshDue(facts)
+	if !due {
+		slog.Debug("session: learner profile not refreshed", "owner_id", ownerID, "reason", reason,
+			"lifetime_attempts", facts.LifetimeAttempts, "sessions_since_profile", facts.SessionsSinceProfile)
+		return false
+	}
+
+	if input.SessionCount, err = eventRepo.CompletedSessionCount(ctx); err != nil {
+		return fail("session count", err)
+	}
+	counts, err := eventRepo.DiagnosisCounts(ctx, store.QueryOpts{From: time.Now().Add(-errorPatternWindow)})
+	if err != nil {
+		return fail("error patterns", err)
+	}
+	input.ErrorPatterns = errorPatterns(counts)
+	if input.PreviousProfile != nil {
+		input.PreviousProfile.GeneratedAt = profileTime(prevProfile)
+	}
+	slog.Info("session: learner profile refresh", "owner_id", ownerID, "reason", reason)
+	return true
+}
+
+// skillSummary starts a skill's summary with its graph metadata.
+func skillSummary(id string) lessons.MasteryDataSummary {
+	s, err := skillgraph.GetSkill(id)
+	if err != nil {
+		return lessons.MasteryDataSummary{}
+	}
+	return lessons.MasteryDataSummary{Name: s.Name, Grade: s.GradeLevel}
+}
+
+// sessionSummary converts a stored session for the prompt. A session with
+// no curriculum skill (an untagged quest) is not evidence about the child's
+// progress, so it is dropped, and it does not count towards the cadence.
+func sessionSummary(s store.SessionSummaryRecord) (lessons.SessionSummary, bool) {
+	sum := lessons.SessionSummary{
+		EndedAt: s.Timestamp, Questions: s.QuestionsServed, Correct: s.CorrectAnswers, Quest: s.QuestUID != "",
+	}
+	for _, slot := range s.Plan {
+		name := skillSummary(slot.SkillID).Name
+		if name == "" || slices.Contains(sum.Skills, name) {
+			continue
+		}
+		sum.Skills = append(sum.Skills, name)
+	}
+	return sum, len(sum.Skills) > 0
+}
+
+// sessionsSince counts the sessions that ended after the previous profile.
+// A profile with no readable time counts as old: it predates the cadence.
+func sessionsSince(sessions []lessons.SessionSummary, prev *store.LearnerProfileData) int {
+	at := profileTime(prev)
+	if at.IsZero() {
+		return len(sessions)
+	}
+	n := 0
+	for _, s := range sessions {
+		if s.EndedAt.After(at) {
+			n++
+		}
+	}
+	return n
+}
+
+func profileTime(p *store.LearnerProfileData) time.Time {
+	if p == nil {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339Nano, p.GeneratedAt)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}
+
+// errorPatterns keeps the curriculum rows of the diagnosis counts, already
+// most frequent first, and names each misconception.
+func errorPatterns(counts []store.DiagnosisCount) []lessons.ErrorPatternSummary {
+	var out []lessons.ErrorPatternSummary
+	for _, c := range counts {
+		if len(out) == errorPatternLimit {
+			break
+		}
+		if !curriculumSkill(c.SkillID) {
+			continue
+		}
+		e := lessons.ErrorPatternSummary{
+			SkillID: c.SkillID, SkillName: skillSummary(c.SkillID).Name, Category: c.Category, Count: c.Count,
+		}
+		if m := diagnosis.GetMisconception(c.MisconceptionID); m != nil {
+			e.Misconception = m.Label
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
+// masteryStandingChanged reports whether any skill changed state or tier
+// between two snapshots. The tier matters: learn to prove is a step forward
+// with no change of state.
+func masteryStandingChanged(prev, next *store.MasterySnapshotData) bool {
+	if next == nil {
+		return false
+	}
+	for id, skm := range next.Skills {
+		if !curriculumSkill(id) {
+			continue
+		}
+		var before *store.SkillMasteryData
+		if prev != nil {
+			before = prev.Skills[id]
+		}
+		if before == nil {
+			if skm.State != "new" {
+				return true
+			}
+			continue
+		}
+		if before.State != skm.State || before.CurrentTier != skm.CurrentTier {
+			return true
+		}
+	}
+	return false
 }
 
 // refreshProfile is the body of the async learner-profile refresh: generate a
@@ -139,11 +368,14 @@ func refreshProfile(ctx context.Context, ownerID string, snapRepo store.Snapshot
 		return
 	}
 	newProfile := &store.LearnerProfileData{
-		Summary:     profile.Summary,
-		Strengths:   profile.Strengths,
-		Weaknesses:  profile.Weaknesses,
-		Patterns:    profile.Patterns,
-		GeneratedAt: profile.GeneratedAt.UTC().Format(time.RFC3339),
+		Summary:    profile.Summary,
+		Strengths:  profile.Strengths,
+		Weaknesses: profile.Weaknesses,
+		Patterns:   profile.Patterns,
+		// Sub-second precision: the cadence compares this with session end
+		// times, and a value rounded down to the second can fall before the
+		// end of the session that triggered it.
+		GeneratedAt: profile.GeneratedAt.UTC().Format(time.RFC3339Nano),
 	}
 	// In place, rather than loading the snapshot and saving a modified copy:
 	// this goroutine outlives the play slot, so a copy written back after a

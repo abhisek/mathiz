@@ -29,7 +29,7 @@ type CompressorConfig struct {
 func DefaultCompressorConfig() CompressorConfig {
 	return CompressorConfig{
 		SessionMaxTokens: 256,
-		ProfileMaxTokens: 512,
+		ProfileMaxTokens: 1024,
 		Temperature:      0.3,
 	}
 }
