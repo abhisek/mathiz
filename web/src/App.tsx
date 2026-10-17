@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
-import type { Session } from '@supabase/supabase-js'
-import { getSupabase } from './supa'
+import { getAuth, type AuthAdapter } from './auth'
 import { ensureAnalyticsBooted, track } from './analytics'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -21,11 +20,11 @@ export default function App() {
       {/* One global activity bar for every route — api.request() feeds it. */}
       <BusyBar />
       <Routes>
-        {/* Kid routes are Supabase-free: a join code is all a child needs. */}
+        {/* Kid routes load no auth adapter: a join code is all a child needs. */}
         <Route path="/join" element={<Join />} />
         <Route path="/play" element={<Play />} />
 
-        {/* Public pages: static, Supabase-free, and the only routes that get
+        {/* Public pages: static, auth-free, and the only routes that get
             the site footer. Adding a public page here gives it the same
             footer for free; nothing outside this layout can grow one, which
             is what keeps pricing links off the kid surfaces above. */}
@@ -67,9 +66,10 @@ function PublicLayout({ variant }: { variant?: 'full' | 'minimal' }) {
   )
 }
 
-// ParentArea owns the Supabase session; only parent pages pay its boot cost.
+// ParentArea owns the auth adapter; only parent pages pay its boot cost.
 function ParentArea({ page }: { page: 'login' | 'dashboard' }) {
-  const [session, setSession] = useState<Session | null>(null)
+  const [adapter, setAdapter] = useState<AuthAdapter | null>(null)
+  const [user, setUser] = useState<{ email: string } | null>(null)
   const [booted, setBooted] = useState(false)
   const [bootError, setBootError] = useState<string | null>(null)
   const location = useLocation()
@@ -82,29 +82,33 @@ function ParentArea({ page }: { page: 'login' | 'dashboard' }) {
 
   useEffect(() => {
     let unsub = () => {}
-    getSupabase()
-      .then((supa) => {
-        supa.auth.getSession().then(({ data }) => {
-          setSession(data.session)
-          setBooted(true)
-        })
-        const { data } = supa.auth.onAuthStateChange((_event, s) => setSession(s))
-        unsub = () => data.subscription.unsubscribe()
+    let cancelled = false
+    getAuth()
+      .then((a) => {
+        if (cancelled) return
+        setAdapter(a)
+        setUser(a.user())
+        unsub = a.onChange(() => setUser(a.user()))
+        setBooted(true)
       })
       .catch((err) => {
+        if (cancelled) return
         setBootError(err instanceof Error ? err.message : String(err))
         setBooted(true)
       })
-    return () => unsub()
+    return () => {
+      cancelled = true
+      unsub()
+    }
   }, [])
 
   if (!booted) return <div className="boot">Loading Mathiz…</div>
-  if (bootError) {
+  if (bootError || !adapter) {
     return (
       <div className="boot boot-error">
         <div>
           <h1>Mathiz</h1>
-          <p>{bootError}</p>
+          <p>{bootError ?? 'Sign-in is unavailable.'}</p>
           <p className="muted">
             Kids with a join code can still <a href="/join">start playing</a>.
           </p>
@@ -114,7 +118,7 @@ function ParentArea({ page }: { page: 'login' | 'dashboard' }) {
   }
 
   if (page === 'login') {
-    return session ? <Navigate to="/dashboard" replace /> : <Login />
+    return user ? <Navigate to="/dashboard" replace /> : <Login SignIn={adapter.SignIn} />
   }
-  return session ? <Dashboard session={session} /> : <Navigate to="/login" replace />
+  return user ? <Dashboard adapter={adapter} email={user.email} /> : <Navigate to="/login" replace />
 }

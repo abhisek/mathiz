@@ -11,7 +11,7 @@ import { useDashboard } from './context'
 // offers a quiet "Create quest →" jump into quest authoring with that skill
 // preselected. Parent dashboard only — kids never see this framing.
 export default function Curriculum() {
-  const { token, children, childrenLoading } = useDashboard()
+  const { auth, children, childrenLoading } = useDashboard()
   const kids = useMemo(
     () => children.filter((c) => !c.profile.archived).map((c) => c.profile),
     [children],
@@ -64,7 +64,7 @@ export default function Curriculum() {
     setStatsLoading(true)
     setStatsError(null)
     api
-      .childStats(token, childId)
+      .childStats(auth, childId)
       .then((stats) => {
         if (cancelled) return
         const map: Record<string, string> = {}
@@ -82,7 +82,7 @@ export default function Curriculum() {
     return () => {
       cancelled = true
     }
-  }, [token, childId])
+  }, [auth, childId])
 
   return (
     <section className="curriculum">

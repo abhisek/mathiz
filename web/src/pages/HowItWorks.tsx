@@ -5,7 +5,7 @@ import { ensureAnalyticsBooted, track } from '../analytics'
 import Skeleton from '../components/Skeleton'
 
 // Public "How Mathiz teaches" page (/how-it-works). Static-feeling and
-// Supabase-free like the legal/pricing pages. Reading experience is
+// auth-free like the legal/pricing pages. Reading experience is
 // progressive disclosure: a 4-step TL;DR strip, then per-section one-line
 // gists with the fuller story folded behind native <details>. Skimmers get
 // the strip; readers get the depth.

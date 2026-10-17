@@ -1,8 +1,15 @@
 // Typed client for the Mathiz SaaS API.
 
+// AuthBootConfig names the deployment's auth provider and its PUBLIC
+// client settings; src/auth/ loads the matching adapter from it.
+export interface AuthBootConfig {
+  provider: string
+  url?: string
+  publicKey?: string
+}
+
 export interface BootConfig {
-  supabaseUrl: string
-  supabaseAnonKey: string
+  auth: AuthBootConfig
   // Present only when the operator configured analytics; absent = fully off.
   // posthogHost is the server's same-origin relay path ("/relay"), never an
   // external domain. Consumed exclusively by src/analytics.ts.
@@ -333,23 +340,50 @@ function notifyActivity(active: boolean) {
   for (const cb of activityListeners) cb(active)
 }
 
+// TokenGetter supplies a parent's bearer token per request, so a token the
+// provider refreshed in the background is always the one sent. fresh=true
+// asks the provider for a new token (after a 401).
+export type TokenGetter = (fresh?: boolean) => Promise<string | null>
+
+// Called after a parent request fails 401 twice: the session is gone, so
+// the auth layer signs out and the router returns to /login.
+let onParentUnauthorized: () => void = () => {}
+
+export function setParentUnauthorizedHandler(fn: () => void) {
+  onParentUnauthorized = fn
+}
+
 export async function request<T>(
   method: string,
   path: string,
-  token: string | null,
+  auth: string | TokenGetter | null,
   body?: unknown,
 ): Promise<T> {
   inflight++
   if (inflight === 1) notifyActivity(true)
   try {
-    const headers: Record<string, string> = {}
-    if (token) headers['Authorization'] = `Bearer ${token}`
-    if (body !== undefined) headers['Content-Type'] = 'application/json'
-    const resp = await fetch(path, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    })
+    const send = (token: string | null) => {
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      if (body !== undefined) headers['Content-Type'] = 'application/json'
+      return fetch(path, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      })
+    }
+    let resp: Response
+    if (typeof auth === 'function') {
+      resp = await send(await auth())
+      if (resp.status === 401) {
+        // The token may have expired between the getter and the server:
+        // retry once with a fresh one before giving up on the session.
+        resp = await send(await auth(true))
+        if (resp.status === 401) onParentUnauthorized()
+      }
+    } else {
+      resp = await send(auth)
+    }
     if (resp.status === 204) return undefined as T
     const data = await resp.json().catch(() => ({}))
     if (!resp.ok) {
@@ -370,58 +404,58 @@ export const api = {
   // cachedCurriculum() below — the catalog is static per binary.
   curriculum: () => request<CurriculumInfo>('GET', '/api/v1/curriculum', null),
 
-  // Parent (Supabase JWT)
-  me: (token: string) =>
+  // Parent (auth-provider JWT; the getter supplies a fresh auth per call)
+  me: (auth: TokenGetter) =>
     request<{
       account: Account
       family: FamilySpace | null
       role?: string // 'owner' | 'parent', present only with a family
       pendingInvite?: PendingParentInvite // present only without a family
-    }>('GET', '/api/v1/me', token),
-  createFamily: (token: string, name: string) =>
-    request<FamilySpace>('POST', '/api/v1/family', token, { name }),
-  renameFamily: (token: string, familyId: string, name: string) =>
-    request<FamilySpace>('PATCH', `/api/v1/family/${familyId}`, token, { name }),
-  listChildren: (token: string, familyId: string) =>
-    request<{ children: ChildWithSummary[] }>('GET', `/api/v1/family/${familyId}/children`, token),
-  addChild: (token: string, familyId: string, name: string, grade: number, pin: string) =>
-    request<ChildProfile>('POST', `/api/v1/family/${familyId}/children`, token, { name, grade, pin }),
+    }>('GET', '/api/v1/me', auth),
+  createFamily: (auth: TokenGetter, name: string) =>
+    request<FamilySpace>('POST', '/api/v1/family', auth, { name }),
+  renameFamily: (auth: TokenGetter, familyId: string, name: string) =>
+    request<FamilySpace>('PATCH', `/api/v1/family/${familyId}`, auth, { name }),
+  listChildren: (auth: TokenGetter, familyId: string) =>
+    request<{ children: ChildWithSummary[] }>('GET', `/api/v1/family/${familyId}/children`, auth),
+  addChild: (auth: TokenGetter, familyId: string, name: string, grade: number, pin: string) =>
+    request<ChildProfile>('POST', `/api/v1/family/${familyId}/children`, auth, { name, grade, pin }),
   updateChild: (
-    token: string,
+    auth: TokenGetter,
     childId: string,
     patch: Partial<{ name: string; grade: number; pin: string; archived: boolean }>,
-  ) => request<ChildProfile>('PATCH', `/api/v1/children/${childId}`, token, patch),
-  childStats: (token: string, childId: string) =>
-    request<ChildStats>('GET', `/api/v1/children/${childId}/stats`, token),
-  createInvite: (token: string, familyId: string, ttlHours = 0) =>
-    request<Invite>('POST', `/api/v1/family/${familyId}/invites`, token, { ttlHours }),
-  listInvites: (token: string, familyId: string) =>
-    request<{ invites: Invite[] }>('GET', `/api/v1/family/${familyId}/invites`, token),
-  revokeInvite: (token: string, inviteId: string) =>
-    request<void>('DELETE', `/api/v1/invites/${inviteId}`, token),
+  ) => request<ChildProfile>('PATCH', `/api/v1/children/${childId}`, auth, patch),
+  childStats: (auth: TokenGetter, childId: string) =>
+    request<ChildStats>('GET', `/api/v1/children/${childId}/stats`, auth),
+  createInvite: (auth: TokenGetter, familyId: string, ttlHours = 0) =>
+    request<Invite>('POST', `/api/v1/family/${familyId}/invites`, auth, { ttlHours }),
+  listInvites: (auth: TokenGetter, familyId: string) =>
+    request<{ invites: Invite[] }>('GET', `/api/v1/family/${familyId}/invites`, auth),
+  revokeInvite: (auth: TokenGetter, inviteId: string) =>
+    request<void>('DELETE', `/api/v1/invites/${inviteId}`, auth),
   // Co-parents (reading the roster is open to any member; invite/revoke/
   // remove are owner-only — the server enforces, the UI just hides them)
-  listParents: (token: string, familyId: string) =>
+  listParents: (auth: TokenGetter, familyId: string) =>
     request<{ parents: ParentMember[]; invites: ParentInvite[] }>(
       'GET',
       `/api/v1/family/${familyId}/parents`,
-      token,
+      auth,
     ),
-  inviteParent: (token: string, familyId: string, email: string) =>
-    request<ParentInvite>('POST', `/api/v1/family/${familyId}/parents`, token, { email }),
-  removeParent: (token: string, familyId: string, accountId: string) =>
-    request<void>('DELETE', `/api/v1/family/${familyId}/parents/${accountId}`, token),
-  revokeParentInvite: (token: string, inviteId: string) =>
-    request<void>('DELETE', `/api/v1/parent-invites/${inviteId}`, token),
-  acceptParentInvite: (token: string, inviteId: string) =>
+  inviteParent: (auth: TokenGetter, familyId: string, email: string) =>
+    request<ParentInvite>('POST', `/api/v1/family/${familyId}/parents`, auth, { email }),
+  removeParent: (auth: TokenGetter, familyId: string, accountId: string) =>
+    request<void>('DELETE', `/api/v1/family/${familyId}/parents/${accountId}`, auth),
+  revokeParentInvite: (auth: TokenGetter, inviteId: string) =>
+    request<void>('DELETE', `/api/v1/parent-invites/${inviteId}`, auth),
+  acceptParentInvite: (auth: TokenGetter, inviteId: string) =>
     request<{ family: FamilySpace; role: string }>(
       'POST',
       `/api/v1/invites/parent/${inviteId}/accept`,
-      token,
+      auth,
     ),
   // Activity timeline (see specs — GET .../activity pages newest-first by seq)
   activity: (
-    token: string,
+    auth: TokenGetter,
     childId: string,
     opts?: {
       before?: number
@@ -444,47 +478,47 @@ export const api = {
     return request<ActivityFeed>(
       'GET',
       `/api/v1/children/${childId}/activity${qs ? `?${qs}` : ''}`,
-      token,
+      auth,
     )
   },
-  activitySession: (token: string, childId: string, sessionId: string) =>
+  activitySession: (auth: TokenGetter, childId: string, sessionId: string) =>
     request<ActivitySessionDetail>(
       'GET',
       `/api/v1/children/${childId}/activity/sessions/${sessionId}`,
-      token,
+      auth,
     ),
-  listDevices: (token: string, childId: string) =>
-    request<{ devices: Device[] }>('GET', `/api/v1/children/${childId}/devices`, token),
-  revokeDevice: (token: string, deviceId: string) =>
-    request<void>('DELETE', `/api/v1/devices/${deviceId}`, token),
+  listDevices: (auth: TokenGetter, childId: string) =>
+    request<{ devices: Device[] }>('GET', `/api/v1/children/${childId}/devices`, auth),
+  revokeDevice: (auth: TokenGetter, deviceId: string) =>
+    request<void>('DELETE', `/api/v1/devices/${deviceId}`, auth),
 
   // Parent quests (404s when the server runs without quests)
   createQuest: (
-    token: string,
+    auth: TokenGetter,
     familyId: string,
     input: { name: string; emoji: string; skillId: string; childId: string },
-  ) => request<Quest>('POST', `/api/v1/family/${familyId}/quests`, token, input),
-  listQuests: (token: string, familyId: string) =>
-    request<{ quests: Quest[] }>('GET', `/api/v1/family/${familyId}/quests`, token),
-  getQuest: (token: string, questId: string) =>
-    request<{ quest: Quest; questions: QuestQuestion[] }>('GET', `/api/v1/quests/${questId}`, token),
+  ) => request<Quest>('POST', `/api/v1/family/${familyId}/quests`, auth, input),
+  listQuests: (auth: TokenGetter, familyId: string) =>
+    request<{ quests: Quest[] }>('GET', `/api/v1/family/${familyId}/quests`, auth),
+  getQuest: (auth: TokenGetter, questId: string) =>
+    request<{ quest: Quest; questions: QuestQuestion[] }>('GET', `/api/v1/quests/${questId}`, auth),
   updateQuest: (
-    token: string,
+    auth: TokenGetter,
     questId: string,
     patch: Partial<{ name: string; emoji: string; skillId: string; childId: string; status: string }>,
-  ) => request<Quest>('PATCH', `/api/v1/quests/${questId}`, token, patch),
-  deleteQuest: (token: string, questId: string) =>
-    request<void>('DELETE', `/api/v1/quests/${questId}`, token),
-  publishQuest: (token: string, questId: string) =>
-    request<Quest>('POST', `/api/v1/quests/${questId}/publish`, token),
-  addQuestQuestion: (token: string, questId: string, input: QuestQuestionInput) =>
-    request<QuestQuestionResult>('POST', `/api/v1/quests/${questId}/questions`, token, input),
-  updateQuestQuestion: (token: string, questId: string, qid: string, input: QuestQuestionInput) =>
-    request<QuestQuestionResult>('PATCH', `/api/v1/quests/${questId}/questions/${qid}`, token, input),
-  deleteQuestQuestion: (token: string, questId: string, qid: string) =>
-    request<void>('DELETE', `/api/v1/quests/${questId}/questions/${qid}`, token),
+  ) => request<Quest>('PATCH', `/api/v1/quests/${questId}`, auth, patch),
+  deleteQuest: (auth: TokenGetter, questId: string) =>
+    request<void>('DELETE', `/api/v1/quests/${questId}`, auth),
+  publishQuest: (auth: TokenGetter, questId: string) =>
+    request<Quest>('POST', `/api/v1/quests/${questId}/publish`, auth),
+  addQuestQuestion: (auth: TokenGetter, questId: string, input: QuestQuestionInput) =>
+    request<QuestQuestionResult>('POST', `/api/v1/quests/${questId}/questions`, auth, input),
+  updateQuestQuestion: (auth: TokenGetter, questId: string, qid: string, input: QuestQuestionInput) =>
+    request<QuestQuestionResult>('PATCH', `/api/v1/quests/${questId}/questions/${qid}`, auth, input),
+  deleteQuestQuestion: (auth: TokenGetter, questId: string, qid: string) =>
+    request<void>('DELETE', `/api/v1/quests/${questId}/questions/${qid}`, auth),
   generateQuestQuestions: (
-    token: string,
+    auth: TokenGetter,
     questId: string,
     brief: string,
     count: number,
@@ -493,17 +527,17 @@ export const api = {
     request<{ questions: QuestQuestion[]; replayed: boolean }>(
       'POST',
       `/api/v1/quests/${questId}/generate`,
-      token,
+      auth,
       { brief, count, clientKey },
     ),
 
   // Billing (404s when the server runs without a billing provider)
-  billing: (token: string, familyId: string) =>
-    request<BillingInfo>('GET', `/api/v1/family/${familyId}/billing`, token),
-  billingCheckout: (token: string, familyId: string, planId: string) =>
-    request<{ url: string }>('POST', `/api/v1/family/${familyId}/billing/checkout`, token, { planId }),
-  billingPortal: (token: string, familyId: string) =>
-    request<{ url: string }>('POST', `/api/v1/family/${familyId}/billing/portal`, token),
+  billing: (auth: TokenGetter, familyId: string) =>
+    request<BillingInfo>('GET', `/api/v1/family/${familyId}/billing`, auth),
+  billingCheckout: (auth: TokenGetter, familyId: string, planId: string) =>
+    request<{ url: string }>('POST', `/api/v1/family/${familyId}/billing/checkout`, auth, { planId }),
+  billingPortal: (auth: TokenGetter, familyId: string) =>
+    request<{ url: string }>('POST', `/api/v1/family/${familyId}/billing/portal`, auth),
 
   // Child join flow (public)
   joinPreview: (code: string) =>

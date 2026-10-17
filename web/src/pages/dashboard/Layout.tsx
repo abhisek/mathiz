@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import type { Session } from '@supabase/supabase-js'
 import {
   api,
   type ChildWithSummary,
   type FamilySpace,
   type PendingParentInvite,
+  type TokenGetter,
 } from '../../api'
 import { useAction } from '../../hooks'
 import { identifyFamilyGroup, identifyParent, resetAnalytics, track } from '../../analytics'
-import { getSupabase } from '../../supa'
+import type { AuthAdapter } from '../../auth'
 import ShareMathiz from '../../components/ShareMathiz'
 import { type DashboardContext } from './context'
 import Kids from './Kids'
@@ -21,14 +21,15 @@ import Family from './Family'
 import Billing from './Billing'
 
 interface Props {
-  session: Session
+  adapter: AuthAdapter
+  email: string
 }
 
 // Dashboard mounts the nested route tree under /dashboard/*.
-export default function Dashboard({ session }: Props) {
+export default function Dashboard({ adapter, email }: Props) {
   return (
     <Routes>
-      <Route element={<DashboardLayout session={session} />}>
+      <Route element={<DashboardLayout adapter={adapter} email={email} />}>
         <Route index element={<Kids />} />
         <Route path="activity" element={<Activity />} />
         <Route path="curriculum" element={<Curriculum />} />
@@ -45,8 +46,10 @@ export default function Dashboard({ session }: Props) {
 // DashboardLayout owns the /me fetch (account, family, role, pendingInvite)
 // and the children list; sub-pages get both through outlet context so a
 // route change never refetches the whole world.
-function DashboardLayout({ session }: Props) {
-  const token = session.access_token
+function DashboardLayout({ adapter, email }: Props) {
+  // A stable getter: pages fetch with it, and its identity never changes
+  // when the provider refreshes the token in the background.
+  const auth = useCallback<TokenGetter>((fresh) => adapter.getToken(fresh), [adapter])
   const [family, setFamily] = useState<FamilySpace | null>(null)
   // 'owner' | 'parent' — only meaningful alongside a family.
   const [role, setRole] = useState<string | null>(null)
@@ -56,7 +59,7 @@ function DashboardLayout({ session }: Props) {
 
   const refreshMe = useCallback(async () => {
     try {
-      const me = await api.me(token)
+      const me = await api.me(auth)
       setFamily(me.family)
       setRole(me.role ?? null)
       setPendingInvite(me.pendingInvite ?? null)
@@ -75,7 +78,7 @@ function DashboardLayout({ session }: Props) {
     } finally {
       setLoaded(true)
     }
-  }, [token])
+  }, [auth])
 
   useEffect(() => {
     void refreshMe()
@@ -90,7 +93,7 @@ function DashboardLayout({ session }: Props) {
   const refreshChildren = useCallback(async () => {
     if (!familyId) return
     try {
-      const kids = await api.listChildren(token, familyId)
+      const kids = await api.listChildren(auth, familyId)
       setChildren(kids.children ?? [])
       setError(null)
     } catch (err) {
@@ -98,7 +101,7 @@ function DashboardLayout({ session }: Props) {
     } finally {
       setChildrenLoading(false)
     }
-  }, [token, familyId])
+  }, [auth, familyId])
 
   useEffect(() => {
     void refreshChildren()
@@ -106,8 +109,7 @@ function DashboardLayout({ session }: Props) {
 
   async function signOut() {
     resetAnalytics()
-    const supa = await getSupabase()
-    await supa.auth.signOut()
+    await adapter.signOut()
   }
 
   if (!loaded) return <div className="boot">Loading…</div>
@@ -133,7 +135,7 @@ function DashboardLayout({ session }: Props) {
           <NavLink to="/how-it-works" className="muted dash-how-link">
             How Mathiz teaches
           </NavLink>
-          <span className="muted dash-email">{session.user.email}</span>
+          <span className="muted dash-email">{email}</span>
           <ShareMathiz variant="nav" />
           <button className="btn btn-ghost" onClick={signOut}>
             Sign out
@@ -147,7 +149,7 @@ function DashboardLayout({ session }: Props) {
           <Outlet
             context={
               {
-                token,
+                auth,
                 family,
                 role: role ?? 'parent',
                 children,
@@ -161,12 +163,12 @@ function DashboardLayout({ session }: Props) {
           // No family yet: the create flow renders whatever the sub-route is.
           <>
             {pendingInvite && (
-              <AcceptInviteBanner token={token} invite={pendingInvite} onAccepted={refreshMe} />
+              <AcceptInviteBanner auth={auth} invite={pendingInvite} onAccepted={refreshMe} />
             )}
             {pendingInvite && (
               <p className="muted invite-or">…or create your own family instead:</p>
             )}
-            <CreateFamily token={token} onCreated={refreshMe} />
+            <CreateFamily auth={auth} onCreated={refreshMe} />
           </>
         )}
       </main>
@@ -199,7 +201,7 @@ function DashNavLink({
   )
 }
 
-function CreateFamily({ token, onCreated }: { token: string; onCreated: () => Promise<void> }) {
+function CreateFamily({ auth, onCreated }: { auth: TokenGetter; onCreated: () => Promise<void> }) {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -209,7 +211,7 @@ function CreateFamily({ token, onCreated }: { token: string; onCreated: () => Pr
     setBusy(true)
     setError(null)
     try {
-      await api.createFamily(token, name)
+      await api.createFamily(auth, name)
       track.familyCreated()
       await onCreated()
     } catch (err) {
@@ -248,11 +250,11 @@ function CreateFamily({ token, onCreated }: { token: string; onCreated: () => Pr
 // co-parent invite matches its email (specs/12-saas.md, "Co-parents").
 // Accepting joins the family; the /me reload then swaps in the family view.
 function AcceptInviteBanner({
-  token,
+  auth,
   invite,
   onAccepted,
 }: {
-  token: string
+  auth: TokenGetter
   invite: PendingParentInvite
   onAccepted: () => Promise<void>
 }) {
@@ -260,7 +262,7 @@ function AcceptInviteBanner({
 
   const [accept, accepting] = useAction(async () => {
     try {
-      await api.acceptParentInvite(token, invite.id)
+      await api.acceptParentInvite(auth, invite.id)
       track.coparentAccepted()
       await onAccepted()
     } catch (err) {

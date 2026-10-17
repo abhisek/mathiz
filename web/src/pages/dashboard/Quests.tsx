@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { api, ApiError, type ChildProfile, type Quest } from '../../api'
+import { api, ApiError, type ChildProfile, type Quest, type TokenGetter } from '../../api'
 import { track } from '../../analytics'
 import { useAction } from '../../hooks'
 import Skeleton from '../../components/Skeleton'
@@ -15,7 +15,7 @@ import { QUEST_STATUS_LABEL } from './questStatus'
 // note — the nav item stays, since the layout can't know without probing.
 
 export default function Quests() {
-  const { token, family, children } = useDashboard()
+  const { auth, family, children } = useDashboard()
   const familyId = family.id
   const kids = children.filter((c) => !c.profile.archived).map((c) => c.profile)
   const navigate = useNavigate()
@@ -45,7 +45,7 @@ export default function Quests() {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await api.listQuests(token, familyId)
+      const res = await api.listQuests(auth, familyId)
       setQuests(res.quests ?? [])
       setError(null)
     } catch (err) {
@@ -55,7 +55,7 @@ export default function Quests() {
     } finally {
       setLoading(false)
     }
-  }, [token, familyId])
+  }, [auth, familyId])
 
   useEffect(() => {
     void refresh()
@@ -68,7 +68,7 @@ export default function Quests() {
     if (!window.confirm(`Delete the quest "${q.name}"? This cannot be undone.`)) return
     setDeletingQuestId(q.id)
     try {
-      await api.deleteQuest(token, q.id)
+      await api.deleteQuest(auth, q.id)
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -83,7 +83,7 @@ export default function Quests() {
   const [archive, archiving] = useAction(async (q: Quest) => {
     setArchivingQuestId(q.id)
     try {
-      await api.updateQuest(token, q.id, { status: 'archived' })
+      await api.updateQuest(auth, q.id, { status: 'archived' })
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -237,7 +237,7 @@ export default function Quests() {
 
       {showCreate && (
         <CreateQuestModal
-          token={token}
+          auth={auth}
           familyId={familyId}
           kids={kids}
           initialSkillId={createSkillId ?? ''}
@@ -256,14 +256,14 @@ export default function Quests() {
 }
 
 function CreateQuestModal({
-  token,
+  auth,
   familyId,
   kids,
   initialSkillId = '',
   onClose,
   onCreated,
 }: {
-  token: string
+  auth: TokenGetter
   familyId: string
   kids: ChildProfile[]
   initialSkillId?: string
@@ -282,7 +282,7 @@ function CreateQuestModal({
     setBusy(true)
     setError(null)
     try {
-      const q = await api.createQuest(token, familyId, {
+      const q = await api.createQuest(auth, familyId, {
         name,
         emoji,
         skillId: skillId.trim(),

@@ -42,7 +42,7 @@ explicit decision** — no react-query/SWR/Redux. Don't introduce one.
 ## Structure & navigation
 
 - The parent dashboard is a routed shell: `pages/dashboard/Layout.tsx`
-  fetches `/me` + children ONCE and shares `{token, family, role,
+  fetches `/me` + children ONCE and shares `{auth, family, role,
   children, refresh*}` via outlet context (`pages/dashboard/context.ts`,
   `useDashboard()`). New parent pages = new route under the shell reading
   that context; don't re-fetch what the layout already has.
@@ -52,7 +52,7 @@ explicit decision** — no react-query/SWR/Redux. Don't introduce one.
   review flow gets a route (see `QuestEditor.tsx` — it was a modal once,
   and that was a mistake).
 - Public marketing/legal pages (`Landing`, `Pricing`, `Legal`) are
-  Supabase-free — routed OUTSIDE `ParentArea` in `App.tsx`. Never make
+  auth-free — routed OUTSIDE `ParentArea` in `App.tsx`. Never make
   the front door pay the auth boot cost.
 - Public pages sit under the `PublicLayout` route in `App.tsx`, which
   renders `components/SiteFooter.tsx` beneath the page. **Routing is what
@@ -66,6 +66,22 @@ explicit decision** — no react-query/SWR/Redux. Don't introduce one.
 - `/demo` uses `PublicLayout variant="minimal"` (legal links only): it is
   the shareable link and is deliberately single-exit. Adding product nav
   there re-opens a decision made in `Demo.tsx`.
+
+## Parent auth (adapter)
+
+- `web/src/auth/index.ts` is the only door to the auth provider:
+  `getAuth()` reads `/api/v1/config` `auth.provider` and loads ONE adapter
+  through a static `import()` per provider (a computed path defeats Vite's
+  chunk split). Only `ParentArea` in `App.tsx` calls it; kid and public
+  routes never do.
+- One adapter = `auth/<provider>.ts` (factory) + `auth/<Provider>SignIn.tsx`
+  (the form `/login` renders). The provider SDK is imported in those two
+  files only. Exemplars: `supabase.ts`, `test.ts` (paste-a-token, dev/E2E).
+- Parent API calls take a `TokenGetter`, never a token string: `request()`
+  asks for a token per call, retries a 401 once with `getToken(true)`, and
+  a second 401 signs out. Pages get the getter as `auth` from
+  `useDashboard()` and pass it through. A 503 is "sign-in unavailable",
+  not a sign-out.
 
 ## Roles & authz
 

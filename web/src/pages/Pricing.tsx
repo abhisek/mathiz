@@ -4,7 +4,7 @@ import { api, type BillingPlan, type PricingInfo } from '../api'
 import { ensureAnalyticsBooted, track } from '../analytics'
 import Skeleton from '../components/Skeleton'
 
-// Public pricing page (/pricing). Static-feeling and Supabase-free like the
+// Public pricing page (/pricing). Static-feeling and auth-free like the
 // legal pages: the catalog comes from GET /api/v1/pricing, which is served
 // even when the server runs without a billing provider. billingEnabled=false
 // (the public beta) swaps in a "everything is free right now" banner — no

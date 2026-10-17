@@ -3139,3 +3139,11 @@ table.sessions th {
   color: var(--accent-deep);
   text-decoration: underline;
 }
+
+/* Test auth adapter (dev/E2E only): paste-a-token sign-in. */
+.test-token-input {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
