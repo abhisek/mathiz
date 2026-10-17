@@ -102,6 +102,7 @@ Whoever runs `mathiz serve` for their family or a community.
 | Flow | Mechanism |
 |---|---|
 | Deploy: one self-contained binary (SPA embedded) | `make web && make mathiz`, run behind TLS |
+| Question prefetch on by default (next question generates during feedback); off switch | `MATHIZ_QUESTION_PREFETCH=0` |
 | Database: PostgreSQL 16+ (production: 18 in the compose `prod` profile on one VM); schema auto-migrates; pool caps | `MATHIZ_DATABASE_URL`, `MATHIZ_DB_PASSWORD`, `MATHIZ_DB_MAX_OPEN_CONNS`/`_IDLE_CONNS` |
 | Auth config: one provider per deployment (`supabase`, or `test` for dev/E2E); provider URL + public key (+ optional HS256 secret); `mathiz auth remap` to switch provider | `MATHIZ_AUTH_*` |
 | LLM provider selection & keys (server-side only) | `MATHIZ_LLM_PROVIDER`, `MATHIZ_*_API_KEY`, `MATHIZ_OPENAI_BASE_URL` for compatible gateways |

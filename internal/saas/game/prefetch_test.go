@@ -370,3 +370,53 @@ func TestFinishedExpeditionRefusesEverything(t *testing.T) {
 		t.Error("requests to a finished expedition refreshed its activity")
 	}
 }
+
+// failGen blocks each call until released, then fails it.
+type failGen struct{ *blockGen }
+
+func (g failGen) Generate(ctx context.Context, input problemgen.GenerateInput) (*problemgen.Question, error) {
+	if _, err := g.blockGen.Generate(ctx, input); err != nil {
+		return nil, err
+	}
+	return nil, errors.New("llm unavailable")
+}
+
+func TestSharedFailureCountsOnce(t *testing.T) {
+	gen := failGen{newBlockGen()}
+	m := newTestManager(t, gen)
+	ctx := context.Background()
+	exp, err := m.Start(ctx, "child-1", rootSkillID(t))
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	gen.waitStarted(t)
+	gen.release <- struct{}{} // the Q1 warm fails
+
+	// Two taps share the fresh retry, which fails too.
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = m.Question(ctx, "child-1", exp.ID)
+		}()
+	}
+	gen.waitStarted(t)
+	time.Sleep(20 * time.Millisecond) // let the second tap join
+	gen.release <- struct{}{}
+	// Spare token: a tap that missed the shared call fails fast (and the
+	// count check below catches it) instead of hanging the test.
+	gen.release <- struct{}{}
+	wg.Wait()
+
+	live, err := m.lookup("child-1", exp.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live.mu.Lock()
+	failures := live.genFailures
+	live.mu.Unlock()
+	if failures != 1 {
+		t.Errorf("genFailures = %d after one shared failure, want 1", failures)
+	}
+}

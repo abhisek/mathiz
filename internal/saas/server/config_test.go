@@ -37,6 +37,7 @@ func TestConfigValidateAuth(t *testing.T) {
 		{"test without opt-in", base(func(c *Config) { testPreset(c); c.AuthAllowTest = false }), "MATHIZ_AUTH_ALLOW_TEST=1"},
 		{"test without secret", base(func(c *Config) { testPreset(c); c.AuthHS256Secret = "" }), "MATHIZ_AUTH_HS256_SECRET"},
 		{"test on public https", base(func(c *Config) { testPreset(c); c.PublicBaseURL = "https://mathiz.example.com" }), "refused"},
+		{"test on upper-case HTTPS", base(func(c *Config) { testPreset(c); c.PublicBaseURL = "HTTPS://mathiz.example.com" }), "refused"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

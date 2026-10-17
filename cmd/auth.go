@@ -54,7 +54,7 @@ Reads MATHIZ_DATABASE_URL.`,
 			return err
 		}
 
-		st, err := store.Open(dsn)
+		st, err := store.Open(dsn, store.BeforeMigrate(checkLegacyAccounts))
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
