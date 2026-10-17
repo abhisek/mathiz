@@ -62,3 +62,22 @@ func TestCheckAccounts(t *testing.T) {
 		}
 	})
 }
+
+func TestReadRemapCSV(t *testing.T) {
+	pairs, err := readRemapCSV(strings.NewReader("old_subject,new_subject\n a , b \nc,d\n"))
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if len(pairs) != 2 || pairs[0] != (family.RemapPair{OldSubject: "a", NewSubject: "b"}) || pairs[1].NewSubject != "d" {
+		t.Errorf("pairs = %+v", pairs)
+	}
+	for name, in := range map[string]string{
+		"empty":       "",
+		"header only": "old_subject,new_subject\n",
+		"three cols":  "a,b,c\n",
+	} {
+		if _, err := readRemapCSV(strings.NewReader(in)); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}
