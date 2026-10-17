@@ -135,7 +135,9 @@ func TestGenerate_ValidationFailure(t *testing.T) {
 		"difficulty": 1,
 		"explanation": "10 + 5 = 15"
 	}`)
-	mock := llm.NewMockProvider(llm.MockResponse{Content: raw})
+	// The answer-format rejection is retryable: Generate asks twice more,
+	// and every answer is bad, so the last rejection comes back.
+	mock := llm.NewMockProvider(llm.MockResponse{Content: raw}, llm.MockResponse{Content: raw}, llm.MockResponse{Content: raw})
 	gen := New(mock, DefaultConfig())
 
 	_, err := gen.Generate(context.Background(), GenerateInput{
@@ -151,6 +153,77 @@ func TestGenerate_ValidationFailure(t *testing.T) {
 	}
 	if valErr.Validator != "answer-format" {
 		t.Errorf("expected answer-format validator, got %q", valErr.Validator)
+	}
+	if mock.CallCount() != 1+maxValidationRetries {
+		t.Errorf("calls = %d, want %d", mock.CallCount(), 1+maxValidationRetries)
+	}
+}
+
+func TestGenerate_RetriesRejectedQuestion(t *testing.T) {
+	bad := json.RawMessage(`{
+		"question_text": "What is 10 + 5?",
+		"format": "numeric",
+		"answer": "abc",
+		"answer_type": "integer",
+		"choices": [],
+		"hint": "Add them up.",
+		"difficulty": 1,
+		"explanation": "10 + 5 = 15"
+	}`)
+	mock := llm.NewMockProvider(llm.MockResponse{Content: bad}, llm.MockResponse{Content: validQuestionJSON()})
+	gen := New(mock, DefaultConfig())
+
+	priors := []string{"What is 1+1?"}
+	q, err := gen.Generate(context.Background(), GenerateInput{
+		Skill:          testSkill(),
+		Tier:           skillgraph.TierLearn,
+		PriorQuestions: priors,
+	})
+	if err != nil {
+		t.Fatalf("expected the retry to succeed: %v", err)
+	}
+	if q == nil || mock.CallCount() != 2 {
+		t.Fatalf("question %v after %d calls, want one after 2", q, mock.CallCount())
+	}
+	// The retry prompt lists the rejected question so it isn't repeated.
+	if retryMsg := mock.Calls[1].Messages[0].Content; !strings.Contains(retryMsg, "What is 10 + 5?") {
+		t.Errorf("retry prompt does not list the rejected question:\n%s", retryMsg)
+	}
+	if len(priors) != 1 {
+		t.Errorf("the caller's prior questions were modified: %v", priors)
+	}
+}
+
+// rejectValidator rejects every question, retryable or not.
+type rejectValidator struct{ retryable bool }
+
+func (rejectValidator) Name() string { return "reject" }
+func (v rejectValidator) Validate(*Question, GenerateInput) *ValidationError {
+	return &ValidationError{Validator: "reject", Message: "no", Retryable: v.retryable}
+}
+
+func TestGenerate_NoRetryCases(t *testing.T) {
+	short, cancel := context.WithTimeout(context.Background(), minRetryBudget/2)
+	defer cancel()
+	cases := map[string]struct {
+		ctx       context.Context
+		retryable bool
+	}{
+		"not retryable":      {context.Background(), false},
+		"deadline too close": {short, true},
+	}
+	for name, tc := range cases {
+		mock := llm.NewMockProvider(llm.MockResponse{Content: validQuestionJSON()}, llm.MockResponse{Content: validQuestionJSON()})
+		cfg := DefaultConfig()
+		cfg.Validators = []Validator{rejectValidator{retryable: tc.retryable}}
+		_, err := New(mock, cfg).Generate(tc.ctx, GenerateInput{Skill: testSkill(), Tier: skillgraph.TierLearn})
+		var verr *ValidationError
+		if !errors.As(err, &verr) {
+			t.Errorf("%s: err = %v, want a ValidationError", name, err)
+		}
+		if mock.CallCount() != 1 {
+			t.Errorf("%s: calls = %d, want 1", name, mock.CallCount())
+		}
 	}
 }
 
@@ -183,7 +256,8 @@ func TestGenerate_CustomValidator(t *testing.T) {
 		"difficulty": 4,
 		"explanation": "999 + 999 = 1998"
 	}`)
-	mock := llm.NewMockProvider(llm.MockResponse{Content: raw})
+	// Retryable rejection: the first call plus two retries.
+	mock := llm.NewMockProvider(llm.MockResponse{Content: raw}, llm.MockResponse{Content: raw}, llm.MockResponse{Content: raw})
 	cfg := DefaultConfig()
 	cfg.Validators = append(cfg.Validators, &customValidator{maxDifficulty: 3})
 	gen := New(mock, cfg)
@@ -224,7 +298,9 @@ func (v *trackingValidator) Validate(*Question, GenerateInput) *ValidationError 
 }
 
 func TestGenerate_ValidatorOrder(t *testing.T) {
-	mock := llm.NewMockProvider(llm.MockResponse{Content: validQuestionJSON()})
+	// The rejection is retryable, so every retry needs a response too.
+	mock := llm.NewMockProvider(llm.MockResponse{Content: validQuestionJSON()},
+		llm.MockResponse{Content: validQuestionJSON()}, llm.MockResponse{Content: validQuestionJSON()})
 	tracker := &trackingValidator{}
 	cfg := Config{
 		Validators:  []Validator{&alwaysRejectValidator{name: "first"}, tracker},
