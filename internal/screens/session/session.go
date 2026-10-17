@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -70,6 +71,15 @@ type SessionScreen struct {
 
 	// llmFatalError is set when consecutive generation errors exceed the limit.
 	llmFatalError bool
+
+	// learnerProfile is read once at session start; the profile only
+	// changes at session end, so re-reading the snapshot per question was
+	// a database read on the question's critical path.
+	learnerProfile string
+
+	// prefetch generates the next question while the learner reads the
+	// feedback (specs/19 §5.3). Nil without a generator.
+	prefetch *problemgen.Prefetcher
 }
 
 var _ screen.Screen = (*SessionScreen)(nil)
@@ -77,7 +87,15 @@ var _ screen.KeyHintProvider = (*SessionScreen)(nil)
 
 // New creates a new SessionScreen with injected dependencies.
 func New(generator problemgen.Generator, eventRepo store.EventRepo, snapRepo store.SnapshotRepo, diagService *diagnosis.Service, lessonService *lessons.Service, compressor *lessons.Compressor, gemService *gems.Service) *SessionScreen {
+	var prefetch *problemgen.Prefetcher
+	if generator != nil {
+		prefetch = problemgen.NewPrefetcher(generator, problemgen.PrefetchConfig{
+			Budget:      generateTimeout,
+			DisableWarm: problemgen.PrefetchDisabledByEnv(),
+		})
+	}
 	return &SessionScreen{
+		prefetch:      prefetch,
 		generator:     generator,
 		eventRepo:     eventRepo,
 		snapRepo:      snapRepo,
@@ -305,7 +323,11 @@ func (s *SessionScreen) initSession() tea.Cmd {
 		// Keep scheduler reference for snapshot saving.
 		s.scheduler = scheduler
 
-		return sessionInitMsg{State: state}
+		learnerProfile := ""
+		if snapData != nil && snapData.LearnerProfile != nil {
+			learnerProfile = snapData.LearnerProfile.Summary
+		}
+		return sessionInitMsg{State: state, LearnerProfile: learnerProfile}
 	}
 }
 
@@ -315,6 +337,7 @@ func (s *SessionScreen) handleInit(msg sessionInitMsg) (screen.Screen, tea.Cmd) 
 		return s, nil
 	}
 	s.state = msg.State
+	s.learnerProfile = msg.LearnerProfile
 	return s, tea.Batch(
 		s.generateNextQuestion(),
 		tickCmd(),
@@ -453,6 +476,7 @@ func (s *SessionScreen) handleFeedbackDone() (screen.Screen, tea.Cmd) {
 }
 
 func (s *SessionScreen) handleSessionEnd() (screen.Screen, tea.Cmd) {
+	s.closePrefetch()
 	if s.state == nil {
 		return s, func() tea.Msg { return router.PopScreenMsg{} }
 	}
@@ -501,11 +525,13 @@ func (s *SessionScreen) handleKey(msg tea.KeyMsg) (screen.Screen, tea.Cmd) {
 		if s.state != nil {
 			return s, func() tea.Msg { return sessionEndMsg{} }
 		}
+		s.closePrefetch()
 		return s, func() tea.Msg { return router.PopScreenMsg{} }
 	}
 
 	// Error state — any key goes back.
 	if s.errMsg != "" {
+		s.closePrefetch()
 		return s, func() tea.Msg { return router.PopScreenMsg{} }
 	}
 
@@ -746,6 +772,18 @@ func (s *SessionScreen) submitAnswer() (screen.Screen, tea.Cmd) {
 	s.state.ShowingFeedback = true
 	s.state.Phase = sess.PhaseFeedback
 
+	// Generate the next question while the learner reads the feedback,
+	// when the next one is predictable: the same slot (no advance, skill
+	// not just mastered) and time left. Otherwise the fingerprint would
+	// miss anyway, and the warm would only cost a call.
+	slot = sess.CurrentSlot(s.state)
+	if s.prefetch != nil && slot != nil && !s.state.TimeExpired &&
+		!s.state.Mastered[slot.Skill.ID] && !sess.ShouldAdvanceSlot(s.state) {
+		if input, ok := s.nextInput(); ok {
+			s.prefetch.Warm(input)
+		}
+	}
+
 	return s, nil
 }
 
@@ -756,47 +794,68 @@ const generateTimeout = 30 * time.Second
 // failures before showing a fatal error and ending the session.
 const maxConsecutiveGenErrors = 3
 
-// generateNextQuestion generates the next question asynchronously.
+// generateNextQuestion generates the next question asynchronously. The
+// input is built here, on the update loop, so the background command never
+// reads session state.
 func (s *SessionScreen) generateNextQuestion() tea.Cmd {
-	state := s.state
+	input, ok := s.nextInput()
+	prefetch, generator := s.prefetch, s.generator
 	return func() tea.Msg {
-		if state == nil || len(state.Plan.Slots) == 0 {
+		if !ok {
 			return questionGenFailedMsg{Err: errors.New("no slots available")}
 		}
-
-		slot := &state.Plan.Slots[state.CurrentSlotIndex]
-
-		// Use the actual current tier from mastery service, not the fixed plan tier.
-		tier := slot.Tier
-		if state.MasteryService != nil {
-			if sm := state.MasteryService.GetMastery(slot.Skill.ID); sm != nil {
-				tier = sm.CurrentTier
-			}
-		}
-
-		input := problemgen.GenerateInput{
-			Skill:          slot.Skill,
-			Tier:           tier,
-			PriorQuestions: state.PriorQuestions[slot.Skill.ID],
-			RecentErrors:   state.RecentErrors[slot.Skill.ID],
-		}
-
-		// Include learner profile if available from snapshot.
-		if s.snapRepo != nil {
-			snap, err := s.snapRepo.Latest(context.Background())
-			if err == nil && snap != nil && snap.Data.LearnerProfile != nil {
-				input.LearnerProfile = snap.Data.LearnerProfile.Summary
-			}
-		}
-
 		ctx, cancel := context.WithTimeout(context.Background(), generateTimeout)
 		defer cancel()
 
-		q, err := s.generator.Generate(ctx, input)
+		var (
+			q   *problemgen.Question
+			err error
+		)
+		if prefetch != nil {
+			var res problemgen.Result
+			res, err = prefetch.Get(ctx, input)
+			q = res.Question
+		} else {
+			q, err = generator.Generate(ctx, input)
+		}
 		if err != nil {
 			return questionReadyMsg{Err: err}
 		}
 		return questionReadyMsg{Question: q}
+	}
+}
+
+// nextInput builds the generation input for the current slot from the live
+// state: the mastery service's current tier, never the fixed plan tier.
+// The slices are copies, because generation runs in the background.
+func (s *SessionScreen) nextInput() (problemgen.GenerateInput, bool) {
+	state := s.state
+	if state == nil || len(state.Plan.Slots) == 0 {
+		return problemgen.GenerateInput{}, false
+	}
+	slot := &state.Plan.Slots[state.CurrentSlotIndex]
+	tier := slot.Tier
+	if state.MasteryService != nil {
+		if sm := state.MasteryService.GetMastery(slot.Skill.ID); sm != nil {
+			tier = sm.CurrentTier
+		}
+	}
+	state.ErrorMu.Lock()
+	recentErrors := slices.Clone(state.RecentErrors[slot.Skill.ID])
+	state.ErrorMu.Unlock()
+	return problemgen.GenerateInput{
+		Skill:          slot.Skill,
+		Tier:           tier,
+		PriorQuestions: slices.Clone(state.PriorQuestions[slot.Skill.ID]),
+		RecentErrors:   recentErrors,
+		LearnerProfile: s.learnerProfile,
+	}, true
+}
+
+// closePrefetch cancels a pending warm when the screen goes away.
+func (s *SessionScreen) closePrefetch() {
+	if s.prefetch != nil {
+		s.prefetch.Close()
 	}
 }
 

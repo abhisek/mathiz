@@ -29,8 +29,9 @@ type feedbackDoneMsg struct{}
 
 // sessionInitMsg is sent when session initialization (plan building) is complete.
 type sessionInitMsg struct {
-	State *sess.SessionState
-	Err   error
+	State          *sess.SessionState
+	LearnerProfile string // from the starting snapshot, cached for the session
+	Err            error
 }
 
 // sessionEndMsg is sent to trigger the session end flow.
