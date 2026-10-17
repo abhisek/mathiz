@@ -21,6 +21,10 @@ type ValidationError struct {
 	Validator string // Name of the validator that failed
 	Message   string // Human-readable description of the failure
 	Retryable bool   // Whether regeneration is likely to fix this
+
+	// QuestionText is the rejected question's text, set by the generator
+	// so a retry can tell the model not to ask it again.
+	QuestionText string
 }
 
 func (e *ValidationError) Error() string {
