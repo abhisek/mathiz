@@ -1,5 +1,10 @@
 # Question Latency — no kid waits on the LLM
 
+**Status:** Phases 1a, 1b and 2 implemented (game and terminal). Phase 3
+waits for the Phase 2 numbers. Owner decisions (2026-10-17): quest
+expeditions keep generating under the expedition lock; the retry copy in
+§3.3 is approved; budgets as in §2.1.
+
 ## 1. Why
 
 Every question is one blocking LLM call that starts only when the kid asks
@@ -48,6 +53,15 @@ Non-goals:
 - Streaming question text: the validators need the whole question before
   anything is shown.
 
+### 2.1 Budgets
+
+One budget per question generation, `questionGenBudget` = 30 s, whether it
+runs in the background (a warm) or on request. It covers provider retries
+and validator retries. A request that joins an in-flight warm waits at most
+its own 30 s; if the request gives up, the warm keeps running and a later
+request for the same input can still use it. Validator retries (§3.1) start
+only while at least 5 s of the deadline remain.
+
 ## 3. Phase 1a — failure fixes
 
 These ship first because they're bugs whatever else we do.
@@ -55,8 +69,8 @@ These ship first because they're bugs whatever else we do.
 ### 3.1 Retry rejected questions
 
 `problemgen.LLMGenerator.Generate` re-asks up to **2 more times** when a
-validator returns a `ValidationError` with `Retryable: true`, within the
-caller's context deadline. The rejected question's text goes in the
+validator returns a `ValidationError` with `Retryable: true`, while at
+least 5 s of the caller's deadline remain. The rejected question's text goes in the
 "already asked" list for the retry, so it isn't regenerated. Each attempt
 is a normal LLM call and is logged as one. The game and TUI callers
 already treat any error as a failure; they need no change.
@@ -73,12 +87,21 @@ install:
    concurrent identical requests into one call.
 3. Re-take `exp.mu`. If `exp.finished`, return `ErrExpeditionOver`. If
    `exp.questionsAsked != asked`, a concurrent request (a double tap)
-   already installed this question, so return the current one. Otherwise
-   install the question as today. Both taps share one generator call
-   through the prefetcher's de-duplication.
+   installed a question meanwhile, and the kid may even have answered it:
+   start `Question` over, so the normal checks decide (current question,
+   next question, or over). If the request's own context ended (closed
+   tab, reload), return `ErrClientGone` (logged as 499 `client_gone`): the
+   kid saw no failure, so the breaker does not tick. Otherwise install the
+   question. Both taps share one generator call through the prefetcher's
+   de-duplication.
+
+Quest expeditions skip all of this: their questions are authored and
+instant, and `questGenerator` advances a cursor, so they keep generating
+under `exp.mu`.
 
 `Hint`, `Answer`, `End` and a replacing `Start` no longer wait on the
-LLM. `Answer` during generation returns `ErrNoQuestion`, as it does today
+LLM. Every handler refuses a finished expedition (`activeLocked`) and does
+not refresh its activity, so the idle reaper still collects it. `Answer` during generation returns `ErrNoQuestion`, as it does today
 when no question exists. The idle reaper keeps using `lastActivity` and
 never takes `exp.mu`.
 
@@ -87,10 +110,15 @@ never takes `exp.mu`.
 On `ErrGeneration` (503) the SPA keeps the expedition and shows a retry
 state on the same screen: "The map is foggy… 🌫️" with a **Try again**
 button that calls `/question` again. Kid copy only: no error codes, and
-nothing about credits. The server's existing
-`maxGenFailures = 3` circuit breaker still ends the expedition; the
-client then gets `ErrExpeditionOver` and returns to the map with the
-normal summary. No new `Start`, so no second debit.
+nothing about credits. The server's `maxGenFailures = 3` circuit breaker
+still ends the expedition (progress saved, play slot freed) but keeps it
+reachable: the failure that trips it answers 409 `expedition_over`, and the
+client's `End` returns the normal summary instead of a 404. No new
+`Start`, so no second debit.
+
+Game errors carry a stable `code` (`generation_failed`, `expedition_over`,
+`no_expedition`, …) next to the kid copy, and the client branches on the
+code, never on the text.
 
 Also: after 6 s of loading, the loader copy changes to "Still digging…
 the treasure is deep today ⛏️", so a long wait reads as progress, not a
@@ -108,12 +136,16 @@ hang.
   in `internal/saas/server`, per CLAUDE.md):
   - `q_wait_ms`: handler time spent waiting for the question.
   - `q_source`: one of `prefetch_hit` (ready on arrival), `prefetch_join`
-    (in flight, awaited), `fresh` (no prefetch), `quest`.
-  - `q_attempts`: LLM attempts, retries included.
+    (in flight, awaited), `fresh` (no prefetch), `quest`, `current` (the
+    unanswered question again, e.g. a reload).
+  - `q_attempts`: provider attempts, retries included, counted by
+    `llm.WithAttemptCounter` in `TimeoutProvider` (every attempt passes it,
+    with or without event logging).
 - **Background slog** for prefetch outcomes (non-request path):
-  `slog.Info("game: prefetch", "child_uid", uid, "outcome",
-  "used|discarded|failed|cancelled", "reason", …, "ms", …)`.
-  Discard reasons: `input_changed`, `expedition_over`.
+  `slog.Info("question prefetch", "child_uid", uid, "outcome",
+  "used|discarded|failed|cancelled", "reason", …, "ms", …)` (the terminal
+  logs the same line without `child_uid`). Reasons: `input_changed`,
+  `expedition_over`, or the error text for `failed`.
 - **PostHog** (follow the `analytics` skill: anonymous kid usage inside the
   family group only, no child identity): add `track.questionShown({index,
   waitMs})` and `track.questionGenerationFailed({index})` in
@@ -131,16 +163,13 @@ A per-session component that wraps any `Generator`:
 
 ```go
 // internal/problemgen/prefetch.go
-type Prefetcher struct { /* gen Generator; inflight/ready keyed by fingerprint */ }
-
-func NewPrefetcher(gen Generator, budget time.Duration) *Prefetcher
-// Warm starts generating input in the background (detached context, budget
-// deadline) unless an identical request is already ready or in flight.
+func NewPrefetcher(gen Generator, cfg PrefetchConfig) *Prefetcher // Budget, DisableWarm, LogAttrs
+// Warm starts generating input in the background unless an identical
+// request is already in flight, ready, or was just handed out.
 func (p *Prefetcher) Warm(input GenerateInput)
-// Get returns the warmed question for an identical input — waiting for an
-// in-flight one — and otherwise generates fresh. Any warmed result for a
-// different input is discarded.
-func (p *Prefetcher) Get(ctx context.Context, input GenerateInput) (*Question, Source, error)
+// Get returns the held question for an identical input — waiting for an
+// in-flight one — and otherwise generates fresh.
+func (p *Prefetcher) Get(ctx context.Context, input GenerateInput) (Result, error) // Result{Question, Source, Attempts}
 // Close cancels in-flight work and drops results. Idempotent.
 func (p *Prefetcher) Close()
 ```
@@ -152,11 +181,18 @@ func (p *Prefetcher) Close()
   caller needs to reason about staleness.
 - **At most one warmed question.** A new `Warm` with a different
   fingerprint cancels the old one.
-- A failed warm is dropped silently and `Get` generates fresh. It does not
-  count toward `genFailures`; only kid-visible failures do.
-- Background work uses `context.WithoutCancel` of the session context plus
-  the budget, so it outlives the `/answer` request that started it, and
-  `Close` cancels it.
+- A failed warm is dropped silently and `Get` generates fresh once. So does
+  an entry cancelled under its waiter (replaced, or closed: then `Get`
+  returns `ErrPrefetcherClosed`). Neither counts toward `genFailures`;
+  only kid-visible failures do.
+- Every generation, warm or fresh, runs on the prefetcher's own context
+  plus the budget, never on a request context: it outlives the request
+  that started it, a caller that leaves cannot cancel a generation another
+  caller waits on, and `Close` cancels it. The prefetcher's mutex is never
+  held while waiting, and replacing or closing only cancels, never joins,
+  so `Warm` and `Close` are safe under the expedition lock.
+- A delivered question stays held until a different input replaces it, so
+  a late duplicate request gets the same question, not a second call.
 - LLM usage logging is unchanged: the provider's `LoggingProvider` records
   each attempt into the child's event stream as today. The owner is bound
   by the repo, not the request context.
@@ -188,11 +224,13 @@ func (p *Prefetcher) Close()
 
 ### 5.3 TUI wiring
 
-The session screen owns one `Prefetcher` per session (closed on quit or
-session end): `Warm` when feedback is shown, `Get` in
-`generateNextQuestion`. Both surfaces get the component through the
-toolset. `tutor.Toolset` gains nothing; the prefetcher is per session,
-not per provider.
+The session screen owns one `Prefetcher` per session (closed on session
+end and every exit path): `Warm` when feedback is shown and the next
+question is predictable (same slot, skill not just mastered, time left),
+`Get` in `generateNextQuestion`. `tutor.Toolset` gains nothing; the
+prefetcher is per session, not per provider. The off switch
+`MATHIZ_QUESTION_PREFETCH=0` applies to both surfaces
+(`problemgen.PrefetchDisabledByEnv`).
 
 ### 5.4 Cost
 
@@ -200,7 +238,10 @@ Phase 2 adds no LLM calls in the common case. The calls it wastes:
 - one per expedition ended early with a warm in flight,
 - one per fingerprint miss.
 
-Both show up in the prefetch log. Credits are per expedition, so kids and
+Both show up in the prefetch log. A provider outage costs more calls than
+before: a failed warm is retried fresh, so one kid-visible failure can take
+2 generations × 3 provider attempts, and the breaker trips after up to 18
+provider calls instead of 9. Credits are per expedition, so kids and
 parents are unaffected.
 
 ## 6. Phase 3 — decided by measurement
@@ -273,9 +314,11 @@ personal).
 
 ## 9. Rollout
 
-1. Phase 1b telemetry, then 1a fixes. Record the baseline.
-2. Phase 2 (A + B), with `MATHIZ_QUESTION_PREFETCH=0` as an off switch for
-   the first release, then remove the switch.
+1. Done: Phase 1b telemetry and 1a fixes.
+2. Done: Phase 2 (A + B), with `MATHIZ_QUESTION_PREFETCH=0` as an off switch
+   for the first release. Remove the switch in the release after. Phases 1
+   and 2 ship together, so the "before" baseline is a release run with the
+   off switch set.
 3. Review the numbers against §2, then decide on C/D/E/H.
 
 Docs to update alongside: specs/05 §1 (point here), specs/13 (question

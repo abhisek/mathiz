@@ -4,7 +4,7 @@ This is the registry of every named concept in Mathiz: what it is, where it
 lives in code, and which spec designed it. It exists so that new work reuses
 an existing concept (and its name) instead of inventing a near-duplicate.
 Code is the truth: where a spec and the code disagree, the entry says so and
-describes the code. Entries marked **(proposed, specs/17)** describe a
+describes the code. Entries marked **(proposed, specs/NN)** describe a
 design that is not yet in the code.
 
 **How to use.** Before naming a new type, table, event, API resource, UI
@@ -14,7 +14,7 @@ kid-facing word if the surface is a child surface. If you add, rename,
 split or remove a concept, update its entry in the same PR. If two sections
 seem to describe your idea, read **Homonyms & look-alikes** at the bottom
 first: several common words (plan, session, invite, tier, provider, token,
-profile, slot, owner, captain, explorer) already mean different things in
+profile, slot, owner, captain, explorer, fog) already mean different things in
 different packages.
 
 Sections: Learning engine · Content generation (LLM) · Persistence ·
@@ -381,6 +381,11 @@ The try-it-yourself question inside a micro-lesson (text, answer, answer type, e
 - **Code:** `lessons.PracticeQuestion` · `lessons.Lesson.GradePractice`
 - **Spec:** [10-ai-lessons.md §3.2](10-ai-lessons.md)
 
+### Prefetcher
+Generates the next question while the learner reads feedback: one held question, used only for an input whose fingerprint (every `GenerateInput` field) is identical, so staleness needs no reasoning. Generations run on its own context, so a caller that leaves can't cancel a shared one. One per expedition (none for quests) and one per terminal session.
+- **Code:** `problemgen.Prefetcher` · `problemgen.PrefetchConfig`
+- **Spec:** [19-question-latency.md §5](19-question-latency.md)
+
 ### Prior questions (dedup)
 Texts of questions already asked for a skill this session, passed to the prompt (last 8) so the LLM varies.
 - **Code:** `problemgen.GenerateInput.PriorQuestions` · `problemgen.Config.MaxPriorQuestions`
@@ -391,6 +396,11 @@ The generated unit of practice: text, format, canonical answer, answer type, cho
 - **Code:** `problemgen.Question` · `problemgen.QuestionSchema`
 - **Spec:** [05-problem-gen.md §2](05-problem-gen.md)
 - **Aka / don't call it:** a **quest question** is a different, parent-authored type (see Quests).
+
+### Question source
+Where a served question came from: `prefetch_hit` (warmed, ready on arrival), `prefetch_join` (warm in flight, awaited), `fresh`, `quest` (authored, no LLM), `current` (the unanswered question again). Telemetry only: the `q_source` field of the `/question` canonical line, never sent to the kid.
+- **Code:** `problemgen.Source` · `game.QuestionSource` · `internal/saas/server/game_api.go`
+- **Spec:** [19-question-latency.md §4](19-question-latency.md)
 
 ### Skill preview
 `mathiz preview --skill X [--tier prove]` generates questions for a skill with no database — for evaluating prompts and new skills.
@@ -534,7 +544,7 @@ children are profiles with device tokens; every permission decision is in
 `authz`.
 
 ### Account
-A parent identity, auto-provisioned on the first authenticated request from the JWT `sub` (no signup endpoint). Today keyed by `supabase_user_id`; **(proposed, specs/17)** provider-neutral `auth_provider` + `auth_subject`.
+A parent identity, auto-provisioned on the first authenticated request (no signup endpoint). Keyed on (`auth_provider`, `auth_subject` = the JWT `sub`), never on email; email and display name refresh from each token.
 - **Code:** `ent/schema/account.go` · `family.Service.EnsureAccount`
 - **Spec:** [12-saas.md §4.1](12-saas.md) · [17-auth-providers.md §3.3](17-auth-providers.md)
 
@@ -548,15 +558,15 @@ Soft-delete of a child profile; revokes all its device tokens and hides it from 
 - **Code:** `family.Service.UpdateChild` (`UpdateChildOpts.Archived`) · `family.ErrArchived`
 - **Spec:** [docs/personas.md §1](../docs/personas.md)
 
-### Auth adapter **(proposed, specs/17)**
-Frontend interface (`init / getToken / user / onChange / signOut / SignIn`) with one lazily-loaded file per provider (supabase, clerk, test); `api.ts` would take a token getter. Kid surfaces never load one.
-- **Code:** `web/src/supa.ts` (today's Supabase client, to be wrapped)
+### Auth adapter
+The SPA's door to the deployment's auth provider: `getToken / user / onChange / signOut / SignIn`, one lazily-loaded adapter per provider (`supabase`, `test`), chosen from the boot config. Parent API calls take its `TokenGetter`. Kid and public pages never load one.
+- **Code:** `web/src/auth/index.ts` (`getAuth`, `AuthAdapter`, `signOut`) · `web/src/auth/supabase.ts` · `web/src/auth/test.ts`
 - **Spec:** [17-auth-providers.md §5](17-auth-providers.md)
 
-### Auth preset / provider **(proposed, specs/17)**
-One generic JWKS JWT verifier configured by a per-vendor preset (`supabase | clerk | test`): issuer, JWKS URL, audience or authorized parties, claim paths. One provider per deployment; switching is an explicit offline `mathiz auth remap`. Verified email becomes enforced.
-- **Code:** `auth.SupabaseVerifier` (today's concrete verifier)
-- **Spec:** [17-auth-providers.md §3](17-auth-providers.md)
+### Auth preset / provider
+The deployment's one hosted auth provider (`MATHIZ_AUTH_PROVIDER`: `supabase`, or `test` for dev/E2E) and the preset that holds all vendor knowledge (issuer, JWKS URL or HS256 secret, audience or authorized parties, claim mapping) for the one generic verifier. A key outage is `ErrUnavailable` (503), never a 401. Switching provider is an explicit offline `mathiz auth remap`; serve refuses to start while accounts belong to another provider. Replaces the Supabase-only verifier.
+- **Code:** `auth.JWTVerifier` · `auth.Preset` · `auth.NewVerifier` · `cmd/auth.go`
+- **Spec:** [17-auth-providers.md §3, §6](17-auth-providers.md)
 
 ### Authz (Checker)
 All permission decisions. Parent checks resolve the membership role in the space (`CanManageSpace/Child/Invite/Device/Quest`; owner-only `CanManageBilling/Parents/ParentInvite`); child checks (`CanLearnAs`, `CanPlayQuest`) pin a device to its own profile. Every denial is `ErrDenied`, which the API maps to **404**, never 403.
@@ -564,12 +574,12 @@ All permission decisions. Parent checks resolve the membership role in the space
 - **Spec:** [12-saas.md §5, "Co-parents"](12-saas.md)
 
 ### Boot config
-Public `GET /api/v1/config` the SPA fetches at startup: Supabase URL + anon key, and PostHog key + `/relay` host only when analytics is configured. **(proposed, specs/17)** gains an `auth{provider,publicKey,issuer}` block.
+Public `GET /api/v1/config` the SPA fetches at startup: `auth{provider, url, publicKey}` (the provider's public settings), and PostHog key + `/relay` host only when analytics is configured.
 - **Code:** `web/src/api.ts` (`BootConfig`) · `internal/saas/server/api.go`
 - **Spec:** [12-saas.md §7](12-saas.md) · [16-analytics.md](16-analytics.md) · [17-auth-providers.md §3.6](17-auth-providers.md)
 
 ### Child profile
-A learner inside a family space: name, grade 2–5, optional bcrypt PIN hash, archived flag. Its UID **is** the learning-data `owner_id`. No email, no Supabase account, ever.
+A learner inside a family space: name, grade 2–5, optional bcrypt PIN hash, archived flag. Its UID **is** the learning-data `owner_id`. No email, no auth-provider account, ever.
 - **Code:** `ent/schema/child_profile.go` · `family.Service.AddChild`
 - **Spec:** [12-saas.md §3.2](12-saas.md)
 - **Aka / don't call it:** "child", "kid", "learner", "explorer" (dashboard copy). NOT a learner profile.
@@ -611,8 +621,8 @@ The tenant: one per owning account, holds child profiles, join codes, quests, th
 - **Aka / don't call it:** "family", "space", `familyId` in JSON.
 
 ### Identity (verified)
-What the JWT verifier returns for a parent: Supabase user ID (`sub`), email, display name. Becomes an Account via `EnsureAccount`. **(proposed, specs/17)** gains `Provider`, `EmailVerified`.
-- **Code:** `auth.Identity` · `auth.SupabaseVerifier.Verify`
+What the JWT verifier returns for a parent: provider, subject (`sub`), email, email-verified flag, display name. `withParent` refuses an unverified email (invites match on email); `EnsureAccount` turns the rest into an Account.
+- **Code:** `auth.Identity` · `auth.JWTVerifier.Verify` · `family.Identity`
 - **Spec:** [12-saas.md §4.1](12-saas.md) · [17-auth-providers.md §3.1](17-auth-providers.md)
 
 ### Join code (Invite)
@@ -632,7 +642,7 @@ The account that created the space (`owner_account_id`, role `owner`): the only 
 - **Spec:** [12-saas.md "Co-parents"](12-saas.md)
 
 ### Parent (persona)
-Hosted-mode adult user: authenticates via Supabase, runs the family space, reads progress, authors quests, buys credits (owner). The buyer, not the user, of credits.
+Hosted-mode adult user: signs in through the deployment's auth provider, runs the family space, reads progress, authors quests, buys credits (owner). The buyer, not the user, of credits.
 - **Code:** `authz.KindParent` · `internal/saas/server/middleware.go` (`withParent`)
 - **Spec:** [docs/personas.md §1](../docs/personas.md)
 
@@ -655,11 +665,6 @@ The verified caller handed to authz: `Kind` parent (with `AccountID`) or child (
 Per-expedition drill-down for parents: every answer in question order plus hint count. Not a timeline item — behind an expand.
 - **Code:** `activity.Reader.SessionDetail` · `GET /api/v1/children/{id}/activity/sessions/{sessionId}`
 - **Spec:** [12-saas.md "Activity timeline"](12-saas.md)
-
-### Supabase verifier
-Local JWT verification for parent tokens: HS256 with the project JWT secret and/or RS/ES via the project JWKS (cached, refetched on unknown `kid`); checks exp/nbf/iat, issuer, audience `authenticated`; rejects `none`. The only vendor-specific auth code today.
-- **Code:** `auth.SupabaseVerifier` · `auth.SupabaseConfig` · `auth.BearerToken`
-- **Spec:** [12-saas.md §4.1](12-saas.md)
 
 ---
 
@@ -698,6 +703,12 @@ The game's session: 5 AI-generated questions on one tapped skill (or up to 5 uns
 A spot whose prerequisites aren't mastered: `locked`, label "Hidden in the fog". Starting one returns `ErrLocked` (409).
 - **Code:** `game.ErrLocked` · `skillgraph.IsUnlocked`
 - **Spec:** [13-treasure-map.md §2](13-treasure-map.md)
+- **Aka / don't call it:** NOT the foggy map — see Homonyms.
+
+### Foggy map (generation retry)
+Kid-facing screen for a question that couldn't be generated: "The map is foggy… 🌫️" with **Try again**, on the same expedition at no cost. The third failure in a row ends the expedition (circuit breaker) with the normal summary.
+- **Code:** `game.ErrGeneration` (code `generation_failed`) · `game.ErrExpeditionOver` · `web/src/pages/Play.tsx` (`'fog'` phase)
+- **Spec:** [19-question-latency.md §3.3](19-question-latency.md)
 
 ### Game manager
 Server-side owner of all live expeditions; wires the engine per child (toolset, mastery, scheduler, gems), enforces the play slot and the charge hook at `Start`, and translates results into kid-safe views and errors.
@@ -978,7 +989,7 @@ ONE structured slog line per HTTP request (method, route pattern, status, dur_ms
 - **Spec:** [12-saas.md §8 "Canonical request logging"](12-saas.md)
 
 ### Deployment modes
-**Local CLI** (`mathiz`, `mathiz play`): one learner, SQLite, Bubble Tea TUI, owner `""`. **Hosted / serve** (`mathiz serve`): multi-tenant PostgreSQL, Supabase parents, device-token kids, embedded SPA. Same engine, different presentation.
+**Local CLI** (`mathiz`, `mathiz play`): one learner, SQLite, Bubble Tea TUI, owner `""`. **Hosted / serve** (`mathiz serve`): multi-tenant PostgreSQL, auth-provider parents, device-token kids, embedded SPA. Same engine, different presentation.
 - **Code:** `cmd/run.go` · `cmd/serve.go`
 - **Spec:** [docs/personas.md](../docs/personas.md) · [12-saas.md §1](12-saas.md)
 
@@ -1035,18 +1046,19 @@ Vite + React in `web/`, built into `internal/saas/webui/dist` and served by the 
 ## Homonyms & look-alikes
 
 - **Plan** — *session plan* (`session.Plan`, the slots a session cycles) vs *billing plan* (`billing.Plan`, a purchasable subscription/top-up) vs *plan grant* (`credits.KindPlan`, credits from a subscription). Say "session plan" or "billing plan".
-- **Session** — a *learning session* (`session.*`, one UUID, start/end events; the game calls it an expedition) vs a *Supabase/browser auth session* (web only) vs *session gem* (`gems.GemSession`, awarded for completing one).
+- **Session** — a *learning session* (`session.*`, one UUID, start/end events; the game calls it an expedition) vs a *parent's auth-provider session in the browser* (web only) vs *session gem* (`gems.GemSession`, awarded for completing one).
 - **Slot** — *plan slot* (`session.PlanSlot`, a skill+tier in a plan) vs *play slot* (`playslot.Registry`, the one-live-session-per-child lock).
 - **Invite** — the ent `Invite` is a kid **join code**; a `ParentInvite` is a co-parent email invitation. UI never says "invite" for join codes.
 - **Tier** — *difficulty tier* (`skillgraph.Tier`: learn/prove) vs *gem rarity* (`gems.Rarity`) vs *billing plan* (never called a tier in code).
-- **Provider** — *LLM provider* (`llm.Provider`) vs *billing provider* (`billing.Provider`) vs *auth provider* (proposed, specs/17) vs `quests.ProviderFactory` (an LLM provider per family).
-- **Token** — *device token* (`mzd_…`, kid credential) vs *Supabase JWT / access token* (parent) vs *LLM tokens* (`llm.Usage`).
+- **Provider** — *LLM provider* (`llm.Provider`) vs *billing provider* (`billing.Provider`) vs *auth provider* (`auth.Preset`, specs/17) vs `quests.ProviderFactory` (an LLM provider per family).
+- **Token** — *device token* (`mzd_…`, kid credential) vs *auth-provider JWT / access token* (parent) vs *LLM tokens* (`llm.Usage`).
 - **Profile** — *child profile* (`ent.ChildProfile`, the learner identity) vs *learner profile* (`lessons.LearnerProfile`, the LLM's summary of the learner) vs LLM purpose `profile`.
 - **Owner** — *owner_id* (data-plane tenant key = child UID / `""` / `space:<id>`) vs *family owner* (`family.RoleOwner`, the paying parent) vs `FamilySpace.owner_account_id`.
 - **Streak** — *in-session streak* (`SessionState.ConsecutiveCorrect`, streak gems) vs *per-skill fluency streak* (`FluencyMetrics.Streak`, consistency score).
 - **State** — *mastery state* (`mastery.MasteryState`: new/learning/mastered/rusty) vs *skill display state* (`skillgraph.SkillState`: locked/available/learning/proving/mastered/rusty) vs *spot state* (`"digging"`, `"treasure"`, …) vs *billing state* (`ent.BillingState`) vs *session state* (`session.SessionState`).
 - **Category** — *plan category* (`session.PlanCategory`: frontier/review/booster) vs *error category* (`diagnosis.ErrorCategory`: careless/speed-rush/misconception/unclassified).
 - **Question** — *generated question* (`problemgen.Question`, never static) vs *quest question* (`ent.QuestQuestion`, fixed, parent-authored, not shuffled) vs *practice question* (`lessons.PracticeQuestion`, inside a lesson). Kid word for all three: "clue".
+- **Fog** — a *locked spot* ("Hidden in the fog", `ErrLocked`) vs the *foggy map* retry screen ("The map is foggy… 🌫️", `ErrGeneration`).
 - **Review** — *spaced-rep review* (an answer feeding `RecordReview`; plan category `review`) vs *parent review of AI-drafted quest questions* (draft → publish).
 - **Explorer** — the `explorer` billing plan vs dashboard copy calling a child an "explorer" ("more than one explorer aboard"). Avoid the second use in new copy.
 - **Captain** — the child (header) *and* the quest-authoring parent (quest card, sealed-answer copy). See Game → Captain.

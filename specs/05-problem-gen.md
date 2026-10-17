@@ -6,7 +6,7 @@ The Problem Generation module is the engine that produces all math questions in 
 
 **Design goals:**
 
-- **On-demand generation**: One question at a time, generated just before it's shown. Simple, stateless, no pre-caching.
+- **One question at a time**: each question is generated for the learner's current state. Since [19-question-latency.md](19-question-latency.md) the next question is generated while the learner reads feedback (`problemgen.Prefetcher`), and a warmed question is used only when its input is identical. Every served question stays personalised; there is no static bank.
 - **Skill-aware**: Every question is grounded in a specific skill's metadata (name, description, keywords, grade, tier config).
 - **Context-enriched**: Recent errors and session history are included in the prompt so the LLM can vary questions and target weak spots.
 - **Validated**: Every generated question undergoes programmatic validation — JSON schema conformance (via spec 04), answer correctness verification, and structural checks.

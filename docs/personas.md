@@ -61,6 +61,8 @@ device token stored in the browser.
 | Join: enter code → pick profile → PIN | `/join` | `POST /api/v1/join/preview`, `POST /api/v1/join/redeem` |
 | Treasure map: 5 islands (strands), 56 dig spots (skills); fog on locked spots, glowing X on ready ones, progress rings while digging/proving, open chests when mastered, "sinking" sparkle when review is due | `/play` | `GET /api/v1/game/map` |
 | Expedition: 5 AI-generated questions on a tapped spot (numeric or multiple choice), gem bursts, streak fire, prove-tier countdown | `/play` expedition overlay | `POST /api/v1/game/expeditions` (+ `/question`, `/answer`) |
+| Waiting for a question: the next one is usually ready (it generates while the kid reads feedback); after 6 s the loader says "Still digging… the treasure is deep today ⛏️" | expedition overlay | `POST .../question` (prefetched, specs/19) |
+| Foggy map: a question couldn't be made → "The map is foggy… 🌫️" + **Try again** on the same expedition, free; three in a row end it with the normal summary | expedition overlay | 503 `generation_failed`, then 409 `expedition_over` + `POST .../end` |
 | Hints after a wrong answer | expedition overlay | `POST .../hint` |
 | The guide's micro-lesson after two wrong answers on a skill: explanation, worked example, practice question | expedition overlay | `POST .../lesson`, `POST .../lesson/answer` |
 | Mastery celebration: chest opens, fog lifts on newly unlocked spots, expedition ends triumphantly | expedition overlay | mastery transition in answer response |
