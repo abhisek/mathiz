@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 )
@@ -236,5 +237,76 @@ func TestAutoMigrationCreatesTable(t *testing.T) {
 	}
 	if name != "snapshots" {
 		t.Errorf("table name = %q, want 'snapshots'", name)
+	}
+}
+
+func TestSQLiteSingleConnection(t *testing.T) {
+	s := openTestStore(t)
+	if got := s.DB().Stats().MaxOpenConnections; got != 1 {
+		t.Errorf("SQLite MaxOpenConnections = %d, want 1", got)
+	}
+}
+
+func TestEnvPositiveInt(t *testing.T) {
+	const key = "MATHIZ_TEST_POOL_VALUE"
+	tests := []struct {
+		name    string
+		value   string
+		want    int
+		wantErr bool
+	}{
+		{"unset uses default", "", 7, false},
+		{"valid", "12", 12, false},
+		{"zero", "0", 0, true},
+		{"negative", "-3", 0, true},
+		{"not a number", "lots", 0, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(key, tt.value)
+			got, err := envPositiveInt(key, 7)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDSNSSLMode(t *testing.T) {
+	tests := map[string]string{
+		"postgres://u:p@db:5432/mathiz?sslmode=verify-full": "verify-full",
+		"postgres://u:p@db:5432/mathiz?sslmode=disable":     "disable",
+		"postgres://u:p@db:5432/mathiz":                     "prefer",
+	}
+	for dsn, want := range tests {
+		if got := dsnSSLMode(dsn); got != want {
+			t.Errorf("dsnSSLMode(%q) = %q, want %q", dsn, got, want)
+		}
+	}
+}
+
+// TestPostgresPool runs against a real server only when one is configured.
+func TestPostgresPool(t *testing.T) {
+	dsn := os.Getenv("MATHIZ_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("MATHIZ_TEST_DATABASE_URL not set")
+	}
+	t.Setenv("MATHIZ_DB_MAX_OPEN_CONNS", "8")
+	t.Setenv("MATHIZ_DB_MAX_IDLE_CONNS", "50")
+	s, err := Open(dsn)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { s.Close() })
+	if got := s.DB().Stats().MaxOpenConnections; got != 8 {
+		t.Errorf("MaxOpenConnections = %d, want 8", got)
+	}
+
+	t.Setenv("MATHIZ_DB_MAX_OPEN_CONNS", "nope")
+	if _, err := Open(dsn); err == nil {
+		t.Error("expected an error for a malformed MATHIZ_DB_MAX_OPEN_CONNS")
 	}
 }

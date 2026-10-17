@@ -4,9 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -56,6 +60,11 @@ func open(dsn, entDialect, driver string) (*Store, error) {
 		if err := applyPragmas(db); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("apply pragmas: %w", err)
+		}
+	} else {
+		if err := configurePostgres(db, dsn); err != nil {
+			db.Close()
+			return nil, err
 		}
 	}
 
@@ -117,6 +126,79 @@ func (s *Store) EventRepoFor(owner string) EventRepo {
 // LocalOwner is the owner ID used by the local single-user CLI. It predates
 // multi-tenancy: rows written before the owner column existed default to "".
 const LocalOwner = ""
+
+// MinPostgresMajor is the oldest PostgreSQL major the store supports: the
+// oldest one CI and the dev stack have run the owner-isolation suite on.
+const MinPostgresMajor = 16
+
+// Pool defaults for PostgreSQL. Without a cap, a traffic burst opens one
+// connection per concurrent query and exhausts the server's
+// max_connections (100 by default), which fails every other client too.
+const (
+	defaultMaxOpenConns    = 20
+	defaultMaxIdleConns    = 10
+	defaultConnMaxLifetime = 30 * time.Minute
+	defaultConnMaxIdleTime = 5 * time.Minute
+)
+
+// configurePostgres applies the pool limits and refuses servers older than
+// MinPostgresMajor, so an unsupported server fails at boot instead of on
+// the first query that needs a newer feature.
+func configurePostgres(db *sql.DB, dsn string) error {
+	maxOpen, err := envPositiveInt("MATHIZ_DB_MAX_OPEN_CONNS", defaultMaxOpenConns)
+	if err != nil {
+		return err
+	}
+	maxIdle, err := envPositiveInt("MATHIZ_DB_MAX_IDLE_CONNS", defaultMaxIdleConns)
+	if err != nil {
+		return err
+	}
+	db.SetMaxOpenConns(maxOpen)
+	db.SetMaxIdleConns(min(maxIdle, maxOpen))
+	db.SetConnMaxLifetime(defaultConnMaxLifetime)
+	db.SetConnMaxIdleTime(defaultConnMaxIdleTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var versionNum int
+	if err := db.QueryRowContext(ctx, "SELECT current_setting('server_version_num')::int").Scan(&versionNum); err != nil {
+		return fmt.Errorf("read postgres version: %w", err)
+	}
+	major := versionNum / 10000
+	if major < MinPostgresMajor {
+		return fmt.Errorf("postgres %d is not supported: mathiz needs PostgreSQL %d or newer", major, MinPostgresMajor)
+	}
+	slog.Info("store: postgres", "server_version_num", versionNum, "sslmode", dsnSSLMode(dsn),
+		"max_open_conns", maxOpen, "max_idle_conns", min(maxIdle, maxOpen))
+	return nil
+}
+
+// dsnSSLMode reports the sslmode a URL-form DSN asks for. libpq's default
+// is "prefer", which silently falls back to plaintext.
+func dsnSSLMode(dsn string) string {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return "unknown"
+	}
+	if m := u.Query().Get("sslmode"); m != "" {
+		return m
+	}
+	return "prefer"
+}
+
+// envPositiveInt reads an optional positive integer. A malformed value is
+// an error rather than a silent default, so a typo can't hide a pool limit.
+func envPositiveInt(key string, def int) (int, error) {
+	v := os.Getenv(key)
+	if v == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer, got %q", key, v)
+	}
+	return n, nil
+}
 
 // applyPragmas configures SQLite for optimal single-user performance.
 func applyPragmas(db *sql.DB) error {
