@@ -3147,3 +3147,23 @@ table.sessions th {
   font-size: 0.8rem;
   word-break: break-all;
 }
+
+/* Fog retry: a question couldn't be generated; the expedition stays. */
+.quest-fog .fog-cloud {
+  font-size: 3rem;
+  display: block;
+  animation: fog-drift 3s ease-in-out infinite alternate;
+}
+.quest-fog .btn {
+  margin-top: 1rem;
+}
+@keyframes fog-drift {
+  from {
+    transform: translateX(-0.4rem);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(0.4rem);
+    opacity: 1;
+  }
+}

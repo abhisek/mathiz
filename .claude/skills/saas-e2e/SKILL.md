@@ -41,6 +41,15 @@ batch for parent quest generation. Anything else gets the default question,
 "What is 12 + 7?" (answer **19**). Diagnosis calls fall through to that and
 fail to parse harmlessly (async best-effort).
 
+Latency and failure knobs for the question path (specs/19): start the stub
+with `LLMSTUB_DELAY_MS=<ms>` / `LLMSTUB_FAIL_QUESTIONS=<n>`, or change them
+at runtime: `curl -X POST -d '{"delayMs":9000,"failQuestions":0}'
+http://127.0.0.1:9993/__stub`. One kid-visible failure takes 6 failed calls
+(3 provider attempts for the warm, 3 for its fresh retry). After 6 s of
+waiting, the loader says "Still digging…". A failure shows "The map is
+foggy… 🌫️" with **Try again** (`button:has-text("Try again")`). The third
+failure in a row ends the expedition with the normal `.summary`.
+
 ## 3. Parent onboarding via API (mint a JWT, no auth provider)
 
 ```bash

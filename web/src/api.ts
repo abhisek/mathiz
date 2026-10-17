@@ -290,9 +290,13 @@ export interface ActivitySessionDetail {
 
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  // Stable machine-readable reason (game API): branch on this, never on
+  // the message, which is kid copy and may change.
+  code?: string
+  constructor(status: number, message: string, code?: string) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 
@@ -389,7 +393,8 @@ export async function request<T>(
     if (resp.status === 204) return undefined as T
     const data = await resp.json().catch(() => ({}))
     if (!resp.ok) {
-      throw new ApiError(resp.status, (data as { error?: string }).error ?? `HTTP ${resp.status}`)
+      const errBody = data as { error?: string; code?: string }
+      throw new ApiError(resp.status, errBody.error ?? `HTTP ${resp.status}`, errBody.code)
     }
     return data as T
   } finally {
