@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -493,4 +495,36 @@ func TestJoinRedeemUnknownFieldsRejected(t *testing.T) {
 	e := newTestEnv(t)
 	resp := e.call(t, "POST", "/api/v1/join/preview", "", map[string]any{"code": "X", "extra": true}, nil)
 	expectStatus(t, resp, 400, "unknown fields")
+}
+
+func TestWriteGameErrorCodes(t *testing.T) {
+	cases := []struct {
+		err    error
+		status int
+		code   string
+	}{
+		{game.ErrNoExpedition, http.StatusNotFound, "no_expedition"},
+		{game.ErrExpeditionOver, http.StatusConflict, "expedition_over"},
+		{game.ErrNoQuestion, http.StatusConflict, "no_question"},
+		{game.ErrGeneration, http.StatusServiceUnavailable, "generation_failed"},
+		{game.ErrNoCredits, http.StatusPaymentRequired, "out_of_credits"},
+		{fmt.Errorf("wrapped: %w", game.ErrElsewhere), http.StatusConflict, "elsewhere"},
+	}
+	for _, tc := range cases {
+		rr := httptest.NewRecorder()
+		writeGameError(rr, tc.err)
+		var body errorBody
+		if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+			t.Fatalf("%v: decode: %v", tc.err, err)
+		}
+		if rr.Code != tc.status || body.Code != tc.code || body.Error == "" {
+			t.Errorf("%v: status %d code %q error %q; want %d %q", tc.err, rr.Code, body.Code, body.Error, tc.status, tc.code)
+		}
+	}
+	// A cross-tenant quest probe stays a bare 404 with no code to probe on.
+	rr := httptest.NewRecorder()
+	writeGameError(rr, game.ErrQuestUnavailable)
+	if rr.Code != http.StatusNotFound || strings.Contains(rr.Body.String(), "code") {
+		t.Errorf("quest unavailable = %d %s", rr.Code, rr.Body.String())
+	}
 }

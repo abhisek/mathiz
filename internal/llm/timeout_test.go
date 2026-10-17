@@ -208,3 +208,23 @@ func TestTimedOutAttemptIsStillLogged(t *testing.T) {
 		t.Error("timed-out attempt recorded as successful")
 	}
 }
+
+func TestAttemptCounterCountsRetries(t *testing.T) {
+	// Each attempt hangs until its own deadline, so retry makes all three.
+	inner := &countingProvider{}
+	p := WithRetry(WithTimeout(inner, 20*time.Millisecond), RetryConfig{
+		MaxAttempts: 3, InitialWait: time.Millisecond, Multiplier: 1, MaxWait: time.Millisecond,
+	})
+
+	ctx, counter := WithAttemptCounter(context.Background())
+	if _, err := p.Generate(ctx, Request{}); err == nil {
+		t.Fatal("expected every attempt to time out")
+	}
+	if counter.Count() != 3 || inner.count() != 3 {
+		t.Errorf("counted %d attempts, provider saw %d; want 3 and 3", counter.Count(), inner.count())
+	}
+	// No counter attached: counting is a silent no-op.
+	if _, err := p.Generate(context.Background(), Request{}); err == nil {
+		t.Fatal("expected a timeout without a counter too")
+	}
+}

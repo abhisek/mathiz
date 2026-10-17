@@ -433,7 +433,9 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 
 	// The unanswered current question is idempotent (page reloads).
 	if exp.state.CurrentQuestion != nil && !exp.answered {
-		return exp.questionView(), nil
+		v := exp.questionView()
+		v.Source = SourceCurrent
+		return v, nil
 	}
 	if exp.questionsAsked >= exp.totalQuestions() {
 		return nil, ErrExpeditionOver
@@ -457,6 +459,7 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 	// It also bounds how long exp.mu stays held on a degraded provider.
 	genCtx, cancel := context.WithTimeout(ctx, questionGenBudget)
 	defer cancel()
+	genCtx, attempts := llm.WithAttemptCounter(genCtx)
 
 	q, err := exp.tools.Generator.Generate(genCtx, problemgen.GenerateInput{
 		Skill:          exp.skill,
@@ -482,7 +485,12 @@ func (m *Manager) Question(ctx context.Context, childUID, expID string) (*Questi
 	exp.answered = false
 	exp.questionsAsked++
 
-	return exp.questionView(), nil
+	v := exp.questionView()
+	v.Source, v.Attempts = SourceFresh, attempts.Count()
+	if exp.quest != nil {
+		v.Source = SourceQuest
+	}
+	return v, nil
 }
 
 func (e *expedition) questionView() *QuestionView {

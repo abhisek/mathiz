@@ -128,6 +128,9 @@ func TestQuestExpeditionServesAuthoredQuestionsInChunks(t *testing.T) {
 		if err != nil {
 			t.Fatalf("question %d: %v", i, err)
 		}
+		if q.Source != SourceQuest {
+			t.Errorf("quest question source = %q, want %q", q.Source, SourceQuest)
+		}
 		if q.Text != src.quest.Questions[i].Text {
 			t.Errorf("question %d text = %q", i, q.Text)
 		}

@@ -78,7 +78,23 @@ type QuestionView struct {
 	// TimeLimitSecs is set for prove-tier questions: the client shows a
 	// countdown (advisory — answers are accepted after it runs out).
 	TimeLimitSecs int `json:"timeLimitSecs,omitempty"`
+
+	// Source and Attempts are latency telemetry for the canonical log
+	// line (specs/19 §4); never sent to the kid.
+	Source   QuestionSource `json:"-"`
+	Attempts int            `json:"-"`
 }
+
+// QuestionSource says where a served question came from (specs/19 §4).
+type QuestionSource string
+
+const (
+	SourcePrefetchHit  QuestionSource = "prefetch_hit"  // warmed and ready on arrival
+	SourcePrefetchJoin QuestionSource = "prefetch_join" // warm in flight, awaited
+	SourceFresh        QuestionSource = "fresh"         // generated on request
+	SourceQuest        QuestionSource = "quest"         // parent-authored, no LLM
+	SourceCurrent      QuestionSource = "current"       // the unanswered question again (reload)
+)
 
 // GemAwardView is a gem earned during play.
 type GemAwardView struct {
