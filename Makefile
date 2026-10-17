@@ -45,7 +45,7 @@ dev-db:
 	docker compose up -d postgres
 
 # Self-contained dev stack: PostgreSQL + stub LLM + mathiz serve on :8080.
-# No Supabase project or LLM key needed (see docker-compose.yml).
+# No auth provider or LLM key needed (see docker-compose.yml).
 dev-up:
 	docker compose --profile full up --build -d
 	@echo "Mathiz on http://localhost:8080 — parent JWTs: node .claude/skills/saas-e2e/assets/mint-jwt.mjs"

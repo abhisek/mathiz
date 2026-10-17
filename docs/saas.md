@@ -8,9 +8,12 @@ See [specs/12-saas.md](../specs/12-saas.md) for the full architecture.
 
 ## How it fits together
 
-- **Parents** authenticate with Supabase (the SPA uses supabase-js; the server
-  verifies JWTs locally). An account is provisioned automatically on first
-  authenticated request — Supabase *is* signup.
+- **Parents** sign in through the deployment's hosted auth provider
+  (`MATHIZ_AUTH_PROVIDER`; Supabase today). The SPA loads that provider's
+  adapter, and the server verifies its JWTs locally. An account is
+  provisioned automatically on the first authenticated request, keyed on
+  the provider and the provider's user ID — the provider *is* signup. See
+  [specs/17-auth-providers.md](../specs/17-auth-providers.md).
 - **Children** never need email. A parent mints a **join code** (e.g.
   `TIGER-4207`), the child enters it at `/join`, picks their profile, confirms
   their PIN, and the browser stores a revocable **device token**.
@@ -47,6 +50,23 @@ parent sign-in at `/login`, kid flow at `/join`.
 For SPA development with hot reload, run `mathiz serve` on :8080 and
 `cd web && npm run dev` — Vite proxies `/api`.
 
+### Parent auth
+
+One auth provider serves a deployment. Mathiz stores no passwords and sends
+no sign-in email; the provider does both. The server refuses to start when
+existing accounts belong to another provider (`mathiz auth remap` moves
+them, see below), and on a database from before pluggable auth.
+
+| `MATHIZ_AUTH_PROVIDER` | Use | Settings |
+|---|---|---|
+| `supabase` | production | `MATHIZ_AUTH_URL` (project URL, https), `MATHIZ_AUTH_PUBLIC_KEY` (anon key), optional `MATHIZ_AUTH_HS256_SECRET` |
+| `test` | local dev, E2E | `MATHIZ_AUTH_ALLOW_TEST=1`, `MATHIZ_AUTH_HS256_SECRET` (32+ characters). `/login` shows a paste-a-token form; mint tokens with `.claude/skills/saas-e2e/assets/mint-jwt.mjs`. Refused when `MATHIZ_PUBLIC_BASE_URL` is https, and blanked by the compose `prod` profile. |
+
+The provider's public URL and client key reach the SPA through
+`GET /api/v1/config` (`auth.provider`, `auth.url`, `auth.publicKey`). A
+parent whose token does not carry a verified email gets a 401: co-parent
+invites match on email.
+
 ### Supabase setup
 
 Parent sign-in is **email-code (OTP) first**: the parent enters their email,
@@ -65,16 +85,37 @@ remains available behind a "Prefer a password?" link on `/login`.
    (The default template only contains the link; without `{{ .Token }}`
    parents can still sign in by clicking, but the code box has nothing to
    type.)
-5. Copy into your `.env`:
-   - Project URL → `MATHIZ_SUPABASE_URL`
-   - Publishable/anon key → `MATHIZ_SUPABASE_ANON_KEY`
-   - JWT secret (legacy HS256 projects) → `MATHIZ_SUPABASE_JWT_SECRET`.
-     Projects on asymmetric signing keys can skip this — the server fetches
-     the JWKS from `{url}/auth/v1/.well-known/jwks.json` automatically.
+5. Authentication → Providers → Email: turn **Confirm email** ON. This
+   step is required. Mathiz treats every Supabase session as
+   email-verified, and co-parent invites match on email: with confirmation
+   off, anyone could sign up with an invited address and accept the
+   invite.
+6. Copy into your `.env`:
+   - `MATHIZ_AUTH_PROVIDER=supabase`
+   - Project URL → `MATHIZ_AUTH_URL`
+   - Publishable/anon key → `MATHIZ_AUTH_PUBLIC_KEY`
+   - JWT secret (projects that still sign with a shared secret) →
+     `MATHIZ_AUTH_HS256_SECRET`. Projects on asymmetric signing keys skip
+     this — the server fetches the JWKS from
+     `{url}/auth/v1/.well-known/jwks.json` automatically.
 
 Mathiz uses Supabase **only for authentication**. All application data —
 families, children, learning events — lives in your own PostgreSQL via Ent,
 and authorization is enforced entirely by Mathiz.
+
+### Switching provider
+
+A provider switch is explicit and offline. Import the parents into the new
+provider, export a CSV of `old_subject,new_subject` (each parent's user ID
+at the old and the new provider), stop the server, then:
+
+```sh
+MATHIZ_DATABASE_URL=... ./bin/mathiz auth remap --from supabase --to <new> --map map.csv --dry-run
+MATHIZ_DATABASE_URL=... ./bin/mathiz auth remap --from supabase --to <new> --map map.csv
+```
+
+Every account of `--from` must be in the map, or nothing is written. Set
+`MATHIZ_AUTH_PROVIDER` to the new provider and start the server.
 
 ## Monetisation (optional)
 

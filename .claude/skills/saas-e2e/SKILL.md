@@ -57,6 +57,10 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 ```
 
 Key selectors, in flow order:
+- **Parent login** (test adapter): `/login` → `textarea.test-token-input`
+  (paste a `mint-jwt.mjs` token; each `sub` is a separate parent) →
+  `button:has-text("Sign in with token")` → lands on `/dashboard`;
+  `.dash-email` shows the token's email, `button:has-text("Sign out")`.
 - **Join**: `/join` → `.code-input` → `button:has-text("go!")` →
   `.profile-tile:has-text("<name>")` → (PIN) `input[type="password"]` →
   `button:has-text("Start playing")` → lands on `/play`.

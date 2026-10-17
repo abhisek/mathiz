@@ -55,7 +55,7 @@ mathiz reset    # reset all progress
 
 ## Hosted mode — Family Spaces in the browser
 
-Mathiz can also run as a multi-tenant server: parents sign up (Supabase),
+Mathiz can also run as a multi-tenant server: parents sign up (through a hosted auth provider, Supabase today),
 create a **Family Space**, add children, and share a **join code**. Children
 open the web app, enter the code, pick their profile, and play the
 **treasure map**: the skill graph rendered as islands, where solving
@@ -70,7 +70,7 @@ Or host-native:
 
 ```sh
 make dev-db          # local PostgreSQL (docker compose)
-cp .env.example .env # configure database + Supabase + LLM key
+cp .env.example .env # configure database + auth provider + LLM key
 make web && make mathiz
 ./bin/mathiz serve
 ```
